@@ -40,6 +40,7 @@ export default function GoBoard() {
     const [isDarkMode, setIsDarkMode] = useState(true);
     const boardAreaRef = useRef<HTMLDivElement | null>(null);
     const [vertexSize, setVertexSize] = useState(24);
+    const [showMenu, setShowMenu] = useState(false);
 
     const [gameState, setGameState] = useState<GameState>({
         moves: [],
@@ -85,98 +86,117 @@ export default function GoBoard() {
         <div
             className={
                 isDarkMode
-                    ? "goban-theme-dark flex h-screen flex-col p-3"
-                    : "goban-theme-light flex h-screen flex-col p-3"
+                    ? "goban-theme-dark relative flex h-screen flex-col p-3"
+                    : "goban-theme-light relative flex h-screen flex-col p-3"
             }
         >
-            <div className="mb-3 flex shrink-0 flex-wrap gap-2">
-                {[9, 13, 19].map((boardSize) => (
-                    <button
-                        key={boardSize}
-                        className={
-                            size === boardSize
-                                ? "rounded bg-black px-4 py-2 text-white"
-                                : "rounded bg-neutral-200 px-4 py-2 text-black"
-                        }
-                        onClick={() => {
-                            setSize(boardSize as BoardSize);
-                            setGameState({
-                                moves: [],
-                                currentPlayer: "B",
-                            });
-                        }}
-                    >
-                        {boardSize}x{boardSize}
-                    </button>
-                ))}
+            <div className="absolute right-3 top-3 z-10">
                 <button
-                    className={
-                        isDarkMode
-                            ? "rounded bg-neutral-200 px-4 py-2 text-black"
-                            : "rounded bg-neutral-800 px-4 py-2 text-white"
-                    }
-                    onClick={() => setIsDarkMode(!isDarkMode)}
+                    className="rounded bg-neutral-700 px-4 py-2 text-white shadow-lg"
+                    onClick={() => setShowMenu(!showMenu)}
                 >
-                    {isDarkMode ? "Light Mode" : "Dark Mode"}
+                    Menu
                 </button>
 
-                <button
-                    className="rounded bg-black px-4 py-2 text-white disabled:opacity-40"
-                    disabled={gameState.moves.length === 0}
-                    onClick={() => {
-                        if (gameState.moves.length === 0) return;
+                {showMenu && (
+                    <div className="mt-2 flex w-48 flex-col gap-2 rounded bg-white p-2 shadow-xl">
+                        {[9, 13, 19].map((boardSize) => (
+                            <button
+                                key={boardSize}
+                                className={
+                                    size === boardSize
+                                        ? "rounded bg-black px-4 py-2 text-white"
+                                        : "rounded bg-neutral-200 px-4 py-2 text-black"
+                                }
+                                onClick={() => {
+                                    setSize(boardSize as BoardSize);
+                                    setGameState({
+                                        moves: [],
+                                        currentPlayer: "B",
+                                    });
+                                    setShowMenu(false);
+                                }}
+                            >
+                                {boardSize}x{boardSize}
+                            </button>
+                        ))}
 
-                        const previousMoves = gameState.moves.slice(0, -1);
-                        const lastMove = gameState.moves.at(-1);
+                        <button
+                            className={
+                                isDarkMode
+                                    ? "rounded bg-neutral-200 px-4 py-2 text-black"
+                                    : "rounded bg-neutral-800 px-4 py-2 text-white"
+                            }
+                            onClick={() => {
+                                setIsDarkMode(!isDarkMode);
+                                setShowMenu(false);
+                            }}
+                        >
+                            {isDarkMode ? "Light Mode" : "Dark Mode"}
+                        </button>
 
-                        setGameState({
-                            moves: previousMoves,
-                            currentPlayer: lastMove?.color ?? "B",
-                        });
-                    }}
-                >
-                    Undo
-                </button>
+                        <button
+                            className="rounded bg-black px-4 py-2 text-white disabled:opacity-40"
+                            disabled={gameState.moves.length === 0}
+                            onClick={() => {
+                                if (gameState.moves.length === 0) return;
 
-                <button
-                    className="rounded bg-neutral-700 px-4 py-2 text-white"
-                    onClick={() => {
-                        const newMove: Move = {
-                            type: "pass",
-                            color: gameState.currentPlayer,
-                        };
+                                const previousMoves = gameState.moves.slice(0, -1);
+                                const lastMove = gameState.moves.at(-1);
 
-                        setGameState({
-                            moves: [...gameState.moves, newMove],
-                            currentPlayer:
-                                gameState.currentPlayer === "B" ? "W" : "B",
-                        });
-                    }}
-                >
-                    Pass
-                </button>
+                                setGameState({
+                                    moves: previousMoves,
+                                    currentPlayer: lastMove?.color ?? "B",
+                                });
+                                setShowMenu(false);
+                            }}
+                        >
+                            Undo
+                        </button>
 
-                <button
-                    className="rounded bg-blue-700 px-4 py-2 text-white"
-                    onClick={() => {
-                        const sgf = exportSgf(size, gameState.moves);
+                        <button
+                            className="rounded bg-neutral-700 px-4 py-2 text-white"
+                            onClick={() => {
+                                const newMove: Move = {
+                                    type: "pass",
+                                    color: gameState.currentPlayer,
+                                };
 
-                        const blob = new Blob([sgf], {
-                            type: "application/x-go-sgf;charset=utf-8",
-                        });
+                                setGameState({
+                                    moves: [...gameState.moves, newMove],
+                                    currentPlayer:
+                                        gameState.currentPlayer === "B" ? "W" : "B",
+                                });
+                                setShowMenu(false);
+                            }}
+                        >
+                            Pass
+                        </button>
 
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement("a");
+                        <button
+                            className="rounded bg-blue-700 px-4 py-2 text-white"
+                            onClick={() => {
+                                const sgf = exportSgf(size, gameState.moves);
 
-                        link.href = url;
-                        link.download = "game.sgf";
-                        link.click();
+                                const blob = new Blob([sgf], {
+                                    type: "application/x-go-sgf;charset=utf-8",
+                                });
 
-                        URL.revokeObjectURL(url);
-                    }}
-                >
-                    Download SGF
-                </button>
+                                const url = URL.createObjectURL(blob);
+                                const link = document.createElement("a");
+
+                                link.href = url;
+                                link.download = "game.sgf";
+                                link.click();
+
+                                URL.revokeObjectURL(url);
+                                setShowMenu(false);
+                            }}
+                        >
+                            Download SGF
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div
