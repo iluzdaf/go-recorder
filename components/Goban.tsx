@@ -114,6 +114,10 @@ export default function GoBoard({ slug }: GoBoardProps) {
     }, [size, gameState, updatedAt]);
 
     useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+    }, [isDarkMode]);
+
+    useEffect(() => {
         const loadGame = async () => {
             const response = await fetch(`/api/games/${slug}`);
 
@@ -451,8 +455,8 @@ export default function GoBoard({ slug }: GoBoardProps) {
         <div
             className={
                 isDarkMode
-                    ? "goban-theme-dark relative m-0 flex h-dvh touch-none flex-col overflow-hidden overscroll-none p-0"
-                    : "goban-theme-light relative m-0 flex h-dvh touch-none flex-col overflow-hidden overscroll-none p-0"
+                    ? "goban-theme-dark relative m-0 flex h-dvh touch-none flex-col overflow-hidden overscroll-none bg-neutral-900 p-0 text-white"
+                    : "goban-theme-light relative m-0 flex h-dvh touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
             }
         >
 
@@ -507,14 +511,14 @@ export default function GoBoard({ slug }: GoBoardProps) {
                         data-action-menu
                     >
                         {showMenu && (
-                            <div className="flex w-48 flex-col gap-2 rounded border border-neutral-700 bg-neutral-900 p-2 shadow-xl">
+                            <div className="flex w-48 flex-col gap-2 rounded border border-zinc-300 bg-zinc-100 p-2 shadow-xl dark:border-neutral-700 dark:bg-neutral-900">
                                 {[9, 13, 19].map((boardSize) => (
                                     <button
                                         key={boardSize}
                                         className={
                                             size === boardSize
                                                 ? "rounded bg-sky-700 px-4 py-2 font-medium text-white hover:bg-sky-600"
-                                                : "rounded bg-neutral-700 px-4 py-2 text-neutral-200"
+                                                : "rounded bg-zinc-300 px-4 py-2 text-zinc-800 dark:bg-neutral-700 dark:text-neutral-200"
                                         }
                                         onClick={() => {
                                             setSize(boardSize as BoardSize);
@@ -531,11 +535,7 @@ export default function GoBoard({ slug }: GoBoardProps) {
                                 ))}
 
                                 <button
-                                    className={
-                                        isDarkMode
-                                            ? "flex items-center justify-center rounded bg-neutral-200 px-4 py-2 text-xl text-black"
-                                            : "flex items-center justify-center rounded bg-neutral-800 px-4 py-2 text-xl text-white"
-                                    }
+                                    className="flex items-center justify-center rounded bg-zinc-800 px-4 py-2 text-xl text-white dark:bg-neutral-200 dark:text-black"
                                     onClick={() => {
                                         setIsDarkMode(!isDarkMode);
                                         setShowMenu(false);
@@ -546,7 +546,7 @@ export default function GoBoard({ slug }: GoBoardProps) {
                                 </button>
 
                                 <button
-                                    className="rounded bg-amber-700 px-4 py-2 text-white hover:bg-amber-600 disabled:bg-zinc-700 disabled:text-zinc-400 disabled:opacity-100"
+                                    className="rounded bg-amber-700 px-4 py-2 text-white hover:bg-amber-600 disabled:bg-zinc-300 disabled:text-zinc-500 disabled:opacity-100 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
                                     disabled={gameState.moves.length === 0}
                                     onClick={() => {
                                         if (gameState.moves.length === 0) return;
@@ -568,7 +568,7 @@ export default function GoBoard({ slug }: GoBoardProps) {
                                 </button>
 
                                 <button
-                                    className="rounded bg-slate-600 px-4 py-2 text-white hover:bg-slate-500"
+                                    className="rounded bg-slate-700 px-4 py-2 text-white hover:bg-slate-600 dark:bg-slate-600 dark:hover:bg-slate-500"
                                     onClick={() => {
                                         const newMove: Move = {
                                             type: "pass",

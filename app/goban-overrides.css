@@ -44,6 +44,7 @@
     border: 1px solid #18181b !important;
     border-radius: 9999px !important;
 }
+
 .goban-theme-dark .shudan-goban,
 .goban-theme-dark .shudan-goban.shudan-goban-image,
 .goban-theme-dark .shudan-content {
@@ -97,7 +98,7 @@
 }
 
 .goban-theme-light .shudan-hoshi {
-    fill: #52525b !important;
+    fill: #3f3f46 !important;
 }
 
 .goban-theme-dark .shudan-stone,
