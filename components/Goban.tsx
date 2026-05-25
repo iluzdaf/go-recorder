@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType } from "react";
+import { Download, Menu, Moon, Sun, Undo2, X } from "lucide-react";
 
 import type { GameState, Move, Stone } from "./types";
 import { exportSgf } from "./sgf";
@@ -90,23 +91,24 @@ export default function GoBoard() {
                     : "goban-theme-light relative flex h-dvh flex-col overflow-hidden p-0"
             }
         >
-            <div className="absolute right-2 top-2 z-10">
+            <div className="absolute right-2 top-2 z-10 flex flex-col items-end">
                 <button
-                    className="rounded bg-neutral-700 px-4 py-2 text-white shadow-lg"
+                    className="rounded bg-neutral-700 px-3 py-2 text-white shadow-lg"
                     onClick={() => setShowMenu(!showMenu)}
+                    aria-label={showMenu ? "Close menu" : "Open menu"}
                 >
-                    Menu
+                    {showMenu ? <X size={20} /> : <Menu size={20} />}
                 </button>
 
                 {showMenu && (
-                    <div className="mt-2 flex w-48 flex-col gap-2 rounded bg-white p-2 shadow-xl">
+                    <div className="mt-2 flex w-48 flex-col gap-2 rounded border border-neutral-700 bg-neutral-900 p-2 shadow-xl">
                         {[9, 13, 19].map((boardSize) => (
                             <button
                                 key={boardSize}
                                 className={
                                     size === boardSize
-                                        ? "rounded bg-black px-4 py-2 text-white"
-                                        : "rounded bg-neutral-200 px-4 py-2 text-black"
+                                        ? "rounded bg-sky-700 px-4 py-2 font-medium text-white hover:bg-sky-600"
+                                        : "rounded bg-neutral-700 px-4 py-2 text-neutral-200"
                                 }
                                 onClick={() => {
                                     setSize(boardSize as BoardSize);
@@ -124,19 +126,20 @@ export default function GoBoard() {
                         <button
                             className={
                                 isDarkMode
-                                    ? "rounded bg-neutral-200 px-4 py-2 text-black"
-                                    : "rounded bg-neutral-800 px-4 py-2 text-white"
+                                    ? "flex items-center justify-center rounded bg-neutral-200 px-4 py-2 text-xl text-black"
+                                    : "flex items-center justify-center rounded bg-neutral-800 px-4 py-2 text-xl text-white"
                             }
                             onClick={() => {
                                 setIsDarkMode(!isDarkMode);
                                 setShowMenu(false);
                             }}
+                            aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
                         >
-                            {isDarkMode ? "Light Mode" : "Dark Mode"}
+                            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                         </button>
 
                         <button
-                            className="rounded bg-black px-4 py-2 text-white disabled:opacity-40"
+                            className="rounded bg-amber-700 px-4 py-2 text-white hover:bg-amber-600 disabled:bg-zinc-700 disabled:text-zinc-400 disabled:opacity-100"
                             disabled={gameState.moves.length === 0}
                             onClick={() => {
                                 if (gameState.moves.length === 0) return;
@@ -151,11 +154,13 @@ export default function GoBoard() {
                                 setShowMenu(false);
                             }}
                         >
-                            Undo
+                            <div className="flex items-center justify-center">
+                                <Undo2 size={18} />
+                            </div>
                         </button>
 
                         <button
-                            className="rounded bg-neutral-700 px-4 py-2 text-white"
+                            className="rounded bg-slate-600 px-4 py-2 text-white hover:bg-slate-500"
                             onClick={() => {
                                 const newMove: Move = {
                                     type: "pass",
@@ -174,7 +179,7 @@ export default function GoBoard() {
                         </button>
 
                         <button
-                            className="rounded bg-blue-700 px-4 py-2 text-white"
+                            className="rounded bg-sky-700 px-4 py-2 text-white hover:bg-sky-600"
                             onClick={() => {
                                 const sgf = exportSgf(size, gameState.moves);
 
@@ -193,7 +198,9 @@ export default function GoBoard() {
                                 setShowMenu(false);
                             }}
                         >
-                            Download SGF
+                            <div className="flex items-center justify-center">
+                                <Download size={18} />
+                            </div>
                         </button>
                     </div>
                 )}
