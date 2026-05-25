@@ -7,12 +7,23 @@ import { Download, Moon, Sun, Undo2 } from "lucide-react";
 
 import type { BoardSize, GameState, Move, Stone } from "./types";
 import { exportSgf } from "./sgf";
+import {
+    createGameSnapshot,
+    shouldAutosave,
+    shouldContinueAutosaveQueue,
+} from "../lib/gameLogic";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const Board = require("@sabaki/go-board");
 
-const Goban = ShudanGoban as unknown as ComponentType<any>;
+type ShudanGobanProps = {
+    vertexSize: number;
+    signMap: number[][];
+    markerMap: (null | { type: "circle" })[][];
+};
+
+const Goban = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
 
 type TouchPreview = {
     x: number;
@@ -21,6 +32,9 @@ type TouchPreview = {
     screenY: number;
 } | null;
 
+type GoBoardProps = {
+    slug: string;
+};
 
 function stoneToSign(stone: Stone) {
     return stone === "B" ? 1 : -1;
@@ -53,14 +67,32 @@ function buildBoardFromMoves(size: number, moves: Move[]) {
     return board;
 }
 
-export default function GoBoard() {
+export default function GoBoard({ slug }: GoBoardProps) {
     const [size, setSize] = useState<BoardSize>(19);
     const [isDarkMode, setIsDarkMode] = useState(true);
     const boardAreaRef = useRef<HTMLDivElement | null>(null);
     const gobanWrapperRef = useRef<HTMLDivElement | null>(null);
+    const hasLoadedGameRef = useRef(false);
+    const isSavingRef = useRef(false);
+    const needsSaveAfterCurrentSaveRef = useRef(false);
+    const lastSavedSnapshotRef = useRef("");
+    const latestSaveStateRef = useRef<{
+        size: BoardSize;
+        gameState: GameState;
+        updatedAt: string | null;
+    }>({
+        size: 19,
+        gameState: {
+            moves: [],
+            currentPlayer: "B",
+        },
+        updatedAt: null,
+    });
     const [vertexSize, setVertexSize] = useState(24);
     const [showMenu, setShowMenu] = useState(false);
     const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
+    const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [gridMetrics, setGridMetrics] = useState({
         left: 0,
         top: 0,
@@ -72,6 +104,149 @@ export default function GoBoard() {
         moves: [],
         currentPlayer: "B",
     });
+
+    useEffect(() => {
+        latestSaveStateRef.current = {
+            size,
+            gameState,
+            updatedAt,
+        };
+    }, [size, gameState, updatedAt]);
+
+    useEffect(() => {
+        const loadGame = async () => {
+            const response = await fetch(`/api/games/${slug}`);
+
+            if (!response.ok) {
+                console.error("Failed to load game", await response.text());
+                return;
+            }
+
+            const gameRecord = await response.json();
+
+            setSize(gameRecord.board_size as BoardSize);
+            setGameState(gameRecord.game_state as GameState);
+            setUpdatedAt(gameRecord.updated_at);
+            lastSavedSnapshotRef.current = createGameSnapshot(
+                gameRecord.board_size as BoardSize,
+                gameRecord.game_state as GameState
+            );
+            setHasUnsavedChanges(false);
+            hasLoadedGameRef.current = true;
+        };
+
+        loadGame();
+    }, [slug]);
+
+    useEffect(() => {
+        if (!hasLoadedGameRef.current) return;
+        if (!updatedAt) return;
+        if (!hasUnsavedChanges) return;
+
+        const currentSnapshot = createGameSnapshot(size, gameState);
+
+        if (
+            !shouldAutosave({
+                hasLoadedGame: hasLoadedGameRef.current,
+                updatedAt,
+                hasUnsavedChanges,
+                currentSnapshot,
+                lastSavedSnapshot: lastSavedSnapshotRef.current,
+            })
+        ) {
+            setHasUnsavedChanges(false);
+            return;
+        }
+
+        const saveLatestGame = async () => {
+            if (isSavingRef.current) {
+                needsSaveAfterCurrentSaveRef.current = true;
+                return;
+            }
+
+            isSavingRef.current = true;
+
+            try {
+                while (true) {
+                    needsSaveAfterCurrentSaveRef.current = false;
+
+                    const latestSaveState = latestSaveStateRef.current;
+
+                    if (!latestSaveState.updatedAt) return;
+
+                    const latestSnapshot = createGameSnapshot(
+                        latestSaveState.size,
+                        latestSaveState.gameState
+                    );
+
+                    if (latestSnapshot === lastSavedSnapshotRef.current) {
+                        setHasUnsavedChanges(false);
+                        return;
+                    }
+
+                    const response = await fetch(`/api/games/${slug}`, {
+                        method: "PATCH",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            boardSize: latestSaveState.size,
+                            gameState: latestSaveState.gameState,
+                            updatedAt: latestSaveState.updatedAt,
+                        }),
+                    });
+
+                    if (response.status === 409) {
+                        const conflict = await response.json();
+
+                        if (conflict.newSlug) {
+                            window.location.href = `/games/${conflict.newSlug}`;
+                            return;
+                        }
+                    }
+
+                    if (!response.ok) {
+                        console.error("Failed to save game", await response.text());
+                        return;
+                    }
+
+                    const savedGame = await response.json();
+
+                    setUpdatedAt(savedGame.updated_at);
+                    latestSaveStateRef.current = {
+                        ...latestSaveStateRef.current,
+                        updatedAt: savedGame.updated_at,
+                    };
+                    lastSavedSnapshotRef.current = latestSnapshot;
+
+                    if (
+                        !shouldContinueAutosaveQueue({
+                            needsSaveAfterCurrentSave:
+                                needsSaveAfterCurrentSaveRef.current,
+                            latestSnapshot: createGameSnapshot(
+                                latestSaveStateRef.current.size,
+                                latestSaveStateRef.current.gameState
+                            ),
+                            lastSavedSnapshot: lastSavedSnapshotRef.current,
+                        })
+                    ) {
+                        setHasUnsavedChanges(false);
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to save game", error);
+            } finally {
+                isSavingRef.current = false;
+            }
+        };
+
+        const timeoutId = window.setTimeout(() => {
+            saveLatestGame();
+        }, 500);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [slug, updatedAt, hasUnsavedChanges, size, gameState]);
 
     useEffect(() => {
         const boardArea = boardAreaRef.current;
@@ -166,6 +341,7 @@ export default function GoBoard() {
             moves: [...gameState.moves, newMove],
             currentPlayer: gameState.currentPlayer === "B" ? "W" : "B",
         });
+        setHasUnsavedChanges(true);
     };
 
     const updateTouchPreview = (clientX: number, clientY: number) => {
@@ -346,6 +522,7 @@ export default function GoBoard() {
                                                 moves: [],
                                                 currentPlayer: "B",
                                             });
+                                            setHasUnsavedChanges(true);
                                             setShowMenu(false);
                                         }}
                                     >
@@ -381,6 +558,7 @@ export default function GoBoard() {
                                             moves: previousMoves,
                                             currentPlayer: lastMove?.color ?? "B",
                                         });
+                                        setHasUnsavedChanges(true);
                                         setShowMenu(false);
                                     }}
                                 >
@@ -402,6 +580,7 @@ export default function GoBoard() {
                                             currentPlayer:
                                                 gameState.currentPlayer === "B" ? "W" : "B",
                                         });
+                                        setHasUnsavedChanges(true);
                                         setShowMenu(false);
                                     }}
                                 >

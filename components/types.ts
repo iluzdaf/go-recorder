@@ -18,3 +18,11 @@ export type GameState = {
 };
 
 export type BoardSize = 9 | 13 | 19;
+
+export type GameRecord = {
+    slug: string;
+    boardSize: BoardSize;
+    gameState: GameState;
+    createdAt: string;
+    updatedAt: string;
+};
