@@ -98,13 +98,13 @@ export default function GoBoard() {
                 className="flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
             >
                 <div className="relative">
-                    <div className="absolute -top-12 right-0 z-10 flex flex-col items-end">
+                    <div className="absolute right-1 top-1 z-10 flex flex-col items-end">
                         <button
-                            className="rounded bg-neutral-700 px-3 py-2 text-white shadow-lg"
+                            className="rounded bg-neutral-700/90 p-1.5 text-white shadow-lg"
                             onClick={() => setShowMenu(!showMenu)}
                             aria-label={showMenu ? "Close menu" : "Open menu"}
                         >
-                            {showMenu ? <X size={20} /> : <Menu size={20} />}
+                            {showMenu ? <X size={16} /> : <Menu size={16} />}
                         </button>
 
                         {showMenu && (
