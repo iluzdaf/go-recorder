@@ -4,9 +4,31 @@ import { useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType } from "react";
 
-import type { GameState, Move } from "./types";
+import type { GameState, Move, Stone } from "./types";
+
+// @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const Board = require("@sabaki/go-board");
 
 const Goban = ShudanGoban as unknown as ComponentType<any>;
+
+function stoneToSign(stone: Stone) {
+    return stone === "B" ? 1 : -1;
+}
+
+function buildBoardFromMoves(size: number, moves: Move[]) {
+    let board = Board.fromDimensions(size);
+
+    for (const move of moves) {
+        board = board.makeMove(stoneToSign(move.color), [move.x, move.y], {
+            preventOverwrite: true,
+            preventSuicide: true,
+            preventKo: true,
+        });
+    }
+
+    return board;
+}
 
 export default function GoBoard() {
     const size = 19;
@@ -16,13 +38,8 @@ export default function GoBoard() {
         currentPlayer: "B",
     });
 
-    const signMap = Array.from({ length: size }, () =>
-        Array.from({ length: size }, () => 0)
-    );
-
-    for (const move of gameState.moves) {
-        signMap[move.y][move.x] = move.color === "B" ? 1 : -1;
-    }
+    const board = buildBoardFromMoves(size, gameState.moves);
+    const signMap = board.signMap;
 
     return (
         <div className="p-4">
@@ -30,11 +47,15 @@ export default function GoBoard() {
                 vertexSize={24}
                 signMap={signMap}
                 onVertexClick={(event: unknown, [x, y]: [number, number]) => {
-                    const occupied = gameState.moves.some(
-                        (move) => move.x === x && move.y === y
-                    );
-
-                    if (occupied) return;
+                    try {
+                        board.makeMove(stoneToSign(gameState.currentPlayer), [x, y], {
+                            preventOverwrite: true,
+                            preventSuicide: true,
+                            preventKo: true,
+                        });
+                    } catch {
+                        return;
+                    }
 
                     const newMove: Move = {
                         x,
