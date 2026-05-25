@@ -41,6 +41,16 @@ export default function GoBoard() {
     const board = buildBoardFromMoves(size, gameState.moves);
     const signMap = board.signMap;
 
+    const markerMap = Array.from({ length: size }, () =>
+        Array.from({ length: size }, () => null)
+    );
+
+    const lastMove = gameState.moves.at(-1);
+
+    if (lastMove) {
+        markerMap[lastMove.y][lastMove.x] = { type: "circle" };
+    }
+
     return (
         <div className="p-4">
             <button
@@ -64,6 +74,7 @@ export default function GoBoard() {
             <Goban
                 vertexSize={24}
                 signMap={signMap}
+                markerMap={markerMap}
                 onVertexClick={(event: unknown, [x, y]: [number, number]) => {
                     try {
                         board.makeMove(stoneToSign(gameState.currentPlayer), [x, y], {
