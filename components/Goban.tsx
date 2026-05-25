@@ -13,6 +13,8 @@ const Board = require("@sabaki/go-board");
 
 const Goban = ShudanGoban as unknown as ComponentType<any>;
 
+type BoardSize = 9 | 13 | 19;
+
 function stoneToSign(stone: Stone) {
     return stone === "B" ? 1 : -1;
 }
@@ -34,7 +36,7 @@ function buildBoardFromMoves(size: number, moves: Move[]) {
 }
 
 export default function GoBoard() {
-    const size = 19;
+    const [size, setSize] = useState<BoardSize>(19);
 
     const [gameState, setGameState] = useState<GameState>({
         moves: [],
@@ -58,6 +60,28 @@ export default function GoBoard() {
 
     return (
         <div className="p-4">
+            <div className="mb-4 flex gap-2">
+                {[9, 13, 19].map((boardSize) => (
+                    <button
+                        key={boardSize}
+                        className={
+                            size === boardSize
+                                ? "rounded bg-black px-4 py-2 text-white"
+                                : "rounded bg-neutral-200 px-4 py-2 text-black"
+                        }
+                        onClick={() => {
+                            setSize(boardSize as BoardSize);
+                            setGameState({
+                                moves: [],
+                                currentPlayer: "B",
+                            });
+                        }}
+                    >
+                        {boardSize}x{boardSize}
+                    </button>
+                ))}
+            </div>
+
             <button
                 className="mb-4 rounded bg-black px-4 py-2 text-white disabled:opacity-40"
                 disabled={gameState.moves.length === 0}
