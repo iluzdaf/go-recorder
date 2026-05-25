@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType } from "react";
-import { Download, Menu, Moon, Sun, Undo2, X } from "lucide-react";
+import { Download, Moon, Sun, Undo2 } from "lucide-react";
 
 import type { GameState, Move, Stone } from "./types";
 import { exportSgf } from "./sgf";
@@ -87,8 +87,8 @@ export default function GoBoard() {
         <div
             className={
                 isDarkMode
-                    ? "goban-theme-dark relative flex h-dvh touch-none flex-col overflow-hidden overscroll-none p-0"
-                    : "goban-theme-light relative flex h-dvh touch-none flex-col overflow-hidden overscroll-none p-0"
+                    ? "goban-theme-dark relative m-0 flex h-dvh touch-none flex-col overflow-hidden overscroll-none p-0"
+                    : "goban-theme-light relative m-0 flex h-dvh touch-none flex-col overflow-hidden overscroll-none p-0"
             }
         >
             
@@ -96,19 +96,28 @@ export default function GoBoard() {
             <div
                 ref={boardAreaRef}
                 className="flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
+                onPointerDownCapture={(event) => {
+                    const target = event.target as HTMLElement;
+
+                    if (target.closest("[data-action-menu]")) {
+                        return;
+                    }
+
+                    if (target.closest(".shudan-goban")) {
+                        setShowMenu(false);
+                        return;
+                    }
+
+                    setShowMenu((previous) => !previous);
+                }}
             >
                 <div className="relative">
-                    <div className="absolute right-1 top-1 z-10 flex flex-col items-end">
-                        <button
-                            className="rounded bg-neutral-700/90 p-1.5 text-white shadow-lg"
-                            onClick={() => setShowMenu(!showMenu)}
-                            aria-label={showMenu ? "Close menu" : "Open menu"}
-                        >
-                            {showMenu ? <X size={16} /> : <Menu size={16} />}
-                        </button>
-
+                    <div
+                        className="absolute right-1 top-1 z-10 flex flex-col items-end"
+                        data-action-menu
+                    >
                         {showMenu && (
-                            <div className="mt-2 flex w-48 flex-col gap-2 rounded border border-neutral-700 bg-neutral-900 p-2 shadow-xl">
+                            <div className="flex w-48 flex-col gap-2 rounded border border-neutral-700 bg-neutral-900 p-2 shadow-xl">
                                 {[9, 13, 19].map((boardSize) => (
                                     <button
                                         key={boardSize}

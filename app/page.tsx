@@ -2,7 +2,7 @@ import GoBoardLoader from "@/components/GoBoardLoader";
 
 export default function Home() {
   return (
-    <main className="min-h-screen p-6">
+    <main className="m-0 h-dvh overflow-hidden p-0">
       <GoBoardLoader />
     </main>
   );
