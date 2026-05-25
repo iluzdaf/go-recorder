@@ -43,7 +43,9 @@ export default function GoBoard() {
     const board = buildBoardFromMoves(size, gameState.moves);
     const signMap = board.signMap;
 
-    const markerMap = Array.from({ length: size }, () =>
+    type Marker = null | { type: "circle" };
+
+    const markerMap: Marker[][] = Array.from({ length: size }, () =>
         Array.from({ length: size }, () => null)
     );
 
