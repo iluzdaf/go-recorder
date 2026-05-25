@@ -91,125 +91,128 @@ export default function GoBoard() {
                     : "goban-theme-light relative flex h-dvh touch-none flex-col overflow-hidden overscroll-none p-0"
             }
         >
-            <div className="absolute right-2 top-2 z-10 flex flex-col items-end">
-                <button
-                    className="rounded bg-neutral-700 px-3 py-2 text-white shadow-lg"
-                    onClick={() => setShowMenu(!showMenu)}
-                    aria-label={showMenu ? "Close menu" : "Open menu"}
-                >
-                    {showMenu ? <X size={20} /> : <Menu size={20} />}
-                </button>
+            <div className="relative z-10 flex h-11 shrink-0 items-center justify-end px-2 pt-2">
+                <div className="flex flex-col items-end">
+                    <button
+                        className="rounded bg-neutral-700 px-3 py-2 text-white shadow-lg"
+                        onClick={() => setShowMenu(!showMenu)}
+                        aria-label={showMenu ? "Close menu" : "Open menu"}
+                    >
+                        {showMenu ? <X size={20} /> : <Menu size={20} />}
+                    </button>
 
-                {showMenu && (
-                    <div className="mt-2 flex w-48 flex-col gap-2 rounded border border-neutral-700 bg-neutral-900 p-2 shadow-xl">
-                        {[9, 13, 19].map((boardSize) => (
+                    {showMenu && (
+                        <div className="mt-2 flex w-48 flex-col gap-2 rounded border border-neutral-700 bg-neutral-900 p-2 shadow-xl">
+                            {[9, 13, 19].map((boardSize) => (
+                                <button
+                                    key={boardSize}
+                                    className={
+                                        size === boardSize
+                                            ? "rounded bg-sky-700 px-4 py-2 font-medium text-white hover:bg-sky-600"
+                                            : "rounded bg-neutral-700 px-4 py-2 text-neutral-200"
+                                    }
+                                    onClick={() => {
+                                        setSize(boardSize as BoardSize);
+                                        setGameState({
+                                            moves: [],
+                                            currentPlayer: "B",
+                                        });
+                                        setShowMenu(false);
+                                    }}
+                                >
+                                    {boardSize}x{boardSize}
+                                </button>
+                            ))}
+
                             <button
-                                key={boardSize}
                                 className={
-                                    size === boardSize
-                                        ? "rounded bg-sky-700 px-4 py-2 font-medium text-white hover:bg-sky-600"
-                                        : "rounded bg-neutral-700 px-4 py-2 text-neutral-200"
+                                    isDarkMode
+                                        ? "flex items-center justify-center rounded bg-neutral-200 px-4 py-2 text-xl text-black"
+                                        : "flex items-center justify-center rounded bg-neutral-800 px-4 py-2 text-xl text-white"
                                 }
                                 onClick={() => {
-                                    setSize(boardSize as BoardSize);
+                                    setIsDarkMode(!isDarkMode);
+                                    setShowMenu(false);
+                                }}
+                                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                            >
+                                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                            </button>
+
+                            <button
+                                className="rounded bg-amber-700 px-4 py-2 text-white hover:bg-amber-600 disabled:bg-zinc-700 disabled:text-zinc-400 disabled:opacity-100"
+                                disabled={gameState.moves.length === 0}
+                                onClick={() => {
+                                    if (gameState.moves.length === 0) return;
+
+                                    const previousMoves = gameState.moves.slice(0, -1);
+                                    const lastMove = gameState.moves.at(-1);
+
                                     setGameState({
-                                        moves: [],
-                                        currentPlayer: "B",
+                                        moves: previousMoves,
+                                        currentPlayer: lastMove?.color ?? "B",
                                     });
                                     setShowMenu(false);
                                 }}
                             >
-                                {boardSize}x{boardSize}
+                                <div className="flex items-center justify-center">
+                                    <Undo2 size={18} />
+                                </div>
                             </button>
-                        ))}
 
-                        <button
-                            className={
-                                isDarkMode
-                                    ? "flex items-center justify-center rounded bg-neutral-200 px-4 py-2 text-xl text-black"
-                                    : "flex items-center justify-center rounded bg-neutral-800 px-4 py-2 text-xl text-white"
-                            }
-                            onClick={() => {
-                                setIsDarkMode(!isDarkMode);
-                                setShowMenu(false);
-                            }}
-                            aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                        >
-                            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-                        </button>
+                            <button
+                                className="rounded bg-slate-600 px-4 py-2 text-white hover:bg-slate-500"
+                                onClick={() => {
+                                    const newMove: Move = {
+                                        type: "pass",
+                                        color: gameState.currentPlayer,
+                                    };
 
-                        <button
-                            className="rounded bg-amber-700 px-4 py-2 text-white hover:bg-amber-600 disabled:bg-zinc-700 disabled:text-zinc-400 disabled:opacity-100"
-                            disabled={gameState.moves.length === 0}
-                            onClick={() => {
-                                if (gameState.moves.length === 0) return;
+                                    setGameState({
+                                        moves: [...gameState.moves, newMove],
+                                        currentPlayer:
+                                            gameState.currentPlayer === "B" ? "W" : "B",
+                                    });
+                                    setShowMenu(false);
+                                }}
+                            >
+                                Pass
+                            </button>
 
-                                const previousMoves = gameState.moves.slice(0, -1);
-                                const lastMove = gameState.moves.at(-1);
+                            <button
+                                className="rounded bg-sky-700 px-4 py-2 text-white hover:bg-sky-600"
+                                onClick={() => {
+                                    const sgf = exportSgf(size, gameState.moves);
 
-                                setGameState({
-                                    moves: previousMoves,
-                                    currentPlayer: lastMove?.color ?? "B",
-                                });
-                                setShowMenu(false);
-                            }}
-                        >
-                            <div className="flex items-center justify-center">
-                                <Undo2 size={18} />
-                            </div>
-                        </button>
+                                    const blob = new Blob([sgf], {
+                                        type: "application/x-go-sgf;charset=utf-8",
+                                    });
 
-                        <button
-                            className="rounded bg-slate-600 px-4 py-2 text-white hover:bg-slate-500"
-                            onClick={() => {
-                                const newMove: Move = {
-                                    type: "pass",
-                                    color: gameState.currentPlayer,
-                                };
+                                    const url = URL.createObjectURL(blob);
+                                    const link = document.createElement("a");
 
-                                setGameState({
-                                    moves: [...gameState.moves, newMove],
-                                    currentPlayer:
-                                        gameState.currentPlayer === "B" ? "W" : "B",
-                                });
-                                setShowMenu(false);
-                            }}
-                        >
-                            Pass
-                        </button>
+                                    link.href = url;
+                                    link.download = "game.sgf";
+                                    link.click();
 
-                        <button
-                            className="rounded bg-sky-700 px-4 py-2 text-white hover:bg-sky-600"
-                            onClick={() => {
-                                const sgf = exportSgf(size, gameState.moves);
-
-                                const blob = new Blob([sgf], {
-                                    type: "application/x-go-sgf;charset=utf-8",
-                                });
-
-                                const url = URL.createObjectURL(blob);
-                                const link = document.createElement("a");
-
-                                link.href = url;
-                                link.download = "game.sgf";
-                                link.click();
-
-                                URL.revokeObjectURL(url);
-                                setShowMenu(false);
-                            }}
-                        >
-                            <div className="flex items-center justify-center">
-                                <Download size={18} />
-                            </div>
-                        </button>
-                    </div>
-                )}
+                                    URL.revokeObjectURL(url);
+                                    setShowMenu(false);
+                                }}
+                            >
+                                <div className="flex items-center justify-center">
+                                    <Download size={18} />
+                                </div>
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div
                 ref={boardAreaRef}
                 className="flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
             >
+                <div className="relative">
                 <Goban
                     vertexSize={vertexSize}
                     signMap={signMap}
@@ -238,6 +241,7 @@ export default function GoBoard() {
                         });
                     }}
                 />
+                </div>
             </div>
         </div>
     );
