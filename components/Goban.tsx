@@ -20,6 +20,8 @@ function buildBoardFromMoves(size: number, moves: Move[]) {
     let board = Board.fromDimensions(size);
 
     for (const move of moves) {
+        if (move.type === "pass") continue;
+
         board = board.makeMove(stoneToSign(move.color), [move.x, move.y], {
             preventOverwrite: true,
             preventSuicide: true,
@@ -47,7 +49,7 @@ export default function GoBoard() {
 
     const lastMove = gameState.moves.at(-1);
 
-    if (lastMove) {
+    if (lastMove?.type === "play") {
         markerMap[lastMove.y][lastMove.x] = { type: "circle" };
     }
 
@@ -71,6 +73,24 @@ export default function GoBoard() {
                 Undo
             </button>
 
+            <button
+                className="mb-4 ml-2 rounded bg-neutral-700 px-4 py-2 text-white"
+                onClick={() => {
+                    const newMove: Move = {
+                        type: "pass",
+                        color: gameState.currentPlayer,
+                    };
+
+                    setGameState({
+                        moves: [...gameState.moves, newMove],
+                        currentPlayer:
+                            gameState.currentPlayer === "B" ? "W" : "B",
+                    });
+                }}
+            >
+                Pass
+            </button>
+
             <Goban
                 vertexSize={24}
                 signMap={signMap}
@@ -87,6 +107,7 @@ export default function GoBoard() {
                     }
 
                     const newMove: Move = {
+                        type: "play",
                         x,
                         y,
                         color: gameState.currentPlayer,
