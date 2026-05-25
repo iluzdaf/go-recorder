@@ -5,6 +5,7 @@ import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType } from "react";
 
 import type { GameState, Move, Stone } from "./types";
+import { exportSgf } from "./sgf";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -91,6 +92,28 @@ export default function GoBoard() {
                 }}
             >
                 Pass
+            </button>
+
+            <button
+                className="mb-4 ml-2 rounded bg-blue-700 px-4 py-2 text-white"
+                onClick={() => {
+                    const sgf = exportSgf(size, gameState.moves);
+
+                    const blob = new Blob([sgf], {
+                        type: "application/x-go-sgf;charset=utf-8",
+                    });
+
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+
+                    link.href = url;
+                    link.download = "game.sgf";
+                    link.click();
+
+                    URL.revokeObjectURL(url);
+                }}
+            >
+                Download SGF
             </button>
 
             <Goban
