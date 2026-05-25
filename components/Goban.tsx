@@ -21,6 +21,7 @@ type ShudanGobanProps = {
     vertexSize: number;
     signMap: number[][];
     markerMap: (null | { type: "circle" })[][];
+    showCoordinates: boolean;
 };
 
 const Goban = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
@@ -46,9 +47,39 @@ function getStarPoints(boardSize: BoardSize) {
     return [3, 9, 15];
 }
 
+
 function isStarPoint(x: number, y: number, boardSize: BoardSize) {
     const starPoints = getStarPoints(boardSize);
     return starPoints.includes(x) && starPoints.includes(y);
+}
+
+function toDisplayCoord(x: number, y: number, boardSize: BoardSize) {
+    const columns = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T",
+    ];
+
+    const column = columns[x] ?? "?";
+    const row = boardSize - y;
+
+    return `${column}${row}`;
 }
 
 function buildBoardFromMoves(size: number, moves: Move[]) {
@@ -259,7 +290,11 @@ export default function GoBoard({ slug }: GoBoardProps) {
         const updateVertexSize = () => {
             const { width, height } = boardArea.getBoundingClientRect();
             const availableSize = Math.min(width, height) - 4;
-            const nextVertexSize = Math.max(16, Math.floor(availableSize / size));
+            const coordinateGutterVertices = 1;
+            const nextVertexSize = Math.max(
+                16,
+                Math.floor(availableSize / (size + coordinateGutterVertices))
+            );
 
             setVertexSize(nextVertexSize);
         };
@@ -618,6 +653,7 @@ export default function GoBoard({ slug }: GoBoardProps) {
                         vertexSize={vertexSize}
                         signMap={signMap}
                         markerMap={markerMap}
+                        showCoordinates
                     />
                     {touchPreview && (
                         <svg
@@ -691,7 +727,7 @@ export default function GoBoard({ slug }: GoBoardProps) {
                                         : "absolute left-1/2 top-3 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-zinc-100/80 px-2 py-0.5 text-xs font-medium text-zinc-700"
                                 }
                             >
-                                {gameState.currentPlayer === "B" ? "Black" : "White"} • {`${touchPreview.x + 1}, ${touchPreview.y + 1}`}
+                                {toDisplayCoord(touchPreview.x, touchPreview.y, size)}
                             </div>
 
                             <div className={isDarkMode ? "relative h-full w-full bg-neutral-800" : "relative h-full w-full bg-zinc-200"}>

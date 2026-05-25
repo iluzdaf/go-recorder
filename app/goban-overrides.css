@@ -120,3 +120,8 @@
     border: 1px solid #18181b !important;
     border-radius: 9999px !important;
 }
+
+.goban-theme-dark .shudan-coordx,
+.goban-theme-dark .shudan-coordy {
+    color: #71717a !important;
+}
