@@ -1,0 +1,121 @@
+.shudan-goban,
+.shudan-goban.shudan-goban-image,
+.shudan-content {
+    background: #27272a !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+.shudan-goban::before,
+.shudan-goban::after,
+.shudan-content::before,
+.shudan-content::after {
+    display: none !important;
+    background: transparent !important;
+}
+
+.shudan-grid {
+    background: #27272a !important;
+}
+
+.shudan-gridline {
+    fill: #71717a !important;
+    stroke: #71717a !important;
+}
+
+.shudan-hoshi {
+    fill: #a1a1aa !important;
+}
+
+.shudan-stone {
+    filter: none !important;
+    box-shadow: none !important;
+    background-image: none !important;
+}
+
+.shudan-sign_1 .shudan-stone {
+    background: #09090b !important;
+    border-radius: 9999px !important;
+}
+
+.shudan-sign_-1 .shudan-stone {
+    background: #fafafa !important;
+    border: 1px solid #18181b !important;
+    border-radius: 9999px !important;
+}
+.goban-theme-dark .shudan-goban,
+.goban-theme-dark .shudan-goban.shudan-goban-image,
+.goban-theme-dark .shudan-content {
+    background: #27272a !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+.goban-theme-dark .shudan-goban::before,
+.goban-theme-dark .shudan-goban::after,
+.goban-theme-dark .shudan-content::before,
+.goban-theme-dark .shudan-content::after,
+.goban-theme-light .shudan-goban::before,
+.goban-theme-light .shudan-goban::after,
+.goban-theme-light .shudan-content::before,
+.goban-theme-light .shudan-content::after {
+    display: none !important;
+    background: transparent !important;
+}
+
+.goban-theme-dark .shudan-grid {
+    background: #27272a !important;
+}
+
+.goban-theme-dark .shudan-gridline {
+    fill: #71717a !important;
+    stroke: #71717a !important;
+}
+
+.goban-theme-dark .shudan-hoshi {
+    fill: #a1a1aa !important;
+}
+
+.goban-theme-light .shudan-goban,
+.goban-theme-light .shudan-goban.shudan-goban-image,
+.goban-theme-light .shudan-content {
+    background: #f4f4f5 !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+.goban-theme-light .shudan-grid {
+    background: #f4f4f5 !important;
+}
+
+.goban-theme-light .shudan-gridline {
+    fill: #52525b !important;
+    stroke: #52525b !important;
+}
+
+.goban-theme-light .shudan-hoshi {
+    fill: #52525b !important;
+}
+
+.goban-theme-dark .shudan-stone,
+.goban-theme-light .shudan-stone {
+    filter: none !important;
+    box-shadow: none !important;
+    background-image: none !important;
+}
+
+.goban-theme-dark .shudan-sign_1 .shudan-stone,
+.goban-theme-light .shudan-sign_1 .shudan-stone {
+    background: #09090b !important;
+    border-radius: 9999px !important;
+}
+
+.goban-theme-dark .shudan-sign_-1 .shudan-stone,
+.goban-theme-light .shudan-sign_-1 .shudan-stone {
+    background: #fafafa !important;
+    border: 1px solid #18181b !important;
+    border-radius: 9999px !important;
+}

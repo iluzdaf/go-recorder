@@ -37,6 +37,7 @@ function buildBoardFromMoves(size: number, moves: Move[]) {
 
 export default function GoBoard() {
     const [size, setSize] = useState<BoardSize>(19);
+    const [isDarkMode, setIsDarkMode] = useState(true);
 
     const [gameState, setGameState] = useState<GameState>({
         moves: [],
@@ -59,8 +60,8 @@ export default function GoBoard() {
     }
 
     return (
-        <div className="p-4">
-            <div className="mb-4 flex gap-2">
+        <div className={isDarkMode ? "goban-theme-dark p-4" : "goban-theme-light p-4"}>
+            <div className="mb-4 flex flex-wrap gap-2">
                 {[9, 13, 19].map((boardSize) => (
                     <button
                         key={boardSize}
@@ -80,6 +81,16 @@ export default function GoBoard() {
                         {boardSize}x{boardSize}
                     </button>
                 ))}
+                <button
+                    className={
+                        isDarkMode
+                            ? "rounded bg-neutral-200 px-4 py-2 text-black"
+                            : "rounded bg-neutral-800 px-4 py-2 text-white"
+                    }
+                    onClick={() => setIsDarkMode(!isDarkMode)}
+                >
+                    {isDarkMode ? "Light Mode" : "Dark Mode"}
+                </button>
             </div>
 
             <button
