@@ -53,7 +53,7 @@ export default function GoBoard() {
 
         const updateVertexSize = () => {
             const { width, height } = boardArea.getBoundingClientRect();
-            const availableSize = Math.min(width, height);
+            const availableSize = Math.min(width, height) - 4;
             const nextVertexSize = Math.max(16, Math.floor(availableSize / size));
 
             setVertexSize(nextVertexSize);
@@ -86,11 +86,11 @@ export default function GoBoard() {
         <div
             className={
                 isDarkMode
-                    ? "goban-theme-dark relative flex h-screen flex-col p-3"
-                    : "goban-theme-light relative flex h-screen flex-col p-3"
+                    ? "goban-theme-dark relative flex h-dvh flex-col overflow-hidden p-0"
+                    : "goban-theme-light relative flex h-dvh flex-col overflow-hidden p-0"
             }
         >
-            <div className="absolute right-3 top-3 z-10">
+            <div className="absolute right-2 top-2 z-10">
                 <button
                     className="rounded bg-neutral-700 px-4 py-2 text-white shadow-lg"
                     onClick={() => setShowMenu(!showMenu)}
@@ -201,7 +201,7 @@ export default function GoBoard() {
 
             <div
                 ref={boardAreaRef}
-                className="flex min-h-0 flex-1 items-center justify-center overflow-hidden"
+                className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-0"
             >
                 <Goban
                     vertexSize={vertexSize}
