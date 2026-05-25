@@ -43,6 +43,24 @@ export default function GoBoard() {
 
     return (
         <div className="p-4">
+            <button
+                className="mb-4 rounded bg-black px-4 py-2 text-white disabled:opacity-40"
+                disabled={gameState.moves.length === 0}
+                onClick={() => {
+                    if (gameState.moves.length === 0) return;
+
+                    const previousMoves = gameState.moves.slice(0, -1);
+                    const lastMove = gameState.moves.at(-1);
+
+                    setGameState({
+                        moves: previousMoves,
+                        currentPlayer: lastMove?.color ?? "B",
+                    });
+                }}
+            >
+                Undo
+            </button>
+
             <Goban
                 vertexSize={24}
                 signMap={signMap}
