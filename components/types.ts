@@ -2,17 +2,19 @@ export type Stone = "B" | "W";
 
 export type Move =
     | {
-          type: "play";
-          x: number;
-          y: number;
-          color: Stone;
-      }
+        type: "play";
+        x: number;
+        y: number;
+        color: Stone;
+    }
     | {
-          type: "pass";
-          color: Stone;
-      };
+        type: "pass";
+        color: Stone;
+    };
 
 export type GameState = {
     moves: Move[];
     currentPlayer: Stone;
 };
+
+export type BoardSize = 9 | 13 | 19;

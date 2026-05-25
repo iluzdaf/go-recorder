@@ -5,7 +5,7 @@ import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType } from "react";
 import { Download, Moon, Sun, Undo2 } from "lucide-react";
 
-import type { GameState, Move, Stone } from "./types";
+import type { BoardSize, GameState, Move, Stone } from "./types";
 import { exportSgf } from "./sgf";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
@@ -14,10 +14,27 @@ const Board = require("@sabaki/go-board");
 
 const Goban = ShudanGoban as unknown as ComponentType<any>;
 
-type BoardSize = 9 | 13 | 19;
+type TouchPreview = {
+    x: number;
+    y: number;
+    screenX: number;
+    screenY: number;
+} | null;
+
 
 function stoneToSign(stone: Stone) {
     return stone === "B" ? 1 : -1;
+}
+
+function getStarPoints(boardSize: BoardSize) {
+    if (boardSize === 9) return [2, 4, 6];
+    if (boardSize === 13) return [3, 6, 9];
+    return [3, 9, 15];
+}
+
+function isStarPoint(x: number, y: number, boardSize: BoardSize) {
+    const starPoints = getStarPoints(boardSize);
+    return starPoints.includes(x) && starPoints.includes(y);
 }
 
 function buildBoardFromMoves(size: number, moves: Move[]) {
@@ -40,8 +57,16 @@ export default function GoBoard() {
     const [size, setSize] = useState<BoardSize>(19);
     const [isDarkMode, setIsDarkMode] = useState(true);
     const boardAreaRef = useRef<HTMLDivElement | null>(null);
+    const gobanWrapperRef = useRef<HTMLDivElement | null>(null);
     const [vertexSize, setVertexSize] = useState(24);
     const [showMenu, setShowMenu] = useState(false);
+    const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
+    const [gridMetrics, setGridMetrics] = useState({
+        left: 0,
+        top: 0,
+        cellSize: 24,
+        boardSizePx: 24 * 19,
+    });
 
     const [gameState, setGameState] = useState<GameState>({
         moves: [],
@@ -83,6 +108,169 @@ export default function GoBoard() {
         markerMap[lastMove.y][lastMove.x] = { type: "circle" };
     }
 
+    const getGridMetrics = () => {
+        const gobanWrapper = gobanWrapperRef.current;
+        if (!gobanWrapper) return null;
+
+        const grid = gobanWrapper.querySelector(".shudan-grid");
+        if (!(grid instanceof SVGElement)) return null;
+
+        const wrapperRect = gobanWrapper.getBoundingClientRect();
+        const gridRect = grid.getBoundingClientRect();
+        const nextGridMetrics = {
+            left: gridRect.left - wrapperRect.left,
+            top: gridRect.top - wrapperRect.top,
+            cellSize: gridRect.width / size,
+            boardSizePx: gridRect.width,
+        };
+
+        setGridMetrics(nextGridMetrics);
+        return { gridRect, nextGridMetrics };
+    };
+
+    const getVertexFromPointer = (clientX: number, clientY: number) => {
+        const metrics = getGridMetrics();
+        if (!metrics) return null;
+
+        const { gridRect, nextGridMetrics } = metrics;
+        const localX = clientX - gridRect.left;
+        const localY = clientY - gridRect.top;
+
+        const x = Math.round(localX / nextGridMetrics.cellSize - 0.5);
+        const y = Math.round(localY / nextGridMetrics.cellSize - 0.5);
+
+        if (x < 0 || x >= size || y < 0 || y >= size) return null;
+
+        return { x, y };
+    };
+
+    const playMove = (x: number, y: number) => {
+        try {
+            board.makeMove(stoneToSign(gameState.currentPlayer), [x, y], {
+                preventOverwrite: true,
+                preventSuicide: true,
+                preventKo: true,
+            });
+        } catch {
+            return;
+        }
+
+        const newMove: Move = {
+            type: "play",
+            x,
+            y,
+            color: gameState.currentPlayer,
+        };
+
+        setGameState({
+            moves: [...gameState.moves, newMove],
+            currentPlayer: gameState.currentPlayer === "B" ? "W" : "B",
+        });
+    };
+
+    const updateTouchPreview = (clientX: number, clientY: number) => {
+        const vertex = getVertexFromPointer(clientX, clientY);
+        if (!vertex) return;
+
+        setTouchPreview({
+            ...vertex,
+            screenX: clientX,
+            screenY: clientY,
+        });
+    };
+
+    const getMagnifierCells = () => {
+        if (!touchPreview) return [];
+
+        const cells = [];
+
+        for (let dy = -2; dy <= 2; dy += 1) {
+            for (let dx = -2; dx <= 2; dx += 1) {
+                const x = touchPreview.x + dx;
+                const y = touchPreview.y + dy;
+                const isOnBoard = x >= 0 && x < size && y >= 0 && y < size;
+                const sign = isOnBoard ? signMap[y][x] : 0;
+
+                cells.push({
+                    key: `${dx},${dy}`,
+                    x,
+                    y,
+                    dx,
+                    dy,
+                    sign,
+                    isOnBoard,
+                    isCenter: dx === 0 && dy === 0,
+                    isStarPoint: isOnBoard && isStarPoint(x, y, size),
+                });
+            }
+        }
+
+        return cells;
+    };
+
+    const getMagnifierPositionPercent = (offset: number) => {
+        return 12.5 + (offset + 2) * 18.75;
+    };
+
+    const getMagnifierGridLines = () => {
+        if (!touchPreview) {
+            return { horizontalLines: [], verticalLines: [] };
+        }
+
+        const horizontalLines = [];
+        const verticalLines = [];
+
+        for (let dy = -2; dy <= 2; dy += 1) {
+            const y = touchPreview.y + dy;
+            if (y < 0 || y >= size) continue;
+
+            const onBoardDxValues = [-2, -1, 0, 1, 2].filter((dx) => {
+                const x = touchPreview.x + dx;
+                return x >= 0 && x < size;
+            });
+
+            if (onBoardDxValues.length === 0) continue;
+
+            const firstDx = onBoardDxValues[0];
+            const lastDx = onBoardDxValues[onBoardDxValues.length - 1];
+            const boardContinuesLeft = touchPreview.x + firstDx > 0;
+            const boardContinuesRight = touchPreview.x + lastDx < size - 1;
+
+            horizontalLines.push({
+                key: `h-${dy}`,
+                top: getMagnifierPositionPercent(dy),
+                left: boardContinuesLeft ? 0 : getMagnifierPositionPercent(firstDx),
+                right: boardContinuesRight ? 100 : getMagnifierPositionPercent(lastDx),
+            });
+        }
+
+        for (let dx = -2; dx <= 2; dx += 1) {
+            const x = touchPreview.x + dx;
+            if (x < 0 || x >= size) continue;
+
+            const onBoardDyValues = [-2, -1, 0, 1, 2].filter((dy) => {
+                const y = touchPreview.y + dy;
+                return y >= 0 && y < size;
+            });
+
+            if (onBoardDyValues.length === 0) continue;
+
+            const firstDy = onBoardDyValues[0];
+            const lastDy = onBoardDyValues[onBoardDyValues.length - 1];
+            const boardContinuesTop = touchPreview.y + firstDy > 0;
+            const boardContinuesBottom = touchPreview.y + lastDy < size - 1;
+
+            verticalLines.push({
+                key: `v-${dx}`,
+                left: getMagnifierPositionPercent(dx),
+                top: boardContinuesTop ? 0 : getMagnifierPositionPercent(firstDy),
+                bottom: boardContinuesBottom ? 100 : getMagnifierPositionPercent(lastDy),
+            });
+        }
+
+        return { horizontalLines, verticalLines };
+    };
+
     return (
         <div
             className={
@@ -91,7 +279,7 @@ export default function GoBoard() {
                     : "goban-theme-light relative m-0 flex h-dvh touch-none flex-col overflow-hidden overscroll-none p-0"
             }
         >
-            
+
 
             <div
                 ref={boardAreaRef}
@@ -111,7 +299,33 @@ export default function GoBoard() {
                     setShowMenu((previous) => !previous);
                 }}
             >
-                <div className="relative">
+                <div
+                    ref={gobanWrapperRef}
+                    className="relative"
+                    onPointerDown={(event) => {
+                        if ((event.target as HTMLElement).closest("[data-action-menu]")) {
+                            return;
+                        }
+
+                        event.currentTarget.setPointerCapture(event.pointerId);
+                        setShowMenu(false);
+                        updateTouchPreview(event.clientX, event.clientY);
+                    }}
+                    onPointerMove={(event) => {
+                        if (!touchPreview) return;
+                        updateTouchPreview(event.clientX, event.clientY);
+                    }}
+                    onPointerUp={(event) => {
+                        if (!touchPreview) return;
+
+                        playMove(touchPreview.x, touchPreview.y);
+                        setTouchPreview(null);
+                        event.currentTarget.releasePointerCapture(event.pointerId);
+                    }}
+                    onPointerCancel={() => {
+                        setTouchPreview(null);
+                    }}
+                >
                     <div
                         className="absolute right-1 top-1 z-10 flex flex-col items-end"
                         data-action-menu
@@ -221,34 +435,146 @@ export default function GoBoard() {
                             </div>
                         )}
                     </div>
-                <Goban
-                    vertexSize={vertexSize}
-                    signMap={signMap}
-                    markerMap={markerMap}
-                    onVertexClick={(event: unknown, [x, y]: [number, number]) => {
-                        try {
-                            board.makeMove(stoneToSign(gameState.currentPlayer), [x, y], {
-                                preventOverwrite: true,
-                                preventSuicide: true,
-                                preventKo: true,
-                            });
-                        } catch {
-                            return;
-                        }
+                    <Goban
+                        vertexSize={vertexSize}
+                        signMap={signMap}
+                        markerMap={markerMap}
+                    />
+                    {touchPreview && (
+                        <svg
+                            className="pointer-events-none absolute z-20"
+                            style={{
+                                left: gridMetrics.left,
+                                top: gridMetrics.top,
+                            }}
+                            width={gridMetrics.boardSizePx}
+                            height={gridMetrics.boardSizePx}
+                            viewBox={`0 0 ${gridMetrics.boardSizePx} ${gridMetrics.boardSizePx}`}
+                        >
+                            <line
+                                x1={0}
+                                y1={touchPreview.y * gridMetrics.cellSize + gridMetrics.cellSize / 2}
+                                x2={gridMetrics.boardSizePx}
+                                y2={touchPreview.y * gridMetrics.cellSize + gridMetrics.cellSize / 2}
+                                stroke="rgb(56 189 248 / 0.8)"
+                                strokeWidth="1"
+                                vectorEffect="non-scaling-stroke"
+                            />
+                            <line
+                                x1={touchPreview.x * gridMetrics.cellSize + gridMetrics.cellSize / 2}
+                                y1={0}
+                                x2={touchPreview.x * gridMetrics.cellSize + gridMetrics.cellSize / 2}
+                                y2={gridMetrics.boardSizePx}
+                                stroke="rgb(56 189 248 / 0.8)"
+                                strokeWidth="1"
+                                vectorEffect="non-scaling-stroke"
+                            />
+                        </svg>
+                    )}
+                    {touchPreview && signMap[touchPreview.y][touchPreview.x] === 0 && (
+                        <div
+                            className={
+                                gameState.currentPlayer === "B"
+                                    ? "pointer-events-none absolute z-30 rounded-full border border-sky-300 bg-black/70"
+                                    : "pointer-events-none absolute z-30 rounded-full border border-sky-300 bg-white/80"
+                            }
+                            style={{
+                                left:
+                                    gridMetrics.left +
+                                    touchPreview.x * gridMetrics.cellSize +
+                                    gridMetrics.cellSize / 2,
+                                top:
+                                    gridMetrics.top +
+                                    touchPreview.y * gridMetrics.cellSize +
+                                    gridMetrics.cellSize / 2,
+                                width: gridMetrics.cellSize * 0.78,
+                                height: gridMetrics.cellSize * 0.78,
+                                transform: "translate(-50%, -50%)",
+                            }}
+                        />
+                    )}
+                    {touchPreview && (
+                        <div
+                            className={
+                                isDarkMode
+                                    ? "pointer-events-none fixed z-50 h-36 w-36 -translate-x-1/2 overflow-hidden rounded-full border border-sky-400/70 bg-neutral-950/95 text-white shadow-2xl"
+                                    : "pointer-events-none fixed z-50 h-36 w-36 -translate-x-1/2 overflow-hidden rounded-full border border-sky-600/70 bg-zinc-100/95 text-zinc-950 shadow-2xl"
+                            }
+                            style={{
+                                left: touchPreview.screenX,
+                                top: Math.max(12, touchPreview.screenY - 170),
+                            }}
+                        >
+                            <div
+                                className={
+                                    isDarkMode
+                                        ? "absolute left-1/2 top-3 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-neutral-950/80 px-2 py-0.5 text-xs font-medium text-neutral-300"
+                                        : "absolute left-1/2 top-3 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-zinc-100/80 px-2 py-0.5 text-xs font-medium text-zinc-700"
+                                }
+                            >
+                                {gameState.currentPlayer === "B" ? "Black" : "White"} • {`${touchPreview.x + 1}, ${touchPreview.y + 1}`}
+                            </div>
 
-                        const newMove: Move = {
-                            type: "play",
-                            x,
-                            y,
-                            color: gameState.currentPlayer,
-                        };
+                            <div className={isDarkMode ? "relative h-full w-full bg-neutral-800" : "relative h-full w-full bg-zinc-200"}>
+                                {getMagnifierGridLines().horizontalLines.map((line) => (
+                                    <div
+                                        key={line.key}
+                                        className={isDarkMode ? "absolute h-px bg-neutral-600" : "absolute h-px bg-zinc-500"}
+                                        style={{
+                                            top: `${line.top}%`,
+                                            left: `${line.left}%`,
+                                            width: `${line.right - line.left}%`,
+                                        }}
+                                    />
+                                ))}
+                                {getMagnifierGridLines().verticalLines.map((line) => (
+                                    <div
+                                        key={line.key}
+                                        className={isDarkMode ? "absolute w-px bg-neutral-600" : "absolute w-px bg-zinc-500"}
+                                        style={{
+                                            left: `${line.left}%`,
+                                            top: `${line.top}%`,
+                                            height: `${line.bottom - line.top}%`,
+                                        }}
+                                    />
+                                ))}
+                                {getMagnifierCells().map((cell) => {
+                                    const left = `${getMagnifierPositionPercent(cell.dx)}%`;
+                                    const top = `${getMagnifierPositionPercent(cell.dy)}%`;
 
-                        setGameState({
-                            moves: [...gameState.moves, newMove],
-                            currentPlayer: gameState.currentPlayer === "B" ? "W" : "B",
-                        });
-                    }}
-                />
+                                    return (
+                                        <div
+                                            key={cell.key}
+                                            className="absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+                                            style={{ left, top }}
+                                        >
+                                            {cell.sign === 0 && cell.isStarPoint && (
+                                                <div className={isDarkMode ? "absolute h-2 w-2 rounded-full bg-neutral-400" : "absolute h-2 w-2 rounded-full bg-zinc-600"} />
+                                            )}
+                                            {cell.isCenter && (
+                                                <div className="absolute h-7 w-7 rounded-full border border-sky-400" />
+                                            )}
+                                            {cell.sign === 1 && (
+                                                <div className="relative h-6 w-6 rounded-full bg-black" />
+                                            )}
+                                            {cell.sign === -1 && (
+                                                <div className="relative h-6 w-6 rounded-full border border-neutral-900 bg-white" />
+                                            )}
+                                            {cell.isCenter && cell.sign === 0 && (
+                                                <div
+                                                    className={
+                                                        gameState.currentPlayer === "B"
+                                                            ? "relative h-6 w-6 rounded-full border border-sky-300 bg-black/80"
+                                                            : "relative h-6 w-6 rounded-full border border-sky-300 bg-white/90"
+                                                    }
+                                                />
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
