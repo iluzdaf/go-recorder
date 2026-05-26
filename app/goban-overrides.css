@@ -26,6 +26,7 @@
 
 .shudan-hoshi {
     fill: #a1a1aa !important;
+    r: 0.12em;
 }
 
 .shudan-stone {
@@ -124,4 +125,9 @@
 .goban-theme-dark .shudan-coordx,
 .goban-theme-dark .shudan-coordy {
     color: #71717a !important;
+}
+
+.goban-theme-light .shudan-coordx,
+.goban-theme-light .shudan-coordy {
+    color: #52525b !important;
 }
