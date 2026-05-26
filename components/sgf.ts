@@ -1,1 +1,1 @@
-export { exportSgf, toSgfCoord } from "../lib/sgf";
+export { exportSgf, createSgfFilename, toSgfCoord } from "../lib/sgf";

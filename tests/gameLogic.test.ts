@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
     createGameSnapshot,
     createSlug,
+    getHandicapSetupStones,
     isValidBoardSize,
     isValidGameState,
     shouldAutosave,
@@ -58,6 +59,63 @@ describe("isValidGameState", () => {
         expect(isValidGameState({})).toBe(false);
         expect(isValidGameState({ moves: "not an array" })).toBe(false);
         expect(isValidGameState([])).toBe(false);
+    });
+});
+
+describe("getHandicapSetupStones", () => {
+    it("returns no setup stones for no handicap", () => {
+        expect(getHandicapSetupStones(19, 0)).toEqual([]);
+        expect(getHandicapSetupStones(19, 1)).toEqual([]);
+    });
+
+    it("returns standard 19x19 two-stone handicap placement", () => {
+        expect(getHandicapSetupStones(19, 2)).toEqual([
+            { x: 3, y: 15 },
+            { x: 15, y: 3 },
+        ]);
+    });
+
+    it("includes tengen for 19x19 five-stone handicap", () => {
+        expect(getHandicapSetupStones(19, 5)).toEqual([
+            { x: 3, y: 15 },
+            { x: 15, y: 3 },
+            { x: 3, y: 3 },
+            { x: 15, y: 15 },
+            { x: 9, y: 9 },
+        ]);
+    });
+
+    it("returns all nine 13x13 handicap points for nine-stone handicap", () => {
+        expect(getHandicapSetupStones(13, 9)).toEqual([
+            { x: 3, y: 9 },
+            { x: 9, y: 3 },
+            { x: 3, y: 3 },
+            { x: 9, y: 9 },
+            { x: 3, y: 6 },
+            { x: 9, y: 6 },
+            { x: 6, y: 3 },
+            { x: 6, y: 9 },
+            { x: 6, y: 6 },
+        ]);
+    });
+
+    it("returns all nine 9x9 handicap points for nine-stone handicap", () => {
+        expect(getHandicapSetupStones(9, 9)).toEqual([
+            { x: 2, y: 6 },
+            { x: 6, y: 2 },
+            { x: 2, y: 2 },
+            { x: 6, y: 6 },
+            { x: 2, y: 4 },
+            { x: 6, y: 4 },
+            { x: 4, y: 2 },
+            { x: 4, y: 6 },
+            { x: 4, y: 4 },
+        ]);
+    });
+
+    it("returns no setup stones for unsupported handicap counts", () => {
+        expect(getHandicapSetupStones(19, 10)).toEqual([]);
+        expect(getHandicapSetupStones(13, -1)).toEqual([]);
     });
 });
 

@@ -5,8 +5,8 @@ import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType } from "react";
 import { Download, Moon, Sun, Undo2 } from "lucide-react";
 
-import type { BoardSize, GameState, Move, Stone } from "./types";
-import { exportSgf } from "./sgf";
+import type { BoardSize, GameState, Move, SetupStone, Stone } from "./types";
+import { exportSgf, createSgfFilename } from "./sgf";
 import {
     createGameSnapshot,
     shouldAutosave,
@@ -82,8 +82,20 @@ function toDisplayCoord(x: number, y: number, boardSize: BoardSize) {
     return `${column}${row}`;
 }
 
-function buildBoardFromMoves(size: number, moves: Move[]) {
+function buildBoardFromGameState(
+    size: number,
+    setupStones: SetupStone[],
+    moves: Move[]
+) {
     let board = Board.fromDimensions(size);
+
+    for (const setupStone of setupStones) {
+        board = board.makeMove(stoneToSign("B"), [setupStone.x, setupStone.y], {
+            preventOverwrite: true,
+            preventSuicide: true,
+            preventKo: false,
+        });
+    }
 
     for (const move of moves) {
         if (move.type === "pass") continue;
@@ -114,6 +126,7 @@ export default function GoBoard({ slug }: GoBoardProps) {
     }>({
         size: 19,
         gameState: {
+            setupStones: [],
             moves: [],
             currentPlayer: "B",
         },
@@ -124,6 +137,11 @@ export default function GoBoard({ slug }: GoBoardProps) {
     const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
     const [updatedAt, setUpdatedAt] = useState<string | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [gameMetadata, setGameMetadata] = useState({
+        blackPlayerName: null as string | null,
+        whitePlayerName: null as string | null,
+        handicap: 0,
+    });
     const [gridMetrics, setGridMetrics] = useState({
         left: 0,
         top: 0,
@@ -132,6 +150,7 @@ export default function GoBoard({ slug }: GoBoardProps) {
     });
 
     const [gameState, setGameState] = useState<GameState>({
+        setupStones: [],
         moves: [],
         currentPlayer: "B",
     });
@@ -159,12 +178,22 @@ export default function GoBoard({ slug }: GoBoardProps) {
 
             const gameRecord = await response.json();
 
+            const loadedGameState = {
+                setupStones: [],
+                ...gameRecord.game_state,
+            } as GameState;
+
             setSize(gameRecord.board_size as BoardSize);
-            setGameState(gameRecord.game_state as GameState);
+            setGameState(loadedGameState);
             setUpdatedAt(gameRecord.updated_at);
+            setGameMetadata({
+                blackPlayerName: gameRecord.black_player_name ?? null,
+                whitePlayerName: gameRecord.white_player_name ?? null,
+                handicap: gameRecord.handicap ?? 0,
+            });
             lastSavedSnapshotRef.current = createGameSnapshot(
                 gameRecord.board_size as BoardSize,
-                gameRecord.game_state as GameState
+                loadedGameState
             );
             setHasUnsavedChanges(false);
             hasLoadedGameRef.current = true;
@@ -307,7 +336,11 @@ export default function GoBoard({ slug }: GoBoardProps) {
         return () => resizeObserver.disconnect();
     }, [size]);
 
-    const board = buildBoardFromMoves(size, gameState.moves);
+    const board = buildBoardFromGameState(
+        size,
+        gameState.setupStones,
+        gameState.moves
+    );
     const signMap = board.signMap;
 
     type Marker = null | { type: "circle" };
@@ -377,6 +410,7 @@ export default function GoBoard({ slug }: GoBoardProps) {
         };
 
         setGameState({
+            ...gameState,
             moves: [...gameState.moves, newMove],
             currentPlayer: gameState.currentPlayer === "B" ? "W" : "B",
         });
@@ -547,27 +581,6 @@ export default function GoBoard({ slug }: GoBoardProps) {
                     >
                         {showMenu && (
                             <div className="flex w-48 flex-col gap-2 rounded border border-zinc-300 bg-zinc-100 p-2 shadow-xl dark:border-neutral-700 dark:bg-neutral-900">
-                                {[9, 13, 19].map((boardSize) => (
-                                    <button
-                                        key={boardSize}
-                                        className={
-                                            size === boardSize
-                                                ? "rounded bg-sky-700 px-4 py-2 font-medium text-white hover:bg-sky-600"
-                                                : "rounded bg-zinc-300 px-4 py-2 text-zinc-800 dark:bg-neutral-700 dark:text-neutral-200"
-                                        }
-                                        onClick={() => {
-                                            setSize(boardSize as BoardSize);
-                                            setGameState({
-                                                moves: [],
-                                                currentPlayer: "B",
-                                            });
-                                            setHasUnsavedChanges(true);
-                                            setShowMenu(false);
-                                        }}
-                                    >
-                                        {boardSize}x{boardSize}
-                                    </button>
-                                ))}
 
                                 <button
                                     className="flex items-center justify-center rounded bg-zinc-800 px-4 py-2 text-xl text-white dark:bg-neutral-200 dark:text-black"
@@ -590,6 +603,7 @@ export default function GoBoard({ slug }: GoBoardProps) {
                                         const lastMove = gameState.moves.at(-1);
 
                                         setGameState({
+                                            ...gameState,
                                             moves: previousMoves,
                                             currentPlayer: lastMove?.color ?? "B",
                                         });
@@ -611,6 +625,7 @@ export default function GoBoard({ slug }: GoBoardProps) {
                                         };
 
                                         setGameState({
+                                            ...gameState,
                                             moves: [...gameState.moves, newMove],
                                             currentPlayer:
                                                 gameState.currentPlayer === "B" ? "W" : "B",
@@ -625,7 +640,14 @@ export default function GoBoard({ slug }: GoBoardProps) {
                                 <button
                                     className="rounded bg-sky-700 px-4 py-2 text-white hover:bg-sky-600"
                                     onClick={() => {
-                                        const sgf = exportSgf(size, gameState.moves);
+                                        const sgf = exportSgf({
+                                            boardSize: size,
+                                            moves: gameState.moves,
+                                            setupStones: gameState.setupStones,
+                                            handicap: gameMetadata.handicap,
+                                            blackPlayerName: gameMetadata.blackPlayerName,
+                                            whitePlayerName: gameMetadata.whitePlayerName,
+                                        });
 
                                         const blob = new Blob([sgf], {
                                             type: "application/x-go-sgf;charset=utf-8",
@@ -635,7 +657,7 @@ export default function GoBoard({ slug }: GoBoardProps) {
                                         const link = document.createElement("a");
 
                                         link.href = url;
-                                        link.download = "game.sgf";
+                                        link.download = createSgfFilename(gameMetadata.blackPlayerName, gameMetadata.whitePlayerName);
                                         link.click();
 
                                         URL.revokeObjectURL(url);

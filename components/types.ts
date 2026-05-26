@@ -12,7 +12,14 @@ export type Move =
         color: Stone;
     };
 
+export type SetupStone = {
+    x: number;
+    y: number;
+    color: Stone;
+};
+
 export type GameState = {
+    setupStones: SetupStone[];
     moves: Move[];
     currentPlayer: Stone;
 };
@@ -23,6 +30,9 @@ export type GameRecord = {
     slug: string;
     boardSize: BoardSize;
     gameState: GameState;
+    blackPlayerName: string | null;
+    whitePlayerName: string | null;
+    handicap: number;
     createdAt: string;
     updatedAt: string;
 };

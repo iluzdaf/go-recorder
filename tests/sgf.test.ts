@@ -12,32 +12,35 @@ describe("toSgfCoord", () => {
 
 describe("exportSgf", () => {
     it("exports an empty 19x19 game", () => {
-        expect(exportSgf(19, [])).toBe(
+        expect(exportSgf({ boardSize: 19, moves: [] })).toBe(
             "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19])"
         );
     });
 
     it("exports an empty 9x9 game", () => {
-        expect(exportSgf(9, [])).toBe(
+        expect(exportSgf({ boardSize: 9, moves: [] })).toBe(
             "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[9])"
         );
     });
 
     it("exports play moves in order", () => {
-        const sgf = exportSgf(19, [
-            {
-                type: "play",
-                x: 3,
-                y: 3,
-                color: "B",
-            },
-            {
-                type: "play",
-                x: 15,
-                y: 15,
-                color: "W",
-            },
-        ]);
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [
+                {
+                    type: "play",
+                    x: 3,
+                    y: 3,
+                    color: "B",
+                },
+                {
+                    type: "play",
+                    x: 15,
+                    y: 15,
+                    color: "W",
+                },
+            ],
+        });
 
         expect(sgf).toBe(
             "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19];B[dd];W[pp])"
@@ -45,16 +48,19 @@ describe("exportSgf", () => {
     });
 
     it("exports pass moves", () => {
-        const sgf = exportSgf(19, [
-            {
-                type: "pass",
-                color: "B",
-            },
-            {
-                type: "pass",
-                color: "W",
-            },
-        ]);
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [
+                {
+                    type: "pass",
+                    color: "B",
+                },
+                {
+                    type: "pass",
+                    color: "W",
+                },
+            ],
+        });
 
         expect(sgf).toBe(
             "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19];B[];W[])"
@@ -62,27 +68,95 @@ describe("exportSgf", () => {
     });
 
     it("exports mixed play and pass moves", () => {
-        const sgf = exportSgf(13, [
-            {
-                type: "play",
-                x: 6,
-                y: 6,
-                color: "B",
-            },
-            {
-                type: "pass",
-                color: "W",
-            },
-            {
-                type: "play",
-                x: 0,
-                y: 12,
-                color: "B",
-            },
-        ]);
+        const sgf = exportSgf({
+            boardSize: 13,
+            moves: [
+                {
+                    type: "play",
+                    x: 6,
+                    y: 6,
+                    color: "B",
+                },
+                {
+                    type: "pass",
+                    color: "W",
+                },
+                {
+                    type: "play",
+                    x: 0,
+                    y: 12,
+                    color: "B",
+                },
+            ],
+        });
 
         expect(sgf).toBe(
             "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[13];B[gg];W[];B[am])"
+        );
+    });
+
+    it("exports player names", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+            blackPlayerName: "Black Player",
+            whitePlayerName: "White Player",
+        });
+
+        expect(sgf).toBe(
+            "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19]PB[Black Player]PW[White Player])"
+        );
+    });
+
+    it("escapes player names for SGF values", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+            blackPlayerName: "Black ] Player",
+            whitePlayerName: "White \\ Player",
+        });
+
+        expect(sgf).toBe(
+            "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19]PB[Black \\] Player]PW[White \\\\ Player])"
+        );
+    });
+
+    it("exports handicap count and setup stones", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+            handicap: 2,
+            setupStones: [
+                { x: 3, y: 15 },
+                { x: 15, y: 3 },
+            ],
+        });
+
+        expect(sgf).toBe(
+            "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19]HA[2]AB[dp][pd])"
+        );
+    });
+
+    it("exports handicap setup stones before normal moves", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [
+                {
+                    type: "play",
+                    x: 9,
+                    y: 9,
+                    color: "W",
+                },
+            ],
+            handicap: 2,
+            setupStones: [
+                { x: 3, y: 15 },
+                { x: 15, y: 3 },
+            ],
+        });
+
+        expect(sgf).toBe(
+            "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19]HA[2]AB[dp][pd];W[jj])"
         );
     });
 });
