@@ -11,7 +11,7 @@ export default async function GamePage({ params }: PageProps) {
 
     return (
         <main className="m-0 h-dvh overflow-hidden p-0">
-            <GoBoardLoader slug={slug} />
+            <GoBoardLoader id={slug} />
         </main>
     );
 }

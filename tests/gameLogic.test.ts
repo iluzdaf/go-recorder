@@ -70,46 +70,46 @@ describe("getHandicapSetupStones", () => {
 
     it("returns standard 19x19 two-stone handicap placement", () => {
         expect(getHandicapSetupStones(19, 2)).toEqual([
-            { x: 3, y: 15 },
-            { x: 15, y: 3 },
+            { x: 3, y: 15, color: "B" },
+            { x: 15, y: 3, color: "B" },
         ]);
     });
 
     it("includes tengen for 19x19 five-stone handicap", () => {
         expect(getHandicapSetupStones(19, 5)).toEqual([
-            { x: 3, y: 15 },
-            { x: 15, y: 3 },
-            { x: 3, y: 3 },
-            { x: 15, y: 15 },
-            { x: 9, y: 9 },
+            { x: 3, y: 15, color: "B" },
+            { x: 15, y: 3, color: "B" },
+            { x: 3, y: 3, color: "B" },
+            { x: 15, y: 15, color: "B" },
+            { x: 9, y: 9, color: "B" },
         ]);
     });
 
     it("returns all nine 13x13 handicap points for nine-stone handicap", () => {
         expect(getHandicapSetupStones(13, 9)).toEqual([
-            { x: 3, y: 9 },
-            { x: 9, y: 3 },
-            { x: 3, y: 3 },
-            { x: 9, y: 9 },
-            { x: 3, y: 6 },
-            { x: 9, y: 6 },
-            { x: 6, y: 3 },
-            { x: 6, y: 9 },
-            { x: 6, y: 6 },
+            { x: 3, y: 9, color: "B" },
+            { x: 9, y: 3, color: "B" },
+            { x: 3, y: 3, color: "B" },
+            { x: 9, y: 9, color: "B" },
+            { x: 3, y: 6, color: "B" },
+            { x: 9, y: 6, color: "B" },
+            { x: 6, y: 3, color: "B" },
+            { x: 6, y: 9, color: "B" },
+            { x: 6, y: 6, color: "B" },
         ]);
     });
 
     it("returns all nine 9x9 handicap points for nine-stone handicap", () => {
         expect(getHandicapSetupStones(9, 9)).toEqual([
-            { x: 2, y: 6 },
-            { x: 6, y: 2 },
-            { x: 2, y: 2 },
-            { x: 6, y: 6 },
-            { x: 2, y: 4 },
-            { x: 6, y: 4 },
-            { x: 4, y: 2 },
-            { x: 4, y: 6 },
-            { x: 4, y: 4 },
+            { x: 2, y: 6, color: "B" },
+            { x: 6, y: 2, color: "B" },
+            { x: 2, y: 2, color: "B" },
+            { x: 6, y: 6, color: "B" },
+            { x: 2, y: 4, color: "B" },
+            { x: 6, y: 4, color: "B" },
+            { x: 4, y: 2, color: "B" },
+            { x: 4, y: 6, color: "B" },
+            { x: 4, y: 4, color: "B" },
         ]);
     });
 
@@ -122,6 +122,7 @@ describe("getHandicapSetupStones", () => {
 describe("createGameSnapshot", () => {
     it("creates the same snapshot for the same board size and game state", () => {
         const gameState = {
+            setupStones: [],
             moves: [],
             currentPlayer: "B" as const,
         };
@@ -134,6 +135,7 @@ describe("createGameSnapshot", () => {
 
     it("creates different snapshots when the board size changes", () => {
         const gameState = {
+            setupStones: [],
             moves: [],
             currentPlayer: "B" as const,
         };
@@ -145,10 +147,12 @@ describe("createGameSnapshot", () => {
 
     it("creates different snapshots when the game state changes", () => {
         const emptyGameState = {
+            setupStones: [],
             moves: [],
             currentPlayer: "B" as const,
         };
         const gameStateWithMove = {
+            setupStones: [],
             moves: [
                 {
                     type: "play" as const,

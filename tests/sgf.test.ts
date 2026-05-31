@@ -127,8 +127,8 @@ describe("exportSgf", () => {
             moves: [],
             handicap: 2,
             setupStones: [
-                { x: 3, y: 15 },
-                { x: 15, y: 3 },
+                { x: 3, y: 15, color: "B" },
+                { x: 15, y: 3, color: "B" },
             ],
         });
 
@@ -150,8 +150,8 @@ describe("exportSgf", () => {
             ],
             handicap: 2,
             setupStones: [
-                { x: 3, y: 15 },
-                { x: 15, y: 3 },
+                { x: 3, y: 15, color: "B" },
+                { x: 15, y: 3, color: "B" },
             ],
         });
 

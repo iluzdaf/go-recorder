@@ -26,6 +26,8 @@ export type GameState = {
 
 export type BoardSize = 9 | 13 | 19;
 
+export type ShareSourceKind = "game" | "draft";
+
 export type GameRecord = {
     slug: string;
     boardSize: BoardSize;
@@ -35,4 +37,40 @@ export type GameRecord = {
     handicap: number;
     createdAt: string;
     updatedAt: string;
+};
+
+export type LocalGameRecord = {
+    id: string;
+    boardSize: BoardSize;
+    gameState: GameState;
+    blackPlayerName: string | null;
+    whitePlayerName: string | null;
+    handicap: number;
+    createdAt: string;
+    updatedAt: string;
+    lastShareSlug?: string | null;
+};
+
+export type ShareRecord = {
+    slug: string;
+    sourceKind: ShareSourceKind;
+    boardSize: BoardSize;
+    gameState: GameState;
+    blackPlayerName: string | null;
+    whitePlayerName: string | null;
+    handicap: number;
+    createdAt: string;
+};
+
+export type CreateShareInput = {
+    sourceKind: ShareSourceKind;
+    boardSize: BoardSize;
+    gameState: GameState;
+    blackPlayerName: string | null;
+    whitePlayerName: string | null;
+    handicap: number;
+};
+
+export type CreateShareResponse = {
+    slug: string;
 };

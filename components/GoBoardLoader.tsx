@@ -3,13 +3,13 @@
 import dynamic from "next/dynamic";
 
 type GoBoardLoaderProps = {
-    slug: string;
+    id: string;
 };
 
-const GoBoard = dynamic(() => import("@/components/Goban"), {
+const GoBoard = dynamic(() => import("@/components/GoBoard"), {
     ssr: false,
 });
 
-export default function GoBoardLoader({ slug }: GoBoardLoaderProps) {
-    return <GoBoard slug={slug} />;
+export default function GoBoardLoader({ id }: GoBoardLoaderProps) {
+    return <GoBoard id={id} />;
 }

@@ -6,10 +6,14 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
+    "env:local": "cp .env.app.local .env.local",
+    "env:prod": "cp .env.app.prod .env.local",
     "lint": "eslint",
-    "test": "vitest"
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@openai/codex": "^0.133.0",
     "@sabaki/go-board": "^1.4.3",
     "@sabaki/shudan": "^1.7.1",
     "@supabase/supabase-js": "^2.106.1",

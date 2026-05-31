@@ -2,42 +2,32 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { BoardSize } from "@/components/types";
+import { createLocalGame } from "@/lib/localGames";
+import { createLocalGameInputFromForm } from "@/lib/localGameSetup";
 
 export default function Home() {
   const router = useRouter();
 
-  const [boardSize, setBoardSize] = useState(19);
+  const [boardSize, setBoardSize] = useState<BoardSize>(19);
   const [blackPlayerName, setBlackPlayerName] = useState("");
   const [whitePlayerName, setWhitePlayerName] = useState("");
   const [handicap, setHandicap] = useState(0);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setIsCreatingGame(true);
 
-    const response = await fetch("/api/games", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const game = createLocalGame(createLocalGameInputFromForm({
         boardSize,
         blackPlayerName,
         whitePlayerName,
         handicap,
-      }),
-    });
+    }));
 
-    if (!response.ok) {
-      setIsCreatingGame(false);
-      return;
-    }
-
-    const { slug } = await response.json();
-
-    router.push(`/games/${slug}`);
+    router.push(`/games/${game.id}`);
   }
 
   return (
@@ -46,19 +36,12 @@ export default function Home() {
         onSubmit={handleSubmit}
         className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
       >
-        <div>
-          <h1 className="text-2xl font-bold">Create Game</h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Start a new Go game and share it with a link.
-          </p>
-        </div>
-
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium">Board Size</span>
           <select
             value={boardSize}
             onChange={(event) => {
-              setBoardSize(Number(event.target.value));
+              setBoardSize(Number(event.target.value) as BoardSize);
             }}
             className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
           >
@@ -116,7 +99,7 @@ export default function Home() {
           disabled={isCreatingGame}
           className="rounded bg-sky-700 px-4 py-2 font-medium text-white hover:bg-sky-600 disabled:opacity-50"
         >
-          {isCreatingGame ? "Creating..." : "Create Game"}
+          {isCreatingGame ? "Recording..." : "Record Game"}
         </button>
       </form>
     </main>

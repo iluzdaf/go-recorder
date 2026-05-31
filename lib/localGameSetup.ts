@@ -1,0 +1,48 @@
+import type { BoardSize, GameState } from "../components/types";
+import { getHandicapSetupStones } from "./gameLogic";
+
+type CreateLocalGameInput = {
+    boardSize: BoardSize;
+    gameState: GameState;
+    blackPlayerName: string | null;
+    whitePlayerName: string | null;
+    handicap: number;
+};
+
+type CreateLocalGameInputFromFormInput = {
+    boardSize: BoardSize;
+    blackPlayerName: string;
+    whitePlayerName: string;
+    handicap: number;
+};
+
+export function getOptionalPlayerName(value: string) {
+    const trimmedValue = value.trim();
+    return trimmedValue.length > 0 ? trimmedValue : null;
+}
+
+export function createInitialGameState(
+    boardSize: BoardSize,
+    handicap: number
+): GameState {
+    return {
+        setupStones: getHandicapSetupStones(boardSize, handicap),
+        moves: [],
+        currentPlayer: handicap > 0 ? "W" : "B",
+    };
+}
+
+export function createLocalGameInputFromForm({
+    boardSize,
+    blackPlayerName,
+    whitePlayerName,
+    handicap,
+}: CreateLocalGameInputFromFormInput): CreateLocalGameInput {
+    return {
+        boardSize,
+        gameState: createInitialGameState(boardSize, handicap),
+        blackPlayerName: getOptionalPlayerName(blackPlayerName),
+        whitePlayerName: getOptionalPlayerName(whitePlayerName),
+        handicap,
+    };
+}

@@ -3,15 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType } from "react";
-import { Download, Moon, Sun, Undo2 } from "lucide-react";
+import { Download, Link2, Moon, Sun, Undo2 } from "lucide-react";
 
-import type { BoardSize, GameState, Move, SetupStone, Stone } from "./types";
+import type {
+    BoardSize,
+    GameState,
+    LocalGameRecord,
+    Move,
+    SetupStone,
+    Stone,
+} from "./types";
 import { exportSgf, createSgfFilename } from "./sgf";
 import {
     createGameSnapshot,
     shouldAutosave,
     shouldContinueAutosaveQueue,
 } from "../lib/gameLogic";
+import { getLocalGame, saveLocalGame } from "../lib/localGames";
+import { createLoadedLocalGame } from "../lib/localGameView";
+import { createShareFromLocalGame } from "../lib/shareClient";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -24,7 +34,7 @@ type ShudanGobanProps = {
     showCoordinates: boolean;
 };
 
-const Goban = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
+const BoardView = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
 
 type TouchPreview = {
     x: number;
@@ -34,7 +44,7 @@ type TouchPreview = {
 } | null;
 
 type GoBoardProps = {
-    slug: string;
+    id: string;
 };
 
 function stoneToSign(stone: Stone) {
@@ -110,7 +120,7 @@ function buildBoardFromGameState(
     return board;
 }
 
-export default function GoBoard({ slug }: GoBoardProps) {
+export default function GoBoard({ id }: GoBoardProps) {
     const [size, setSize] = useState<BoardSize>(19);
     const [isDarkMode, setIsDarkMode] = useState(true);
     const boardAreaRef = useRef<HTMLDivElement | null>(null);
@@ -119,6 +129,7 @@ export default function GoBoard({ slug }: GoBoardProps) {
     const isSavingRef = useRef(false);
     const needsSaveAfterCurrentSaveRef = useRef(false);
     const lastSavedSnapshotRef = useRef("");
+    const localGameRecordRef = useRef<LocalGameRecord | null>(null);
     const latestSaveStateRef = useRef<{
         size: BoardSize;
         gameState: GameState;
@@ -137,6 +148,8 @@ export default function GoBoard({ slug }: GoBoardProps) {
     const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
     const [updatedAt, setUpdatedAt] = useState<string | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [shareStatus, setShareStatus] = useState<string | null>(null);
     const [gameMetadata, setGameMetadata] = useState({
         blackPlayerName: null as string | null,
         whitePlayerName: null as string | null,
@@ -168,39 +181,29 @@ export default function GoBoard({ slug }: GoBoardProps) {
     }, [isDarkMode]);
 
     useEffect(() => {
-        const loadGame = async () => {
-            const response = await fetch(`/api/games/${slug}`);
+        const loadGame = () => {
+            const gameRecord = getLocalGame(id);
 
-            if (!response.ok) {
-                console.error("Failed to load game", await response.text());
+            if (!gameRecord) {
+                setLoadError("Game not found on this device.");
                 return;
             }
 
-            const gameRecord = await response.json();
+            const loadedGame = createLoadedLocalGame(gameRecord);
 
-            const loadedGameState = {
-                setupStones: [],
-                ...gameRecord.game_state,
-            } as GameState;
-
-            setSize(gameRecord.board_size as BoardSize);
-            setGameState(loadedGameState);
-            setUpdatedAt(gameRecord.updated_at);
-            setGameMetadata({
-                blackPlayerName: gameRecord.black_player_name ?? null,
-                whitePlayerName: gameRecord.white_player_name ?? null,
-                handicap: gameRecord.handicap ?? 0,
-            });
-            lastSavedSnapshotRef.current = createGameSnapshot(
-                gameRecord.board_size as BoardSize,
-                loadedGameState
-            );
+            localGameRecordRef.current = gameRecord;
+            setSize(loadedGame.size);
+            setGameState(loadedGame.gameState);
+            setUpdatedAt(loadedGame.updatedAt);
+            setGameMetadata(loadedGame.metadata);
+            lastSavedSnapshotRef.current = loadedGame.snapshot;
             setHasUnsavedChanges(false);
+            setLoadError(null);
             hasLoadedGameRef.current = true;
         };
 
         loadGame();
-    }, [slug]);
+    }, [id]);
 
     useEffect(() => {
         if (!hasLoadedGameRef.current) return;
@@ -248,38 +251,24 @@ export default function GoBoard({ slug }: GoBoardProps) {
                         return;
                     }
 
-                    const response = await fetch(`/api/games/${slug}`, {
-                        method: "PATCH",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            boardSize: latestSaveState.size,
-                            gameState: latestSaveState.gameState,
-                            updatedAt: latestSaveState.updatedAt,
-                        }),
-                    });
+                    const localGameRecord = localGameRecordRef.current;
 
-                    if (response.status === 409) {
-                        const conflict = await response.json();
-
-                        if (conflict.newSlug) {
-                            window.location.href = `/games/${conflict.newSlug}`;
-                            return;
-                        }
-                    }
-
-                    if (!response.ok) {
-                        console.error("Failed to save game", await response.text());
+                    if (!localGameRecord) {
+                        console.error("Failed to save game: local game record was not loaded");
                         return;
                     }
 
-                    const savedGame = await response.json();
+                    const savedGame = saveLocalGame({
+                        ...localGameRecord,
+                        boardSize: latestSaveState.size,
+                        gameState: latestSaveState.gameState,
+                    });
 
-                    setUpdatedAt(savedGame.updated_at);
+                    localGameRecordRef.current = savedGame;
+                    setUpdatedAt(savedGame.updatedAt);
                     latestSaveStateRef.current = {
                         ...latestSaveStateRef.current,
-                        updatedAt: savedGame.updated_at,
+                        updatedAt: savedGame.updatedAt,
                     };
                     lastSavedSnapshotRef.current = latestSnapshot;
 
@@ -310,7 +299,7 @@ export default function GoBoard({ slug }: GoBoardProps) {
         }, 500);
 
         return () => window.clearTimeout(timeoutId);
-    }, [slug, updatedAt, hasUnsavedChanges, size, gameState]);
+    }, [id, updatedAt, hasUnsavedChanges, size, gameState]);
 
     useEffect(() => {
         const boardArea = boardAreaRef.current;
@@ -461,6 +450,54 @@ export default function GoBoard({ slug }: GoBoardProps) {
         return 12.5 + (offset + 2) * 18.75;
     };
 
+    const canShareGame = gameState.moves.some((move) => move.type === "play");
+
+    const createCurrentLocalGameRecord = () => {
+        const localGameRecord = localGameRecordRef.current;
+        if (!localGameRecord) return null;
+
+        return {
+            ...localGameRecord,
+            boardSize: size,
+            gameState,
+        };
+    };
+
+    const handleShare = async () => {
+        const currentLocalGame = createCurrentLocalGameRecord();
+
+        if (!currentLocalGame) {
+            setShareStatus("Game is not loaded.");
+            return;
+        }
+
+        if (!canShareGame) {
+            setShareStatus("Add at least one move before sharing.");
+            return;
+        }
+
+        setShareStatus("Creating share...");
+
+        try {
+            const { slug } = await createShareFromLocalGame({
+                localGame: currentLocalGame,
+            });
+
+            const updatedLocalGame = saveLocalGame({
+                ...currentLocalGame,
+                lastShareSlug: slug,
+            });
+
+            localGameRecordRef.current = updatedLocalGame;
+            setShareStatus(`Share created: /shares/${slug}`);
+            window.location.href = `/shares/${slug}`;
+        } catch (error) {
+            setShareStatus(
+                error instanceof Error ? error.message : "Failed to create share"
+            );
+        }
+    };
+
     const getMagnifierGridLines = () => {
         if (!touchPreview) {
             return { horizontalLines: [], verticalLines: [] };
@@ -528,8 +565,16 @@ export default function GoBoard({ slug }: GoBoardProps) {
                     : "goban-theme-light relative m-0 flex h-dvh touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
             }
         >
+            {loadError && (
+                <div className="flex h-dvh items-center justify-center p-6 text-center">
+                    <p className="max-w-sm text-sm text-zinc-600 dark:text-zinc-400">
+                        {loadError}
+                    </p>
+                </div>
+            )}
 
 
+            {!loadError && (
             <div
                 ref={boardAreaRef}
                 className="flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
@@ -668,10 +713,24 @@ export default function GoBoard({ slug }: GoBoardProps) {
                                         <Download size={18} />
                                     </div>
                                 </button>
+
+                                <button
+                                    className="rounded bg-emerald-700 px-4 py-2 text-white hover:bg-emerald-600 disabled:bg-zinc-300 disabled:text-zinc-500 disabled:opacity-100 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
+                                    disabled={!canShareGame}
+                                    onClick={() => {
+                                        setShowMenu(false);
+                                        void handleShare();
+                                    }}
+                                >
+                                    <div className="flex items-center justify-center gap-2">
+                                        <Link2 size={18} />
+                                        <span>Share</span>
+                                    </div>
+                                </button>
                             </div>
                         )}
                     </div>
-                    <Goban
+                    <BoardView
                         vertexSize={vertexSize}
                         signMap={signMap}
                         markerMap={markerMap}
@@ -812,8 +871,14 @@ export default function GoBoard({ slug }: GoBoardProps) {
                             </div>
                         </div>
                     )}
+                    {shareStatus && (
+                        <div className="pointer-events-none absolute bottom-3 left-1/2 z-40 -translate-x-1/2 rounded bg-neutral-950/90 px-3 py-1 text-xs text-white shadow-lg dark:bg-neutral-100/90 dark:text-black">
+                            {shareStatus}
+                        </div>
+                    )}
                 </div>
             </div>
+            )}
         </div>
     );
 }
