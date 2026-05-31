@@ -120,6 +120,8 @@ function buildBoardFromGameState(
     return board;
 }
 
+const BOARD_PADDING_PX = 16;
+
 export default function GoBoard({ id }: GoBoardProps) {
     const [size, setSize] = useState<BoardSize>(19);
     const [isDarkMode, setIsDarkMode] = useState(true);
@@ -307,7 +309,7 @@ export default function GoBoard({ id }: GoBoardProps) {
 
         const updateVertexSize = () => {
             const { width, height } = boardArea.getBoundingClientRect();
-            const availableSize = Math.min(width, height) - 4;
+            const availableSize = Math.max(0, Math.min(width, height) - BOARD_PADDING_PX);
             const coordinateGutterVertices = 1;
             const nextVertexSize = Math.max(
                 16,
