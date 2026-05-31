@@ -30,7 +30,7 @@ export default async function SharePage({ params }: PageProps) {
     }
 
     return (
-        <main className="m-0 h-dvh overflow-hidden p-0">
+        <main className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden p-0">
             <ShareBoardLoader share={mapShareRowToShareRecord(data)} />
         </main>
     );

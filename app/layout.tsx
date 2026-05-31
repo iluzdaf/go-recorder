@@ -4,6 +4,7 @@ import "./globals.css";
 import "@sabaki/shudan/css/goban.css";
 import "./goban-overrides.css";
 import { Analytics } from "@vercel/analytics/react";
+import AppShell from "@/components/AppShell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,8 +31,8 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        {children}
+      <body className="h-full flex flex-col overflow-hidden">
+        <AppShell>{children}</AppShell>
         <Analytics />
       </body>
     </html>

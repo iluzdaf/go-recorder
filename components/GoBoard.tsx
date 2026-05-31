@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType } from "react";
-import { Download, Link2, Moon, Sun, Undo2 } from "lucide-react";
+import { Download, Share2, SkipForward, Undo2 } from "lucide-react";
 
 import type {
     BoardSize,
@@ -22,6 +22,7 @@ import {
 import { getLocalGame, saveLocalGame } from "../lib/localGames";
 import { createLoadedLocalGame } from "../lib/localGameView";
 import { createShareFromLocalGame } from "../lib/shareClient";
+import { useHeaderActions, useTheme } from "./AppShell";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -124,7 +125,8 @@ const BOARD_PADDING_PX = 16;
 
 export default function GoBoard({ id }: GoBoardProps) {
     const [size, setSize] = useState<BoardSize>(19);
-    const [isDarkMode, setIsDarkMode] = useState(true);
+    const { isDarkMode } = useTheme();
+    const { setHeaderActions } = useHeaderActions();
     const boardAreaRef = useRef<HTMLDivElement | null>(null);
     const gobanWrapperRef = useRef<HTMLDivElement | null>(null);
     const hasLoadedGameRef = useRef(false);
@@ -146,7 +148,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         updatedAt: null,
     });
     const [vertexSize, setVertexSize] = useState(24);
-    const [showMenu, setShowMenu] = useState(false);
     const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
     const [updatedAt, setUpdatedAt] = useState<string | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -177,10 +178,6 @@ export default function GoBoard({ id }: GoBoardProps) {
             updatedAt,
         };
     }, [size, gameState, updatedAt]);
-
-    useEffect(() => {
-        document.documentElement.classList.toggle("dark", isDarkMode);
-    }, [isDarkMode]);
 
     useEffect(() => {
         const loadGame = () => {
@@ -454,7 +451,7 @@ export default function GoBoard({ id }: GoBoardProps) {
 
     const canShareGame = gameState.moves.some((move) => move.type === "play");
 
-    const createCurrentLocalGameRecord = () => {
+    const createCurrentLocalGameRecord = useCallback(() => {
         const localGameRecord = localGameRecordRef.current;
         if (!localGameRecord) return null;
 
@@ -463,9 +460,64 @@ export default function GoBoard({ id }: GoBoardProps) {
             boardSize: size,
             gameState,
         };
-    };
+    }, [gameState, size]);
 
-    const handleShare = async () => {
+    const handleUndo = useCallback(() => {
+        if (gameState.moves.length === 0) return;
+
+        const previousMoves = gameState.moves.slice(0, -1);
+        const lastMove = gameState.moves.at(-1);
+
+        setGameState({
+            ...gameState,
+            moves: previousMoves,
+            currentPlayer: lastMove?.color ?? "B",
+        });
+        setHasUnsavedChanges(true);
+    }, [gameState]);
+
+    const handlePass = useCallback(() => {
+        const newMove: Move = {
+            type: "pass",
+            color: gameState.currentPlayer,
+        };
+
+        setGameState({
+            ...gameState,
+            moves: [...gameState.moves, newMove],
+            currentPlayer: gameState.currentPlayer === "B" ? "W" : "B",
+        });
+        setHasUnsavedChanges(true);
+    }, [gameState]);
+
+    const handleDownloadSgf = useCallback(() => {
+        const sgf = exportSgf({
+            boardSize: size,
+            moves: gameState.moves,
+            setupStones: gameState.setupStones,
+            handicap: gameMetadata.handicap,
+            blackPlayerName: gameMetadata.blackPlayerName,
+            whitePlayerName: gameMetadata.whitePlayerName,
+        });
+
+        const blob = new Blob([sgf], {
+            type: "application/x-go-sgf;charset=utf-8",
+        });
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = createSgfFilename(
+            gameMetadata.blackPlayerName,
+            gameMetadata.whitePlayerName
+        );
+        link.click();
+
+        URL.revokeObjectURL(url);
+    }, [gameMetadata.blackPlayerName, gameMetadata.whitePlayerName, gameMetadata.handicap, gameState.moves, gameState.setupStones, size]);
+
+    const handleShare = useCallback(async () => {
         const currentLocalGame = createCurrentLocalGameRecord();
 
         if (!currentLocalGame) {
@@ -498,7 +550,72 @@ export default function GoBoard({ id }: GoBoardProps) {
                 error instanceof Error ? error.message : "Failed to create share"
             );
         }
-    };
+    }, [canShareGame, createCurrentLocalGameRecord]);
+
+    const headerActions = useMemo(
+        () => (
+            <div className="flex items-center gap-1">
+                <button
+                    type="button"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                    disabled={gameState.moves.length === 0}
+                    onClick={handleUndo}
+                    aria-label="Undo"
+                    title="Undo"
+                >
+                    <Undo2 size={18} />
+                </button>
+                <button
+                    type="button"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                    onClick={handlePass}
+                    aria-label="Pass"
+                    title="Pass"
+                >
+                    <SkipForward size={18} />
+                </button>
+                <button
+                    type="button"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                    onClick={handleDownloadSgf}
+                    aria-label="Download SGF"
+                    title="Download SGF"
+                >
+                    <Download size={18} />
+                </button>
+                <button
+                    type="button"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                    disabled={!canShareGame}
+                    onClick={() => {
+                        void handleShare();
+                    }}
+                    aria-label="Share"
+                    title="Share"
+                >
+                    <Share2 size={18} />
+                </button>
+            </div>
+        ),
+        [
+            canShareGame,
+            gameState.moves.length,
+            handleDownloadSgf,
+            handlePass,
+            handleShare,
+            handleUndo,
+        ]
+    );
+
+    useEffect(() => {
+        setHeaderActions(headerActions);
+    }, [headerActions, setHeaderActions]);
+
+    useEffect(() => {
+        return () => {
+            setHeaderActions(null);
+        };
+    }, [setHeaderActions]);
 
     const getMagnifierGridLines = () => {
         if (!touchPreview) {
@@ -563,12 +680,12 @@ export default function GoBoard({ id }: GoBoardProps) {
         <div
             className={
                 isDarkMode
-                    ? "goban-theme-dark relative m-0 flex h-dvh touch-none flex-col overflow-hidden overscroll-none bg-neutral-900 p-0 text-white"
-                    : "goban-theme-light relative m-0 flex h-dvh touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
+                    ? "goban-theme-dark relative m-0 flex h-full touch-none flex-col overflow-hidden overscroll-none bg-neutral-900 p-0 text-white"
+                    : "goban-theme-light relative m-0 flex h-full touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
             }
         >
             {loadError && (
-                <div className="flex h-dvh items-center justify-center p-6 text-center">
+                <div className="flex h-full items-center justify-center p-6 text-center">
                     <p className="max-w-sm text-sm text-zinc-600 dark:text-zinc-400">
                         {loadError}
                     </p>
@@ -580,31 +697,12 @@ export default function GoBoard({ id }: GoBoardProps) {
             <div
                 ref={boardAreaRef}
                 className="flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
-                onPointerDownCapture={(event) => {
-                    const target = event.target as HTMLElement;
-
-                    if (target.closest("[data-action-menu]")) {
-                        return;
-                    }
-
-                    if (target.closest(".shudan-goban")) {
-                        setShowMenu(false);
-                        return;
-                    }
-
-                    setShowMenu((previous) => !previous);
-                }}
             >
                 <div
                     ref={gobanWrapperRef}
                     className="relative"
                     onPointerDown={(event) => {
-                        if ((event.target as HTMLElement).closest("[data-action-menu]")) {
-                            return;
-                        }
-
                         event.currentTarget.setPointerCapture(event.pointerId);
-                        setShowMenu(false);
                         updateTouchPreview(event.clientX, event.clientY);
                     }}
                     onPointerMove={(event) => {
@@ -622,116 +720,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                         setTouchPreview(null);
                     }}
                 >
-                    <div
-                        className="absolute right-1 top-1 z-10 flex flex-col items-end"
-                        data-action-menu
-                    >
-                        {showMenu && (
-                            <div className="flex w-48 flex-col gap-2 rounded border border-zinc-300 bg-zinc-100 p-2 shadow-xl dark:border-neutral-700 dark:bg-neutral-900">
-
-                                <button
-                                    className="flex items-center justify-center rounded bg-zinc-800 px-4 py-2 text-xl text-white dark:bg-neutral-200 dark:text-black"
-                                    onClick={() => {
-                                        setIsDarkMode(!isDarkMode);
-                                        setShowMenu(false);
-                                    }}
-                                    aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                                >
-                                    {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-                                </button>
-
-                                <button
-                                    className="rounded bg-amber-700 px-4 py-2 text-white hover:bg-amber-600 disabled:bg-zinc-300 disabled:text-zinc-500 disabled:opacity-100 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
-                                    disabled={gameState.moves.length === 0}
-                                    onClick={() => {
-                                        if (gameState.moves.length === 0) return;
-
-                                        const previousMoves = gameState.moves.slice(0, -1);
-                                        const lastMove = gameState.moves.at(-1);
-
-                                        setGameState({
-                                            ...gameState,
-                                            moves: previousMoves,
-                                            currentPlayer: lastMove?.color ?? "B",
-                                        });
-                                        setHasUnsavedChanges(true);
-                                        setShowMenu(false);
-                                    }}
-                                >
-                                    <div className="flex items-center justify-center">
-                                        <Undo2 size={18} />
-                                    </div>
-                                </button>
-
-                                <button
-                                    className="rounded bg-slate-700 px-4 py-2 text-white hover:bg-slate-600 dark:bg-slate-600 dark:hover:bg-slate-500"
-                                    onClick={() => {
-                                        const newMove: Move = {
-                                            type: "pass",
-                                            color: gameState.currentPlayer,
-                                        };
-
-                                        setGameState({
-                                            ...gameState,
-                                            moves: [...gameState.moves, newMove],
-                                            currentPlayer:
-                                                gameState.currentPlayer === "B" ? "W" : "B",
-                                        });
-                                        setHasUnsavedChanges(true);
-                                        setShowMenu(false);
-                                    }}
-                                >
-                                    Pass
-                                </button>
-
-                                <button
-                                    className="rounded bg-sky-700 px-4 py-2 text-white hover:bg-sky-600"
-                                    onClick={() => {
-                                        const sgf = exportSgf({
-                                            boardSize: size,
-                                            moves: gameState.moves,
-                                            setupStones: gameState.setupStones,
-                                            handicap: gameMetadata.handicap,
-                                            blackPlayerName: gameMetadata.blackPlayerName,
-                                            whitePlayerName: gameMetadata.whitePlayerName,
-                                        });
-
-                                        const blob = new Blob([sgf], {
-                                            type: "application/x-go-sgf;charset=utf-8",
-                                        });
-
-                                        const url = URL.createObjectURL(blob);
-                                        const link = document.createElement("a");
-
-                                        link.href = url;
-                                        link.download = createSgfFilename(gameMetadata.blackPlayerName, gameMetadata.whitePlayerName);
-                                        link.click();
-
-                                        URL.revokeObjectURL(url);
-                                        setShowMenu(false);
-                                    }}
-                                >
-                                    <div className="flex items-center justify-center">
-                                        <Download size={18} />
-                                    </div>
-                                </button>
-
-                                <button
-                                    className="rounded bg-emerald-700 px-4 py-2 text-white hover:bg-emerald-600 disabled:bg-zinc-300 disabled:text-zinc-500 disabled:opacity-100 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
-                                    disabled={!canShareGame}
-                                    onClick={() => {
-                                        setShowMenu(false);
-                                        void handleShare();
-                                    }}
-                                >
-                                    <div className="flex items-center justify-center gap-2">
-                                        <Link2 size={18} />
-                                        <span>Share</span>
-                                    </div>
-                                </button>
-                            </div>
-                        )}
-                    </div>
                     <BoardView
                         vertexSize={vertexSize}
                         signMap={signMap}

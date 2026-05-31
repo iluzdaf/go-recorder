@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType } from "react";
 import { Download } from "lucide-react";
 
 import type { Move, SetupStone, ShareRecord, Stone } from "./types";
 import { exportSgf, createSgfFilename } from "./sgf";
+import { useHeaderActions, useTheme } from "./AppShell";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -57,7 +58,8 @@ const BOARD_PADDING_PX = 16;
 
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const [vertexSize, setVertexSize] = useState(24);
-    const [isDarkMode] = useState(true);
+    const { isDarkMode } = useTheme();
+    const { setHeaderActions } = useHeaderActions();
     const boardAreaRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -109,12 +111,69 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         share.whitePlayerName
     );
 
+    const handleDownloadSgf = useCallback(() => {
+        const sgf = exportSgf({
+            boardSize: share.boardSize,
+            moves: share.gameState.moves,
+            setupStones: share.gameState.setupStones,
+            handicap: share.handicap,
+            blackPlayerName: share.blackPlayerName,
+            whitePlayerName: share.whitePlayerName,
+        });
+
+        const blob = new Blob([sgf], {
+            type: "application/x-go-sgf;charset=utf-8",
+        });
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = sgfFilename;
+        link.click();
+
+        URL.revokeObjectURL(url);
+    }, [
+        share.boardSize,
+        share.blackPlayerName,
+        share.gameState.moves,
+        share.gameState.setupStones,
+        share.handicap,
+        share.whitePlayerName,
+        sgfFilename,
+    ]);
+
+    const headerActions = useMemo(
+        () => (
+            <button
+                type="button"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                onClick={handleDownloadSgf}
+                aria-label="Download SGF"
+                title="Download SGF"
+            >
+                <Download size={18} />
+            </button>
+        ),
+        [handleDownloadSgf]
+    );
+
+    useEffect(() => {
+        setHeaderActions(headerActions);
+    }, [headerActions, setHeaderActions]);
+
+    useEffect(() => {
+        return () => {
+            setHeaderActions(null);
+        };
+    }, [setHeaderActions]);
+
     return (
         <div
             className={
                 isDarkMode
-                    ? "goban-theme-dark relative m-0 flex h-dvh touch-none flex-col overflow-hidden overscroll-none bg-neutral-900 p-0 text-white"
-                    : "goban-theme-light relative m-0 flex h-dvh touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
+                    ? "goban-theme-dark relative m-0 flex h-full touch-none flex-col overflow-hidden overscroll-none bg-neutral-900 p-0 text-white"
+                    : "goban-theme-light relative m-0 flex h-full touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
             }
         >
             <div
@@ -122,41 +181,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                 className="flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
             >
                 <div className="relative">
-                    <div className="absolute right-1 top-1 z-10 flex gap-2">
-                        <button
-                            type="button"
-                            className="rounded bg-slate-700 px-3 py-2 text-white hover:bg-slate-600"
-                            onClick={() => {
-                                const sgf = exportSgf({
-                                    boardSize: share.boardSize,
-                                    moves: share.gameState.moves,
-                                    setupStones: share.gameState.setupStones,
-                                    handicap: share.handicap,
-                                    blackPlayerName: share.blackPlayerName,
-                                    whitePlayerName: share.whitePlayerName,
-                                });
-
-                                const blob = new Blob([sgf], {
-                                    type: "application/x-go-sgf;charset=utf-8",
-                                });
-
-                                const url = URL.createObjectURL(blob);
-                                const link = document.createElement("a");
-
-                                link.href = url;
-                                link.download = sgfFilename;
-                                link.click();
-
-                                URL.revokeObjectURL(url);
-                            }}
-                        >
-                            <div className="flex items-center justify-center gap-2">
-                                <Download size={18} />
-                                <span>SGF</span>
-                            </div>
-                        </button>
-                    </div>
-
                     <BoardView
                         vertexSize={vertexSize}
                         signMap={signMap}
