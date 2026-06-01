@@ -99,15 +99,11 @@ export function getCorrectionTapAction({
 
 export function shouldStartStoneSelectionHold({
     editableMoveIndexAtVertex,
-    selectedMoveIndexes,
 }: {
     editableMoveIndexAtVertex: number | null;
     selectedMoveIndexes: number[];
 }) {
-    return (
-        editableMoveIndexAtVertex !== null &&
-        !selectedMoveIndexes.includes(editableMoveIndexAtVertex)
-    );
+    return editableMoveIndexAtVertex !== null;
 }
 
 export function didPointerLeaveHoldVertex({
@@ -211,16 +207,20 @@ export function applyRecorderCorrection({
     }
 
     const origin =
-        from ??
-        getDefaultCorrectionOrigin({
-            gameState,
-            selectedMoveIndexes,
-        });
+        selectedMoveIndexes.length === 1
+            ? getDefaultCorrectionOrigin({
+                  gameState,
+                  selectedMoveIndexes,
+              })
+            : from;
 
     if (!origin) {
         return {
             ok: false,
-            error: "No stone is selected",
+            error:
+                selectedMoveIndexes.length === 1
+                    ? "No stone is selected"
+                    : "Multiple stones need a drag origin",
         };
     }
 
