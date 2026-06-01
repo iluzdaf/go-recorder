@@ -7,6 +7,23 @@
     border: none !important;
 }
 
+.goban-theme-dark,
+.goban-theme-light,
+.goban-theme-dark *,
+.goban-theme-light * {
+    -webkit-touch-callout: none;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.goban-theme-dark .shudan-goban,
+.goban-theme-light .shudan-goban,
+.goban-theme-dark .shudan-goban *,
+.goban-theme-light .shudan-goban * {
+    -webkit-user-drag: none;
+}
+
 .shudan-goban::before,
 .shudan-goban::after,
 .shudan-content::before,

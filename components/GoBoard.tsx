@@ -738,7 +738,15 @@ export default function GoBoard({ id }: GoBoardProps) {
                     <div
                         ref={gobanWrapperRef}
                         className="relative"
+                        draggable={false}
+                        onDragStart={(event) => {
+                            event.preventDefault();
+                        }}
+                        onContextMenu={(event) => {
+                            event.preventDefault();
+                        }}
                         onPointerDown={(event) => {
+                            event.preventDefault();
                             event.currentTarget.setPointerCapture(event.pointerId);
                             const vertex = getVertexFromPointer(
                                 event.clientX,
@@ -783,6 +791,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                         }}
                         onPointerMove={(event) => {
                             if (!touchPreview) return;
+                            event.preventDefault();
                             updateTouchPreview(event.clientX, event.clientY);
 
                             const vertex = getVertexFromPointer(
