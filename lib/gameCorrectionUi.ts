@@ -13,7 +13,7 @@ export type ApplyRecorderCorrectionResult =
     | {
         ok: true;
         gameState: GameState;
-        selectedMoveIndex: null;
+        selectedMoveIndexes: [];
         status: null;
         hasUnsavedChanges: true;
     }
@@ -22,35 +22,36 @@ export type ApplyRecorderCorrectionResult =
         error: string;
     };
 
-export function getSelectedMoveVertex({
+export function getSelectedMoveVertices({
     gameState,
-    selectedMoveIndex,
+    selectedMoveIndexes,
 }: {
     gameState: GameState;
-    selectedMoveIndex: number | null;
-}): Vertex | null {
-    if (selectedMoveIndex === null) return null;
+    selectedMoveIndexes: number[];
+}): Vertex[] {
+    return selectedMoveIndexes.flatMap((selectedMoveIndex) => {
+        const selectedMove = gameState.moves[selectedMoveIndex];
 
-    const selectedMove = gameState.moves[selectedMoveIndex];
+        if (selectedMove?.type !== "play") return [];
 
-    if (selectedMove?.type !== "play") return null;
-
-    return {
-        x: selectedMove.x,
-        y: selectedMove.y,
-    };
+        return {
+            x: selectedMove.x,
+            y: selectedMove.y,
+        };
+    });
 }
 
 export function getPreviewStone({
     currentPlayer,
     gameState,
-    selectedMoveIndex,
+    selectedMoveIndexes,
 }: {
     currentPlayer: Stone;
     gameState: GameState;
-    selectedMoveIndex: number | null;
+    selectedMoveIndexes: number[];
 }) {
-    if (selectedMoveIndex === null) return currentPlayer;
+    const selectedMoveIndex = selectedMoveIndexes[0];
+    if (selectedMoveIndex === undefined) return currentPlayer;
 
     const selectedMove = gameState.moves[selectedMoveIndex];
 
@@ -79,14 +80,17 @@ export function getEditableMoveIndexAtVertex({
 
 export function getCorrectionTapAction({
     editableMoveIndexAtVertex,
-    selectedMoveIndex,
+    selectedMoveIndexes,
 }: {
     editableMoveIndexAtVertex: number | null;
-    selectedMoveIndex: number | null;
+    selectedMoveIndexes: number[];
 }): CorrectionTapAction {
-    if (selectedMoveIndex === null) return "play";
+    if (selectedMoveIndexes.length === 0) return "play";
 
-    if (editableMoveIndexAtVertex === selectedMoveIndex) {
+    if (
+        editableMoveIndexAtVertex !== null &&
+        selectedMoveIndexes.includes(editableMoveIndexAtVertex)
+    ) {
         return "deselect";
     }
 
@@ -95,12 +99,15 @@ export function getCorrectionTapAction({
 
 export function shouldStartStoneSelectionHold({
     editableMoveIndexAtVertex,
-    selectedMoveIndex,
+    selectedMoveIndexes,
 }: {
     editableMoveIndexAtVertex: number | null;
-    selectedMoveIndex: number | null;
+    selectedMoveIndexes: number[];
 }) {
-    return selectedMoveIndex === null && editableMoveIndexAtVertex !== null;
+    return (
+        editableMoveIndexAtVertex !== null &&
+        !selectedMoveIndexes.includes(editableMoveIndexAtVertex)
+    );
 }
 
 export function didPointerLeaveHoldVertex({
@@ -130,18 +137,56 @@ export function shouldApplyHoldDragCorrection({
     );
 }
 
+export function createMoveEdits({
+    gameState,
+    selectedMoveIndexes,
+    vertex,
+}: {
+    gameState: GameState;
+    selectedMoveIndexes: number[];
+    vertex: Vertex;
+}) {
+    const anchorMoveIndex = selectedMoveIndexes[0];
+    const anchorMove =
+        anchorMoveIndex === undefined ? null : gameState.moves[anchorMoveIndex];
+
+    if (anchorMove?.type !== "play") return [];
+
+    const dx = vertex.x - anchorMove.x;
+    const dy = vertex.y - anchorMove.y;
+
+    return selectedMoveIndexes.map((moveIndex) => {
+        const move = gameState.moves[moveIndex];
+
+        if (move?.type !== "play") {
+            return {
+                moveIndex,
+                to: vertex,
+            };
+        }
+
+        return {
+            moveIndex,
+            to: {
+                x: move.x + dx,
+                y: move.y + dy,
+            },
+        };
+    });
+}
+
 export function applyRecorderCorrection({
     boardSize,
     gameState,
-    selectedMoveIndex,
+    selectedMoveIndexes,
     vertex,
 }: {
     boardSize: BoardSize;
     gameState: GameState;
-    selectedMoveIndex: number | null;
+    selectedMoveIndexes: number[];
     vertex: Vertex;
 }): ApplyRecorderCorrectionResult {
-    if (selectedMoveIndex === null) {
+    if (selectedMoveIndexes.length === 0) {
         return {
             ok: false,
             error: "No stone is selected",
@@ -151,12 +196,11 @@ export function applyRecorderCorrection({
     const result = validateMoveEdits({
         boardSize,
         originalGameState: gameState,
-        edits: [
-            {
-                moveIndex: selectedMoveIndex,
-                to: vertex,
-            },
-        ],
+        edits: createMoveEdits({
+            gameState,
+            selectedMoveIndexes,
+            vertex,
+        }),
     });
 
     if (!result.ok) return result;
@@ -164,7 +208,7 @@ export function applyRecorderCorrection({
     return {
         ok: true,
         gameState: result.gameState,
-        selectedMoveIndex: null,
+        selectedMoveIndexes: [],
         status: null,
         hasUnsavedChanges: true,
     };
