@@ -7,7 +7,7 @@ import {
     getCorrectionTapAction,
     getEditableMoveIndexAtVertex,
     getPreviewStone,
-    getSelectedMoveVertex,
+    getSelectedMoveVertices,
     shouldApplyHoldDragCorrection,
     shouldStartStoneSelectionHold,
 } from "../lib/gameCorrectionUi";
@@ -23,34 +23,34 @@ const gameState: GameState = {
 };
 
 describe("game correction UI helpers", () => {
-    it("returns the selected play move vertex", () => {
+    it("returns selected play move vertices", () => {
         expect(
-            getSelectedMoveVertex({
+            getSelectedMoveVertices({
                 gameState,
-                selectedMoveIndex: 2,
+                selectedMoveIndexes: [2],
             })
-        ).toEqual({ x: 4, y: 4 });
+        ).toEqual([{ x: 4, y: 4 }]);
     });
 
-    it("does not return a selected vertex for pass, missing, or unselected moves", () => {
+    it("does not return selected vertices for pass, missing, or unselected moves", () => {
         expect(
-            getSelectedMoveVertex({
+            getSelectedMoveVertices({
                 gameState,
-                selectedMoveIndex: 1,
+                selectedMoveIndexes: [1],
             })
-        ).toBeNull();
+        ).toEqual([]);
         expect(
-            getSelectedMoveVertex({
+            getSelectedMoveVertices({
                 gameState,
-                selectedMoveIndex: 99,
+                selectedMoveIndexes: [99],
             })
-        ).toBeNull();
+        ).toEqual([]);
         expect(
-            getSelectedMoveVertex({
+            getSelectedMoveVertices({
                 gameState,
-                selectedMoveIndex: null,
+                selectedMoveIndexes: [],
             })
-        ).toBeNull();
+        ).toEqual([]);
     });
 
     it("uses current player for placement previews and selected move color for correction previews", () => {
@@ -58,21 +58,21 @@ describe("game correction UI helpers", () => {
             getPreviewStone({
                 currentPlayer: "W",
                 gameState,
-                selectedMoveIndex: null,
+                selectedMoveIndexes: [],
             })
         ).toBe("W");
         expect(
             getPreviewStone({
                 currentPlayer: "W",
                 gameState,
-                selectedMoveIndex: 0,
+                selectedMoveIndexes: [0],
             })
         ).toBe("B");
         expect(
             getPreviewStone({
                 currentPlayer: "B",
                 gameState,
-                selectedMoveIndex: 1,
+                selectedMoveIndexes: [1],
             })
         ).toBe("B");
     });
@@ -135,54 +135,54 @@ describe("game correction UI helpers", () => {
         expect(
             getCorrectionTapAction({
                 editableMoveIndexAtVertex: null,
-                selectedMoveIndex: null,
+                selectedMoveIndexes: [],
             })
         ).toBe("play");
         expect(
             getCorrectionTapAction({
                 editableMoveIndexAtVertex: 2,
-                selectedMoveIndex: 2,
+                selectedMoveIndexes: [2],
             })
         ).toBe("deselect");
         expect(
             getCorrectionTapAction({
                 editableMoveIndexAtVertex: null,
-                selectedMoveIndex: 2,
+                selectedMoveIndexes: [2],
             })
         ).toBe("correct");
         expect(
             getCorrectionTapAction({
                 editableMoveIndexAtVertex: 0,
-                selectedMoveIndex: 2,
+                selectedMoveIndexes: [2],
             })
         ).toBe("correct");
     });
 
-    it("starts a stone selection hold only when no stone is selected", () => {
+    it("starts a stone selection hold only for unselected stones", () => {
         expect(
             shouldStartStoneSelectionHold({
                 editableMoveIndexAtVertex: 2,
-                selectedMoveIndex: null,
+                selectedMoveIndexes: [],
             })
         ).toBe(true);
         expect(
             shouldStartStoneSelectionHold({
                 editableMoveIndexAtVertex: null,
-                selectedMoveIndex: null,
+                selectedMoveIndexes: [],
             })
         ).toBe(false);
         expect(
             shouldStartStoneSelectionHold({
                 editableMoveIndexAtVertex: 2,
-                selectedMoveIndex: 2,
+                selectedMoveIndexes: [2],
             })
         ).toBe(false);
         expect(
             shouldStartStoneSelectionHold({
                 editableMoveIndexAtVertex: 0,
-                selectedMoveIndex: 2,
+                selectedMoveIndexes: [2],
             })
-        ).toBe(false);
+        ).toBe(true);
     });
 
     it("detects when a pointer leaves the held vertex", () => {
@@ -243,7 +243,7 @@ describe("game correction UI helpers", () => {
         const result = applyRecorderCorrection({
             boardSize: 19,
             gameState,
-            selectedMoveIndex: 0,
+            selectedMoveIndexes: [0],
             vertex: { x: 5, y: 5 },
         });
 
@@ -257,7 +257,7 @@ describe("game correction UI helpers", () => {
                     gameState.moves[2],
                 ],
             },
-            selectedMoveIndex: null,
+            selectedMoveIndexes: [],
             status: null,
             hasUnsavedChanges: true,
         });
@@ -269,12 +269,36 @@ describe("game correction UI helpers", () => {
         });
     });
 
+    it("applies multiple selected recorder corrections as a translated group", () => {
+        const result = applyRecorderCorrection({
+            boardSize: 19,
+            gameState,
+            selectedMoveIndexes: [0, 2],
+            vertex: { x: 5, y: 5 },
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            gameState: {
+                ...gameState,
+                moves: [
+                    { type: "play", x: 5, y: 5, color: "B" },
+                    gameState.moves[1],
+                    { type: "play", x: 6, y: 6, color: "B" },
+                ],
+            },
+            selectedMoveIndexes: [],
+            status: null,
+            hasUnsavedChanges: true,
+        });
+    });
+
     it("rejects a recorder correction that would make replay illegal", () => {
         expect(
             applyRecorderCorrection({
                 boardSize: 19,
                 gameState,
-                selectedMoveIndex: 0,
+                selectedMoveIndexes: [0],
                 vertex: { x: 4, y: 4 },
             })
         ).toEqual({
@@ -288,7 +312,7 @@ describe("game correction UI helpers", () => {
             applyRecorderCorrection({
                 boardSize: 19,
                 gameState,
-                selectedMoveIndex: null,
+                selectedMoveIndexes: [],
                 vertex: { x: 5, y: 5 },
             })
         ).toEqual({

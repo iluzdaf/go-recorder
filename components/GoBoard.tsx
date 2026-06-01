@@ -30,7 +30,7 @@ import {
     getCorrectionTapAction,
     getEditableMoveIndexAtVertex,
     getPreviewStone,
-    getSelectedMoveVertex,
+    getSelectedMoveVertices,
     shouldApplyHoldDragCorrection,
     shouldStartStoneSelectionHold,
     type Vertex,
@@ -134,7 +134,8 @@ export default function GoBoard({ id }: GoBoardProps) {
     });
     const [vertexSize, setVertexSize] = useState(24);
     const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
-    const [selectedMoveIndex, setSelectedMoveIndex] = useState<number | null>(null);
+    const [selectedMoveIndexes, setSelectedMoveIndexes] = useState<number[]>([]);
+    const selectedMoveIndexesRef = useRef<number[]>([]);
     const [updatedAt, setUpdatedAt] = useState<string | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -164,6 +165,10 @@ export default function GoBoard({ id }: GoBoardProps) {
             updatedAt,
         };
     }, [size, gameState, updatedAt]);
+
+    useEffect(() => {
+        selectedMoveIndexesRef.current = selectedMoveIndexes;
+    }, [selectedMoveIndexes]);
 
     useEffect(() => {
         const loadGame = () => {
@@ -330,14 +335,14 @@ export default function GoBoard({ id }: GoBoardProps) {
         markerMap[lastMove.y][lastMove.x] = { type: "circle" };
     }
 
-    const selectedVertex = getSelectedMoveVertex({
+    const selectedVertices = getSelectedMoveVertices({
         gameState,
-        selectedMoveIndex,
+        selectedMoveIndexes,
     });
     const previewStone = getPreviewStone({
         currentPlayer: gameState.currentPlayer,
         gameState,
-        selectedMoveIndex,
+        selectedMoveIndexes,
     });
 
     const getGridMetrics = () => {
@@ -411,11 +416,20 @@ export default function GoBoard({ id }: GoBoardProps) {
         setHasUnsavedChanges(true);
     };
 
-    const correctMove = (moveIndex: number | null, vertex: Vertex) => {
+    const getSelectionWithHeldMove = (moveIndex: number | null) => {
+        if (moveIndex === null) return selectedMoveIndexesRef.current;
+        if (selectedMoveIndexesRef.current.includes(moveIndex)) {
+            return selectedMoveIndexesRef.current;
+        }
+
+        return [...selectedMoveIndexesRef.current, moveIndex];
+    };
+
+    const correctMoves = (moveIndexes: number[], vertex: Vertex) => {
         const result = applyRecorderCorrection({
             boardSize: size,
             gameState,
-            selectedMoveIndex: moveIndex,
+            selectedMoveIndexes: moveIndexes,
             vertex,
         });
 
@@ -425,14 +439,14 @@ export default function GoBoard({ id }: GoBoardProps) {
         }
 
         setGameState(result.gameState);
-        setSelectedMoveIndex(result.selectedMoveIndex);
+        setSelectedMoveIndexes(result.selectedMoveIndexes);
         setShareStatus(result.status);
         setHasUnsavedChanges(result.hasUnsavedChanges);
         return true;
     };
 
-    const correctSelectedMove = (vertex: Vertex) => {
-        return correctMove(selectedMoveIndex, vertex);
+    const correctSelectedMoves = (vertex: Vertex) => {
+        return correctMoves(selectedMoveIndexes, vertex);
     };
 
     const updateTouchPreview = (clientX: number, clientY: number) => {
@@ -503,7 +517,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             moves: previousMoves,
             currentPlayer: lastMove?.color ?? "B",
         });
-        setSelectedMoveIndex(null);
+        setSelectedMoveIndexes([]);
         setHasUnsavedChanges(true);
     }, [gameState]);
 
@@ -518,7 +532,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             moves: [...gameState.moves, newMove],
             currentPlayer: gameState.currentPlayer === "B" ? "W" : "B",
         });
-        setSelectedMoveIndex(null);
+        setSelectedMoveIndexes([]);
         setHasUnsavedChanges(true);
     }, [gameState]);
 
@@ -776,14 +790,23 @@ export default function GoBoard({ id }: GoBoardProps) {
                             if (
                                 shouldStartStoneSelectionHold({
                                     editableMoveIndexAtVertex: editableMoveIndex,
-                                    selectedMoveIndex,
-                                })
+                                    selectedMoveIndexes,
+                                }) &&
+                                editableMoveIndex !== null
                             ) {
+                                const heldMoveIndex = editableMoveIndex;
+
                                 stoneSelectOriginRef.current = vertex;
-                                stoneSelectMoveIndexRef.current = editableMoveIndex;
+                                stoneSelectMoveIndexRef.current = heldMoveIndex;
                                 stoneSelectTimeoutRef.current = window.setTimeout(() => {
                                     didSelectStoneByHoldRef.current = true;
-                                    setSelectedMoveIndex(editableMoveIndex);
+                                    setSelectedMoveIndexes((current) => {
+                                        const nextSelection = current.includes(heldMoveIndex)
+                                            ? current
+                                            : [...current, heldMoveIndex];
+                                        selectedMoveIndexesRef.current = nextSelection;
+                                        return nextSelection;
+                                    });
                                     setShareStatus(null);
                                     stoneSelectTimeoutRef.current = null;
                                 }, STONE_SELECT_HOLD_MS);
@@ -825,7 +848,10 @@ export default function GoBoard({ id }: GoBoardProps) {
                                         vertex,
                                     })
                                 ) {
-                                    correctMove(holdMoveIndex, vertex);
+                                    correctMoves(
+                                        getSelectionWithHeldMove(holdMoveIndex),
+                                        vertex
+                                    );
                                 }
                                 stoneSelectOriginRef.current = null;
                                 stoneSelectMoveIndexRef.current = null;
@@ -846,18 +872,20 @@ export default function GoBoard({ id }: GoBoardProps) {
                             });
                             const correctionTapAction = getCorrectionTapAction({
                                 editableMoveIndexAtVertex: editableMoveIndex,
-                                selectedMoveIndex,
+                                selectedMoveIndexes,
                             });
 
                             if (correctionTapAction === "deselect") {
-                                setSelectedMoveIndex(null);
+                                setSelectedMoveIndexes((current) =>
+                                    current.filter((moveIndex) => moveIndex !== editableMoveIndex)
+                                );
                                 setTouchPreview(null);
                                 event.currentTarget.releasePointerCapture(event.pointerId);
                                 return;
                             }
 
                             if (correctionTapAction === "correct") {
-                                correctSelectedMove(vertex);
+                                correctSelectedMoves(vertex);
                                 setTouchPreview(null);
                                 event.currentTarget.releasePointerCapture(event.pointerId);
                                 return;
@@ -879,8 +907,9 @@ export default function GoBoard({ id }: GoBoardProps) {
                             markerMap={markerMap}
                             showCoordinates
                         />
-                        {selectedVertex && (
+                        {selectedVertices.map((selectedVertex) => (
                             <div
+                                key={`${selectedVertex.x},${selectedVertex.y}`}
                                 className="pointer-events-none absolute z-30 rounded-full border-2 border-sky-400 shadow-[0_0_0_3px_rgb(14_165_233_/_0.25)]"
                                 style={{
                                     left:
@@ -896,7 +925,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     transform: "translate(-50%, -50%)",
                                 }}
                             />
-                        )}
+                        ))}
                         {touchPreview && (
                             <svg
                                 className="pointer-events-none absolute z-20"
