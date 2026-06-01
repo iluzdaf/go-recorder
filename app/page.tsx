@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { BoardSize } from "@/components/types";
 import { createLocalGame } from "@/lib/localGames";
 import { createLocalGameInputFromForm } from "@/lib/localGameSetup";
+import { t } from "@/lib/i18n";
 
 export default function Home() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function Home() {
         className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
       >
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Board Size</span>
+          <span className="text-sm font-medium">{t("boardSize")}</span>
           <select
             value={boardSize}
             onChange={(event) => {
@@ -52,33 +53,33 @@ export default function Home() {
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Black Player</span>
+          <span className="text-sm font-medium">{t("blackPlayer")}</span>
           <input
             type="text"
             value={blackPlayerName}
             onChange={(event) => {
               setBlackPlayerName(event.target.value);
             }}
-            placeholder="Black"
+            placeholder={t("blackPlayerPlaceholder")}
             className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
           />
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">White Player</span>
+          <span className="text-sm font-medium">{t("whitePlayer")}</span>
           <input
             type="text"
             value={whitePlayerName}
             onChange={(event) => {
               setWhitePlayerName(event.target.value);
             }}
-            placeholder="White"
+            placeholder={t("whitePlayerPlaceholder")}
             className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
           />
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Handicap</span>
+          <span className="text-sm font-medium">{t("handicap")}</span>
           <select
             value={handicap}
             onChange={(event) => {
@@ -99,7 +100,7 @@ export default function Home() {
           disabled={isCreatingGame}
           className="rounded bg-sky-700 px-4 py-2 font-medium text-white hover:bg-sky-600 disabled:opacity-50"
         >
-          {isCreatingGame ? "Recording..." : "Record Game"}
+          {isCreatingGame ? t("recording") : t("recordGame")}
         </button>
       </form>
     </main>

@@ -5,13 +5,14 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { createSlug } from "../../../lib/gameLogic";
 import { validateCreateShareInput } from "../../../lib/shareValidation";
+import { t } from "../../../lib/i18n";
 
 export async function POST(request: Request) {
     const body: unknown = await request.json().catch(() => null);
 
     if (!validateCreateShareInput(body)) {
         return NextResponse.json(
-            { error: "Invalid share input" },
+            { error: t("invalidShareInput") },
             { status: 400 }
         );
     }

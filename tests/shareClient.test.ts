@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { LocalGameRecord } from "../components/types";
+import { t } from "../lib/i18n";
 
 const mockFetch = vi.fn();
 
@@ -114,6 +115,6 @@ describe("createShareFromLocalGame", () => {
 
         await expect(
             createShareFromLocalGame({ localGame })
-        ).rejects.toThrow("Failed to create share");
+        ).rejects.toThrow(t("failedToCreateShare"));
     });
 });

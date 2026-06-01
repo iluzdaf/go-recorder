@@ -11,6 +11,7 @@ import {
     useSyncExternalStore,
 } from "react";
 import { CircleDot, Home, Moon, Share2, Sun } from "lucide-react";
+import { t } from "@/lib/i18n";
 
 type ThemeContextValue = {
     isDarkMode: boolean;
@@ -143,8 +144,8 @@ export default function AppShell({
                         <Link
                             href="/"
                             className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
-                            aria-label="Home"
-                            title="Home"
+                            aria-label={t("home")}
+                            title={t("home")}
                         >
                             <Home size={18} />
                         </Link>
@@ -152,8 +153,8 @@ export default function AppShell({
                         {isRecordingGame ? (
                             <div
                                 className="inline-flex h-9 w-9 items-center justify-center text-rose-600 dark:text-rose-400"
-                                aria-label="Game recording in progress"
-                                title="Game recording in progress"
+                                aria-label={t("gameRecordingInProgress")}
+                                title={t("gameRecordingInProgress")}
                             >
                                 <CircleDot size={18} />
                             </div>
@@ -162,8 +163,8 @@ export default function AppShell({
                         {isShareView ? (
                             <div
                                 className="inline-flex h-9 w-9 items-center justify-center text-sky-600 dark:text-sky-400"
-                                aria-label="Share view"
-                                title="Share view"
+                                aria-label={t("shareView")}
+                                title={t("shareView")}
                             >
                                 <Share2 size={18} />
                             </div>
@@ -177,8 +178,8 @@ export default function AppShell({
                     <button
                         type="button"
                         className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
-                        aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                        title={isDarkMode ? "Light mode" : "Dark mode"}
+                        aria-label={isDarkMode ? t("switchToLightMode") : t("switchToDarkMode")}
+                        title={isDarkMode ? t("lightMode") : t("darkMode")}
                         onClick={() => {
                             setThemeInStorage(!isDarkMode);
                         }}

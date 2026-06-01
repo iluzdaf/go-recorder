@@ -22,6 +22,7 @@ import {
 import { getLocalGame, saveLocalGame } from "../lib/localGames";
 import { createLoadedLocalGame } from "../lib/localGameView";
 import { createShareFromLocalGame } from "../lib/shareClient";
+import { formatShareCreated, t } from "../lib/i18n";
 import { useHeaderActions, useTheme } from "./AppShell";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
@@ -184,7 +185,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             const gameRecord = getLocalGame(id);
 
             if (!gameRecord) {
-                setLoadError("Game not found on this device.");
+                setLoadError(t("gameNotFound"));
                 return;
             }
 
@@ -521,16 +522,16 @@ export default function GoBoard({ id }: GoBoardProps) {
         const currentLocalGame = createCurrentLocalGameRecord();
 
         if (!currentLocalGame) {
-            setShareStatus("Game is not loaded.");
+            setShareStatus(t("gameNotLoaded"));
             return;
         }
 
         if (!canShareGame) {
-            setShareStatus("Add at least one move before sharing.");
+            setShareStatus(t("addMoveBeforeSharing"));
             return;
         }
 
-        setShareStatus("Creating share...");
+        setShareStatus(t("creatingShare"));
 
         try {
             const { slug } = await createShareFromLocalGame({
@@ -543,11 +544,11 @@ export default function GoBoard({ id }: GoBoardProps) {
             });
 
             localGameRecordRef.current = updatedLocalGame;
-            setShareStatus(`Share created: /shares/${slug}`);
+            setShareStatus(formatShareCreated(`/shares/${slug}`));
             window.location.href = `/shares/${slug}`;
         } catch (error) {
             setShareStatus(
-                error instanceof Error ? error.message : "Failed to create share"
+                error instanceof Error ? error.message : t("failedToCreateShare")
             );
         }
     }, [canShareGame, createCurrentLocalGameRecord]);
@@ -560,8 +561,8 @@ export default function GoBoard({ id }: GoBoardProps) {
                     className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
                     disabled={gameState.moves.length === 0}
                     onClick={handleUndo}
-                    aria-label="Undo"
-                    title="Undo"
+                    aria-label={t("undo")}
+                    title={t("undo")}
                 >
                     <Undo2 size={18} />
                 </button>
@@ -569,8 +570,8 @@ export default function GoBoard({ id }: GoBoardProps) {
                     type="button"
                     className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
                     onClick={handlePass}
-                    aria-label="Pass"
-                    title="Pass"
+                    aria-label={t("pass")}
+                    title={t("pass")}
                 >
                     <SkipForward size={18} />
                 </button>
@@ -578,8 +579,8 @@ export default function GoBoard({ id }: GoBoardProps) {
                     type="button"
                     className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
                     onClick={handleDownloadSgf}
-                    aria-label="Download SGF"
-                    title="Download SGF"
+                    aria-label={t("downloadSgf")}
+                    title={t("downloadSgf")}
                 >
                     <Download size={18} />
                 </button>
@@ -590,8 +591,8 @@ export default function GoBoard({ id }: GoBoardProps) {
                     onClick={() => {
                         void handleShare();
                     }}
-                    aria-label="Share"
-                    title="Share"
+                    aria-label={t("share")}
+                    title={t("share")}
                 >
                     <Share2 size={18} />
                 </button>

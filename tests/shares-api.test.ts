@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { t } from "../lib/i18n";
+
 const mockSupabaseAdmin = vi.hoisted(() => ({
     from: vi.fn(),
 }));
@@ -95,7 +97,7 @@ describe("POST /api/shares", () => {
 
         expect(response.status).toBe(400);
         expect(await response.json()).toEqual({
-            error: "Invalid share input",
+            error: t("invalidShareInput"),
         });
         expect(mockSupabaseAdmin.from).not.toHaveBeenCalled();
     });

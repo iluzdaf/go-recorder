@@ -7,6 +7,7 @@ import { Download } from "lucide-react";
 
 import type { Move, SetupStone, ShareRecord, Stone } from "./types";
 import { exportSgf, createSgfFilename } from "./sgf";
+import { t } from "../lib/i18n";
 import { useHeaderActions, useTheme } from "./AppShell";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
@@ -149,8 +150,8 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                 type="button"
                 className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
                 onClick={handleDownloadSgf}
-                aria-label="Download SGF"
-                title="Download SGF"
+                aria-label={t("downloadSgf")}
+                title={t("downloadSgf")}
             >
                 <Download size={18} />
             </button>

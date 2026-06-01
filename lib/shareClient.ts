@@ -4,6 +4,7 @@ import type {
     LocalGameRecord,
     ShareSourceKind,
 } from "../components/types";
+import { t } from "./i18n";
 
 type CreateShareFromLocalGameInput = {
     localGame: LocalGameRecord;
@@ -41,7 +42,7 @@ export async function createShareFromLocalGame({
             | { error?: string }
             | null;
 
-        throw new Error(body?.error ?? "Failed to create share");
+        throw new Error(body?.error ?? t("failedToCreateShare"));
     }
 
     return (await response.json()) as CreateShareResponse;

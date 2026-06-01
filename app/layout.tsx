@@ -5,6 +5,7 @@ import "@sabaki/shudan/css/goban.css";
 import "./goban-overrides.css";
 import { Analytics } from "@vercel/analytics/react";
 import AppShell from "@/components/AppShell";
+import { defaultLocale, t } from "@/lib/i18n";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Go Recorder",
-  description: "A minimal Go board recorder and SGF tool",
+  title: t("appTitle"),
+  description: t("appDescription"),
 };
 
 export default function RootLayout({
@@ -28,7 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang={defaultLocale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="h-full flex flex-col overflow-hidden">
