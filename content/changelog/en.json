@@ -1,0 +1,13 @@
+[
+    {
+        "version": "0.1.0",
+        "date": "2026-06-01",
+        "title": "Lose your first 50 games as quickly as possible.",
+        "items": [
+            {
+                "id": "record-and-share",
+                "text": "Record games and share them."
+            }
+        ]
+    }
+]

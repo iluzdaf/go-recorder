@@ -82,8 +82,10 @@ export function useHeaderActions() {
 
 export default function AppShell({
     children,
+    appVersion,
 }: Readonly<{
     children: React.ReactNode;
+    appVersion: string;
 }>) {
     const pathname = usePathname();
     const [headerActions, setHeaderActions] = useState<React.ReactNode>(null);
@@ -175,17 +177,28 @@ export default function AppShell({
                         {headerActions}
                     </div>
 
-                    <button
-                        type="button"
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
-                        aria-label={isDarkMode ? t("switchToLightMode") : t("switchToDarkMode")}
-                        title={isDarkMode ? t("lightMode") : t("darkMode")}
-                        onClick={() => {
-                            setThemeInStorage(!isDarkMode);
-                        }}
-                    >
-                        {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                        <Link
+                            href="/changelog"
+                            className="inline-flex h-11 items-center justify-center rounded-md px-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+                            aria-label={`${t("version")} ${appVersion}`}
+                            title={t("changelog")}
+                        >
+                            v{appVersion}
+                        </Link>
+
+                        <button
+                            type="button"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
+                            aria-label={isDarkMode ? t("switchToLightMode") : t("switchToDarkMode")}
+                            title={isDarkMode ? t("lightMode") : t("darkMode")}
+                            onClick={() => {
+                                setThemeInStorage(!isDarkMode);
+                            }}
+                        >
+                            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                        </button>
+                    </div>
                 </header>
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                     {children}
