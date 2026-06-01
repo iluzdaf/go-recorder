@@ -10,7 +10,6 @@ import type {
     GameState,
     LocalGameRecord,
     Move,
-    SetupStone,
     Stone,
 } from "./types";
 import { exportSgf, createSgfFilename } from "./sgf";
@@ -22,12 +21,20 @@ import {
 import { getLocalGame, saveLocalGame } from "../lib/localGames";
 import { createLoadedLocalGame } from "../lib/localGameView";
 import { createShareFromLocalGame } from "../lib/shareClient";
-import { formatShareCreated, t } from "../lib/i18n";
+import { formatMoveEditError, formatShareCreated, t } from "../lib/i18n";
 import { useHeaderActions, useTheme } from "./AppShell";
-
-// @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const Board = require("@sabaki/go-board");
+import { replayGame } from "../lib/gameReplay";
+import {
+    applyRecorderCorrection,
+    didPointerLeaveHoldVertex,
+    getCorrectionTapAction,
+    getEditableMoveIndexAtVertex,
+    getPreviewStone,
+    getSelectedMoveVertex,
+    shouldApplyHoldDragCorrection,
+    shouldStartStoneSelectionHold,
+    type Vertex,
+} from "../lib/gameCorrectionUi";
 
 type ShudanGobanProps = {
     vertexSize: number;
@@ -94,35 +101,8 @@ function toDisplayCoord(x: number, y: number, boardSize: BoardSize) {
     return `${column}${row}`;
 }
 
-function buildBoardFromGameState(
-    size: number,
-    setupStones: SetupStone[],
-    moves: Move[]
-) {
-    let board = Board.fromDimensions(size);
-
-    for (const setupStone of setupStones) {
-        board = board.makeMove(stoneToSign("B"), [setupStone.x, setupStone.y], {
-            preventOverwrite: true,
-            preventSuicide: true,
-            preventKo: false,
-        });
-    }
-
-    for (const move of moves) {
-        if (move.type === "pass") continue;
-
-        board = board.makeMove(stoneToSign(move.color), [move.x, move.y], {
-            preventOverwrite: true,
-            preventSuicide: true,
-            preventKo: true,
-        });
-    }
-
-    return board;
-}
-
 const BOARD_PADDING_PX = 16;
+const STONE_SELECT_HOLD_MS = 450;
 
 export default function GoBoard({ id }: GoBoardProps) {
     const [size, setSize] = useState<BoardSize>(19);
@@ -133,6 +113,10 @@ export default function GoBoard({ id }: GoBoardProps) {
     const hasLoadedGameRef = useRef(false);
     const isSavingRef = useRef(false);
     const needsSaveAfterCurrentSaveRef = useRef(false);
+    const stoneSelectTimeoutRef = useRef<number | null>(null);
+    const stoneSelectOriginRef = useRef<Vertex | null>(null);
+    const stoneSelectMoveIndexRef = useRef<number | null>(null);
+    const didSelectStoneByHoldRef = useRef(false);
     const lastSavedSnapshotRef = useRef("");
     const localGameRecordRef = useRef<LocalGameRecord | null>(null);
     const latestSaveStateRef = useRef<{
@@ -150,6 +134,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     });
     const [vertexSize, setVertexSize] = useState(24);
     const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
+    const [selectedMoveIndex, setSelectedMoveIndex] = useState<number | null>(null);
     const [updatedAt, setUpdatedAt] = useState<string | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -325,11 +310,12 @@ export default function GoBoard({ id }: GoBoardProps) {
         return () => resizeObserver.disconnect();
     }, [size]);
 
-    const board = buildBoardFromGameState(
-        size,
-        gameState.setupStones,
-        gameState.moves
-    );
+    const replay = replayGame({
+        boardSize: size,
+        setupStones: gameState.setupStones,
+        moves: gameState.moves,
+    });
+    const board = replay.board;
     const signMap = board.signMap;
 
     type Marker = null | { type: "circle" };
@@ -343,6 +329,16 @@ export default function GoBoard({ id }: GoBoardProps) {
     if (lastMove?.type === "play") {
         markerMap[lastMove.y][lastMove.x] = { type: "circle" };
     }
+
+    const selectedVertex = getSelectedMoveVertex({
+        gameState,
+        selectedMoveIndex,
+    });
+    const previewStone = getPreviewStone({
+        currentPlayer: gameState.currentPlayer,
+        gameState,
+        selectedMoveIndex,
+    });
 
     const getGridMetrics = () => {
         const gobanWrapper = gobanWrapperRef.current;
@@ -380,6 +376,15 @@ export default function GoBoard({ id }: GoBoardProps) {
         return { x, y };
     };
 
+    const clearStoneSelectTimeout = () => {
+        if (stoneSelectTimeoutRef.current !== null) {
+            window.clearTimeout(stoneSelectTimeoutRef.current);
+        }
+        stoneSelectTimeoutRef.current = null;
+        stoneSelectOriginRef.current = null;
+        stoneSelectMoveIndexRef.current = null;
+    };
+
     const playMove = (x: number, y: number) => {
         try {
             board.makeMove(stoneToSign(gameState.currentPlayer), [x, y], {
@@ -404,6 +409,30 @@ export default function GoBoard({ id }: GoBoardProps) {
             currentPlayer: gameState.currentPlayer === "B" ? "W" : "B",
         });
         setHasUnsavedChanges(true);
+    };
+
+    const correctMove = (moveIndex: number | null, vertex: Vertex) => {
+        const result = applyRecorderCorrection({
+            boardSize: size,
+            gameState,
+            selectedMoveIndex: moveIndex,
+            vertex,
+        });
+
+        if (!result.ok) {
+            setShareStatus(formatMoveEditError(result.error));
+            return true;
+        }
+
+        setGameState(result.gameState);
+        setSelectedMoveIndex(result.selectedMoveIndex);
+        setShareStatus(result.status);
+        setHasUnsavedChanges(result.hasUnsavedChanges);
+        return true;
+    };
+
+    const correctSelectedMove = (vertex: Vertex) => {
+        return correctMove(selectedMoveIndex, vertex);
     };
 
     const updateTouchPreview = (clientX: number, clientY: number) => {
@@ -474,6 +503,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             moves: previousMoves,
             currentPlayer: lastMove?.color ?? "B",
         });
+        setSelectedMoveIndex(null);
         setHasUnsavedChanges(true);
     }, [gameState]);
 
@@ -488,6 +518,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             moves: [...gameState.moves, newMove],
             currentPlayer: gameState.currentPlayer === "B" ? "W" : "B",
         });
+        setSelectedMoveIndex(null);
         setHasUnsavedChanges(true);
     }, [gameState]);
 
@@ -618,6 +649,12 @@ export default function GoBoard({ id }: GoBoardProps) {
         };
     }, [setHeaderActions]);
 
+    useEffect(() => {
+        return () => {
+            clearStoneSelectTimeout();
+        };
+    }, []);
+
     const getMagnifierGridLines = () => {
         if (!touchPreview) {
             return { horizontalLines: [], verticalLines: [] };
@@ -693,93 +730,218 @@ export default function GoBoard({ id }: GoBoardProps) {
                 </div>
             )}
 
-
             {!loadError && (
-            <div
-                ref={boardAreaRef}
-                className="flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
-            >
                 <div
-                    ref={gobanWrapperRef}
-                    className="relative"
-                    onPointerDown={(event) => {
-                        event.currentTarget.setPointerCapture(event.pointerId);
-                        updateTouchPreview(event.clientX, event.clientY);
-                    }}
-                    onPointerMove={(event) => {
-                        if (!touchPreview) return;
-                        updateTouchPreview(event.clientX, event.clientY);
-                    }}
-                    onPointerUp={(event) => {
-                        if (!touchPreview) return;
-
-                        playMove(touchPreview.x, touchPreview.y);
-                        setTouchPreview(null);
-                        event.currentTarget.releasePointerCapture(event.pointerId);
-                    }}
-                    onPointerCancel={() => {
-                        setTouchPreview(null);
-                    }}
+                    ref={boardAreaRef}
+                    className="flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
                 >
-                    <BoardView
-                        vertexSize={vertexSize}
-                        signMap={signMap}
-                        markerMap={markerMap}
-                        showCoordinates
-                    />
-                    {touchPreview && (
-                        <svg
-                            className="pointer-events-none absolute z-20"
-                            style={{
-                                left: gridMetrics.left,
-                                top: gridMetrics.top,
-                            }}
-                            width={gridMetrics.boardSizePx}
-                            height={gridMetrics.boardSizePx}
-                            viewBox={`0 0 ${gridMetrics.boardSizePx} ${gridMetrics.boardSizePx}`}
-                        >
-                            <line
-                                x1={0}
-                                y1={touchPreview.y * gridMetrics.cellSize + gridMetrics.cellSize / 2}
-                                x2={gridMetrics.boardSizePx}
-                                y2={touchPreview.y * gridMetrics.cellSize + gridMetrics.cellSize / 2}
-                                stroke="rgb(56 189 248 / 0.8)"
-                                strokeWidth="1"
-                                vectorEffect="non-scaling-stroke"
-                            />
-                            <line
-                                x1={touchPreview.x * gridMetrics.cellSize + gridMetrics.cellSize / 2}
-                                y1={0}
-                                x2={touchPreview.x * gridMetrics.cellSize + gridMetrics.cellSize / 2}
-                                y2={gridMetrics.boardSizePx}
-                                stroke="rgb(56 189 248 / 0.8)"
-                                strokeWidth="1"
-                                vectorEffect="non-scaling-stroke"
-                            />
-                        </svg>
-                    )}
-                    {touchPreview && signMap[touchPreview.y][touchPreview.x] === 0 && (
-                        <div
-                            className={
-                                gameState.currentPlayer === "B"
-                                    ? "pointer-events-none absolute z-30 rounded-full border border-sky-300 bg-black/70"
-                                    : "pointer-events-none absolute z-30 rounded-full border border-sky-300 bg-white/80"
+                    <div
+                        ref={gobanWrapperRef}
+                        className="relative"
+                        onPointerDown={(event) => {
+                            event.currentTarget.setPointerCapture(event.pointerId);
+                            const vertex = getVertexFromPointer(
+                                event.clientX,
+                                event.clientY
+                            );
+
+                            didSelectStoneByHoldRef.current = false;
+                            clearStoneSelectTimeout();
+
+                            if (!vertex) {
+                                setTouchPreview(null);
+                                return;
                             }
-                            style={{
-                                left:
-                                    gridMetrics.left +
-                                    touchPreview.x * gridMetrics.cellSize +
-                                    gridMetrics.cellSize / 2,
-                                top:
-                                    gridMetrics.top +
-                                    touchPreview.y * gridMetrics.cellSize +
-                                    gridMetrics.cellSize / 2,
-                                width: gridMetrics.cellSize * 0.78,
-                                height: gridMetrics.cellSize * 0.78,
-                                transform: "translate(-50%, -50%)",
-                            }}
+
+                            setTouchPreview({
+                                ...vertex,
+                                screenX: event.clientX,
+                                screenY: event.clientY,
+                            });
+
+                            const editableMoveIndex = getEditableMoveIndexAtVertex({
+                                moves: gameState.moves,
+                                vertex,
+                                visibleStoneOwners: replay.visibleStoneOwners,
+                            });
+
+                            if (
+                                shouldStartStoneSelectionHold({
+                                    editableMoveIndexAtVertex: editableMoveIndex,
+                                    selectedMoveIndex,
+                                })
+                            ) {
+                                stoneSelectOriginRef.current = vertex;
+                                stoneSelectMoveIndexRef.current = editableMoveIndex;
+                                stoneSelectTimeoutRef.current = window.setTimeout(() => {
+                                    didSelectStoneByHoldRef.current = true;
+                                    setSelectedMoveIndex(editableMoveIndex);
+                                    setShareStatus(null);
+                                    stoneSelectTimeoutRef.current = null;
+                                }, STONE_SELECT_HOLD_MS);
+                            }
+                        }}
+                        onPointerMove={(event) => {
+                            if (!touchPreview) return;
+                            updateTouchPreview(event.clientX, event.clientY);
+
+                            const vertex = getVertexFromPointer(
+                                event.clientX,
+                                event.clientY
+                            );
+                            const origin = stoneSelectOriginRef.current;
+
+                            if (
+                                stoneSelectTimeoutRef.current !== null &&
+                                didPointerLeaveHoldVertex({ origin, vertex })
+                            ) {
+                                clearStoneSelectTimeout();
+                            }
+                        }}
+                        onPointerUp={(event) => {
+                            const vertex = touchPreview;
+                            const origin = stoneSelectOriginRef.current;
+                            const holdMoveIndex = stoneSelectMoveIndexRef.current;
+
+                            if (stoneSelectTimeoutRef.current !== null) {
+                                clearStoneSelectTimeout();
+                            }
+
+                            if (didSelectStoneByHoldRef.current) {
+                                didSelectStoneByHoldRef.current = false;
+                                if (
+                                    vertex &&
+                                    shouldApplyHoldDragCorrection({
+                                        origin,
+                                        vertex,
+                                    })
+                                ) {
+                                    correctMove(holdMoveIndex, vertex);
+                                }
+                                stoneSelectOriginRef.current = null;
+                                stoneSelectMoveIndexRef.current = null;
+                                setTouchPreview(null);
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                                return;
+                            }
+
+                            if (!vertex) {
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                                return;
+                            }
+
+                            const editableMoveIndex = getEditableMoveIndexAtVertex({
+                                moves: gameState.moves,
+                                vertex,
+                                visibleStoneOwners: replay.visibleStoneOwners,
+                            });
+                            const correctionTapAction = getCorrectionTapAction({
+                                editableMoveIndexAtVertex: editableMoveIndex,
+                                selectedMoveIndex,
+                            });
+
+                            if (correctionTapAction === "deselect") {
+                                setSelectedMoveIndex(null);
+                                setTouchPreview(null);
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                                return;
+                            }
+
+                            if (correctionTapAction === "correct") {
+                                correctSelectedMove(vertex);
+                                setTouchPreview(null);
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                                return;
+                            }
+
+                            playMove(touchPreview.x, touchPreview.y);
+                            setTouchPreview(null);
+                            event.currentTarget.releasePointerCapture(event.pointerId);
+                        }}
+                        onPointerCancel={() => {
+                            clearStoneSelectTimeout();
+                            didSelectStoneByHoldRef.current = false;
+                            setTouchPreview(null);
+                        }}
+                    >
+                        <BoardView
+                            vertexSize={vertexSize}
+                            signMap={signMap}
+                            markerMap={markerMap}
+                            showCoordinates
                         />
-                    )}
+                        {selectedVertex && (
+                            <div
+                                className="pointer-events-none absolute z-30 rounded-full border-2 border-sky-400 shadow-[0_0_0_3px_rgb(14_165_233_/_0.25)]"
+                                style={{
+                                    left:
+                                        gridMetrics.left +
+                                        selectedVertex.x * gridMetrics.cellSize +
+                                        gridMetrics.cellSize / 2,
+                                    top:
+                                        gridMetrics.top +
+                                        selectedVertex.y * gridMetrics.cellSize +
+                                        gridMetrics.cellSize / 2,
+                                    width: gridMetrics.cellSize * 0.92,
+                                    height: gridMetrics.cellSize * 0.92,
+                                    transform: "translate(-50%, -50%)",
+                                }}
+                            />
+                        )}
+                        {touchPreview && (
+                            <svg
+                                className="pointer-events-none absolute z-20"
+                                style={{
+                                    left: gridMetrics.left,
+                                    top: gridMetrics.top,
+                                }}
+                                width={gridMetrics.boardSizePx}
+                                height={gridMetrics.boardSizePx}
+                                viewBox={`0 0 ${gridMetrics.boardSizePx} ${gridMetrics.boardSizePx}`}
+                            >
+                                <line
+                                    x1={0}
+                                    y1={touchPreview.y * gridMetrics.cellSize + gridMetrics.cellSize / 2}
+                                    x2={gridMetrics.boardSizePx}
+                                    y2={touchPreview.y * gridMetrics.cellSize + gridMetrics.cellSize / 2}
+                                    stroke="rgb(56 189 248 / 0.8)"
+                                    strokeWidth="1"
+                                    vectorEffect="non-scaling-stroke"
+                                />
+                                <line
+                                    x1={touchPreview.x * gridMetrics.cellSize + gridMetrics.cellSize / 2}
+                                    y1={0}
+                                    x2={touchPreview.x * gridMetrics.cellSize + gridMetrics.cellSize / 2}
+                                    y2={gridMetrics.boardSizePx}
+                                    stroke="rgb(56 189 248 / 0.8)"
+                                    strokeWidth="1"
+                                    vectorEffect="non-scaling-stroke"
+                                />
+                            </svg>
+                        )}
+                        {touchPreview &&
+                            signMap[touchPreview.y][touchPreview.x] === 0 && (
+                                <div
+                                    className={
+                                        previewStone === "B"
+                                            ? "pointer-events-none absolute z-30 rounded-full border border-sky-300 bg-black/70"
+                                            : "pointer-events-none absolute z-30 rounded-full border border-sky-300 bg-white/80"
+                                    }
+                                    style={{
+                                        left:
+                                            gridMetrics.left +
+                                            touchPreview.x * gridMetrics.cellSize +
+                                            gridMetrics.cellSize / 2,
+                                        top:
+                                            gridMetrics.top +
+                                            touchPreview.y * gridMetrics.cellSize +
+                                            gridMetrics.cellSize / 2,
+                                        width: gridMetrics.cellSize * 0.78,
+                                        height: gridMetrics.cellSize * 0.78,
+                                        transform: "translate(-50%, -50%)",
+                                    }}
+                                />
+                            )}
                     {touchPreview && (
                         <div
                             className={
@@ -850,7 +1012,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                                             {cell.isCenter && cell.sign === 0 && (
                                                 <div
                                                     className={
-                                                        gameState.currentPlayer === "B"
+                                                        previewStone === "B"
                                                             ? "relative h-6 w-6 rounded-full border border-sky-300 bg-black/80"
                                                             : "relative h-6 w-6 rounded-full border border-sky-300 bg-white/90"
                                                     }

@@ -13,3 +13,20 @@ export function t(key: MessageKey) {
 export function formatShareCreated(path: string) {
     return `${t("shareCreated")}: ${path}`;
 }
+
+export function formatMoveEditError(error: string) {
+    if (error === "Edit changes future captures") {
+        return t("stoneCorrectionChangesCaptures");
+    }
+
+    if (
+        error === "Edit destination is out of bounds" ||
+        error === "Ko prevented" ||
+        error === "Overwrite prevented" ||
+        error === "Suicide prevented"
+    ) {
+        return t("stoneCorrectionIllegal");
+    }
+
+    return t("stoneCorrectionFailed");
+}
