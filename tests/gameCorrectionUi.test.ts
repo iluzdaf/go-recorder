@@ -158,7 +158,7 @@ describe("game correction UI helpers", () => {
         ).toBe("correct");
     });
 
-    it("starts a stone selection hold only for unselected stones", () => {
+    it("starts a stone selection hold for editable stones", () => {
         expect(
             shouldStartStoneSelectionHold({
                 editableMoveIndexAtVertex: 2,
@@ -176,7 +176,7 @@ describe("game correction UI helpers", () => {
                 editableMoveIndexAtVertex: 2,
                 selectedMoveIndexes: [2],
             })
-        ).toBe(false);
+        ).toBe(true);
         expect(
             shouldStartStoneSelectionHold({
                 editableMoveIndexAtVertex: 0,
@@ -269,27 +269,17 @@ describe("game correction UI helpers", () => {
         });
     });
 
-    it("applies multiple selected recorder corrections as a translated group", () => {
-        const result = applyRecorderCorrection({
-            boardSize: 19,
-            gameState,
-            selectedMoveIndexes: [0, 2],
-            vertex: { x: 5, y: 5 },
-        });
-
-        expect(result).toEqual({
-            ok: true,
-            gameState: {
-                ...gameState,
-                moves: [
-                    { type: "play", x: 5, y: 5, color: "B" },
-                    gameState.moves[1],
-                    { type: "play", x: 6, y: 6, color: "B" },
-                ],
-            },
-            selectedMoveIndexes: [],
-            status: null,
-            hasUnsavedChanges: true,
+    it("rejects multiple selected recorder corrections without a drag origin", () => {
+        expect(
+            applyRecorderCorrection({
+                boardSize: 19,
+                gameState,
+                selectedMoveIndexes: [0, 2],
+                vertex: { x: 5, y: 5 },
+            })
+        ).toEqual({
+            ok: false,
+            error: "Multiple stones need a drag origin",
         });
     });
 

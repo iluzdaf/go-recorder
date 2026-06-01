@@ -887,7 +887,9 @@ export default function GoBoard({ id }: GoBoardProps) {
                             }
 
                             if (correctionTapAction === "correct") {
-                                correctSelectedMoves(vertex);
+                                if (selectedMoveIndexes.length === 1) {
+                                    correctSelectedMoves(vertex);
+                                }
                                 setTouchPreview(null);
                                 event.currentTarget.releasePointerCapture(event.pointerId);
                                 return;
