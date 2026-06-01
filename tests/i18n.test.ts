@@ -24,6 +24,12 @@ describe("formatMoveEditError", () => {
         );
     });
 
+    it("maps multi-stone tap attempts to a translated correction message", () => {
+        expect(formatMoveEditError("Multiple stones need a drag origin")).toBe(
+            t("stoneCorrectionNeedsDrag")
+        );
+    });
+
     it("uses a fallback translated correction message", () => {
         expect(formatMoveEditError("Unexpected replay failure")).toBe(
             t("stoneCorrectionFailed")
