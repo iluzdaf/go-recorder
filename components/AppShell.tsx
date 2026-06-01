@@ -18,6 +18,8 @@ type ThemeContextValue = {
     setIsDarkMode: (nextIsDarkMode: boolean) => void;
 };
 
+type ThemePreference = "system" | "light" | "dark";
+
 type HeaderActionsContextValue = {
     setHeaderActions: (nextHeaderActions: React.ReactNode) => void;
 };
@@ -35,14 +37,27 @@ function getSystemTheme() {
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
-function getThemeFromStorage() {
+function isThemePreference(value: string | null): value is ThemePreference {
+    return value === "system" || value === "light" || value === "dark";
+}
+
+function getThemePreferenceFromStorage(): ThemePreference {
     const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
 
-    if (storedTheme === "dark" || storedTheme === "light") {
-        return storedTheme === "dark";
-    }
+    if (isThemePreference(storedTheme)) return storedTheme;
+
+    return "system";
+}
+
+function resolveThemePreference(themePreference: ThemePreference) {
+    if (themePreference === "dark") return true;
+    if (themePreference === "light") return false;
 
     return getSystemTheme();
+}
+
+function getResolvedThemeFromStorage() {
+    return resolveThemePreference(getThemePreferenceFromStorage());
 }
 
 function notifyThemeListeners() {
@@ -51,13 +66,14 @@ function notifyThemeListeners() {
     }
 }
 
-function setThemeInStorage(isDarkMode: boolean) {
-    window.localStorage.setItem(
-        THEME_STORAGE_KEY,
-        isDarkMode ? "dark" : "light"
-    );
+function setThemePreferenceInStorage(themePreference: ThemePreference) {
+    window.localStorage.setItem(THEME_STORAGE_KEY, themePreference);
     notifyThemeListeners();
     window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
+}
+
+function setThemeInStorage(isDarkMode: boolean) {
+    setThemePreferenceInStorage(isDarkMode ? "dark" : "light");
 }
 
 export function useTheme() {
@@ -92,6 +108,9 @@ export default function AppShell({
     const isDarkMode = useSyncExternalStore(
         (onStoreChange) => {
             themeListeners.add(onStoreChange);
+            const systemThemeQuery = window.matchMedia(
+                "(prefers-color-scheme: dark)"
+            );
 
             const handleStorage = (event: StorageEvent) => {
                 if (event.key === THEME_STORAGE_KEY) {
@@ -103,13 +122,24 @@ export default function AppShell({
                 onStoreChange();
             };
 
+            const handleSystemThemeChange = () => {
+                if (getThemePreferenceFromStorage() === "system") {
+                    onStoreChange();
+                }
+            };
+
             window.addEventListener("storage", handleStorage);
             window.addEventListener(THEME_CHANGE_EVENT, handleThemeChange);
+            systemThemeQuery.addEventListener("change", handleSystemThemeChange);
 
             return () => {
                 themeListeners.delete(onStoreChange);
                 window.removeEventListener("storage", handleStorage);
                 window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange);
+                systemThemeQuery.removeEventListener(
+                    "change",
+                    handleSystemThemeChange
+                );
             };
         },
         () => {
@@ -117,7 +147,7 @@ export default function AppShell({
                 return true;
             }
 
-            return getThemeFromStorage();
+            return getResolvedThemeFromStorage();
         },
         () => true
     );
