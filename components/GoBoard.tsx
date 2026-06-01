@@ -116,6 +116,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     const stoneSelectTimeoutRef = useRef<number | null>(null);
     const stoneSelectOriginRef = useRef<Vertex | null>(null);
     const stoneSelectMoveIndexRef = useRef<number | null>(null);
+    const selectedGroupDragOriginRef = useRef<Vertex | null>(null);
     const didSelectStoneByHoldRef = useRef(false);
     const lastSavedSnapshotRef = useRef("");
     const localGameRecordRef = useRef<LocalGameRecord | null>(null);
@@ -769,6 +770,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                             );
 
                             didSelectStoneByHoldRef.current = false;
+                            selectedGroupDragOriginRef.current = null;
                             clearStoneSelectTimeout();
 
                             if (!vertex) {
@@ -787,6 +789,14 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 vertex,
                                 visibleStoneOwners: replay.visibleStoneOwners,
                             });
+
+                            if (
+                                editableMoveIndex !== null &&
+                                selectedMoveIndexes.length > 1 &&
+                                selectedMoveIndexes.includes(editableMoveIndex)
+                            ) {
+                                selectedGroupDragOriginRef.current = vertex;
+                            }
 
                             if (
                                 shouldStartStoneSelectionHold({
@@ -835,10 +845,31 @@ export default function GoBoard({ id }: GoBoardProps) {
                             const vertex = touchPreview;
                             const origin = stoneSelectOriginRef.current;
                             const holdMoveIndex = stoneSelectMoveIndexRef.current;
+                            const selectedGroupDragOrigin = selectedGroupDragOriginRef.current;
 
                             if (stoneSelectTimeoutRef.current !== null) {
                                 clearStoneSelectTimeout();
                             }
+
+                            if (
+                                vertex &&
+                                shouldApplyHoldDragCorrection({
+                                    origin: selectedGroupDragOrigin,
+                                    vertex,
+                                })
+                            ) {
+                                correctMoves(
+                                    selectedMoveIndexesRef.current,
+                                    vertex,
+                                    selectedGroupDragOrigin ?? undefined
+                                );
+                                selectedGroupDragOriginRef.current = null;
+                                setTouchPreview(null);
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                                return;
+                            }
+
+                            selectedGroupDragOriginRef.current = null;
 
                             if (didSelectStoneByHoldRef.current) {
                                 didSelectStoneByHoldRef.current = false;
@@ -887,9 +918,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                             }
 
                             if (correctionTapAction === "correct") {
-                                if (selectedMoveIndexes.length === 1) {
-                                    correctSelectedMoves(vertex);
-                                }
+                                correctSelectedMoves(vertex);
                                 setTouchPreview(null);
                                 event.currentTarget.releasePointerCapture(event.pointerId);
                                 return;
@@ -901,6 +930,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                         }}
                         onPointerCancel={() => {
                             clearStoneSelectTimeout();
+                            selectedGroupDragOriginRef.current = null;
                             didSelectStoneByHoldRef.current = false;
                             setTouchPreview(null);
                         }}
