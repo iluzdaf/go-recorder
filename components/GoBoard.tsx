@@ -425,9 +425,10 @@ export default function GoBoard({ id }: GoBoardProps) {
         return [...selectedMoveIndexesRef.current, moveIndex];
     };
 
-    const correctMoves = (moveIndexes: number[], vertex: Vertex) => {
+    const correctMoves = (moveIndexes: number[], vertex: Vertex, from?: Vertex) => {
         const result = applyRecorderCorrection({
             boardSize: size,
+            from,
             gameState,
             selectedMoveIndexes: moveIndexes,
             vertex,
@@ -850,7 +851,8 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 ) {
                                     correctMoves(
                                         getSelectionWithHeldMove(holdMoveIndex),
-                                        vertex
+                                        vertex,
+                                        origin ?? undefined
                                     );
                                 }
                                 stoneSelectOriginRef.current = null;

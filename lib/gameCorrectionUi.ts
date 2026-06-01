@@ -138,22 +138,18 @@ export function shouldApplyHoldDragCorrection({
 }
 
 export function createMoveEdits({
+    from,
     gameState,
     selectedMoveIndexes,
-    vertex,
+    to,
 }: {
+    from: Vertex;
     gameState: GameState;
     selectedMoveIndexes: number[];
-    vertex: Vertex;
+    to: Vertex;
 }) {
-    const anchorMoveIndex = selectedMoveIndexes[0];
-    const anchorMove =
-        anchorMoveIndex === undefined ? null : gameState.moves[anchorMoveIndex];
-
-    if (anchorMove?.type !== "play") return [];
-
-    const dx = vertex.x - anchorMove.x;
-    const dy = vertex.y - anchorMove.y;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
 
     return selectedMoveIndexes.map((moveIndex) => {
         const move = gameState.moves[moveIndex];
@@ -161,7 +157,7 @@ export function createMoveEdits({
         if (move?.type !== "play") {
             return {
                 moveIndex,
-                to: vertex,
+                to,
             };
         }
 
@@ -175,13 +171,34 @@ export function createMoveEdits({
     });
 }
 
+function getDefaultCorrectionOrigin({
+    gameState,
+    selectedMoveIndexes,
+}: {
+    gameState: GameState;
+    selectedMoveIndexes: number[];
+}): Vertex | null {
+    const anchorMoveIndex = selectedMoveIndexes[0];
+    const anchorMove =
+        anchorMoveIndex === undefined ? null : gameState.moves[anchorMoveIndex];
+
+    if (anchorMove?.type !== "play") return null;
+
+    return {
+        x: anchorMove.x,
+        y: anchorMove.y,
+    };
+}
+
 export function applyRecorderCorrection({
     boardSize,
+    from,
     gameState,
     selectedMoveIndexes,
     vertex,
 }: {
     boardSize: BoardSize;
+    from?: Vertex;
     gameState: GameState;
     selectedMoveIndexes: number[];
     vertex: Vertex;
@@ -193,13 +210,28 @@ export function applyRecorderCorrection({
         };
     }
 
+    const origin =
+        from ??
+        getDefaultCorrectionOrigin({
+            gameState,
+            selectedMoveIndexes,
+        });
+
+    if (!origin) {
+        return {
+            ok: false,
+            error: "No stone is selected",
+        };
+    }
+
     const result = validateMoveEdits({
         boardSize,
         originalGameState: gameState,
         edits: createMoveEdits({
+            from: origin,
             gameState,
             selectedMoveIndexes,
-            vertex,
+            to: vertex,
         }),
     });
 
