@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  htmlLimitedBots: /WhatsApp|facebookexternalhit|Facebot|Twitterbot|Slackbot|Discordbot|LinkedInBot|curl/i,
+  htmlLimitedBots: /WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|Slackbot|Discordbot|LinkedInBot|curl/i,
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,

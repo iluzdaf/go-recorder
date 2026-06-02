@@ -9,6 +9,9 @@ describe("Next.js config", () => {
         expect(nextConfig.htmlLimitedBots?.test("facebookexternalhit/1.1")).toBe(
             true
         );
+        expect(nextConfig.htmlLimitedBots?.test("TelegramBot (like TwitterBot)")).toBe(
+            true
+        );
         expect(nextConfig.htmlLimitedBots?.test("curl/8.5.0")).toBe(true);
     });
 });

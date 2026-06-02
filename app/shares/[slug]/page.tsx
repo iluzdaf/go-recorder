@@ -88,6 +88,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
                     width: 1200,
                     height: 630,
                     alt: "Shared Go game final position",
+                    type: "image/png",
                 },
             ],
         },
