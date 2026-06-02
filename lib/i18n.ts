@@ -19,10 +19,6 @@ export function formatMoveEditError(error: string) {
         return t("stoneCorrectionChangesCaptures");
     }
 
-    if (error === "Multiple stones need a drag origin") {
-        return t("stoneCorrectionNeedsDrag");
-    }
-
     if (
         error === "Edit destination is out of bounds" ||
         error === "Ko prevented" ||

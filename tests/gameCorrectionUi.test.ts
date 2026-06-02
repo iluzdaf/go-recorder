@@ -269,17 +269,51 @@ describe("game correction UI helpers", () => {
         });
     });
 
-    it("rejects multiple selected recorder corrections without a drag origin", () => {
-        expect(
-            applyRecorderCorrection({
-                boardSize: 19,
-                gameState,
-                selectedMoveIndexes: [0, 2],
-                vertex: { x: 5, y: 5 },
-            })
-        ).toEqual({
-            ok: false,
-            error: "Multiple stones need a drag origin",
+    it("moves the last selected stone to a tapped position and keeps selected stones in formation", () => {
+        const result = applyRecorderCorrection({
+            boardSize: 19,
+            gameState,
+            selectedMoveIndexes: [0, 2],
+            vertex: { x: 5, y: 5 },
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            gameState: {
+                ...gameState,
+                moves: [
+                    { type: "play", x: 4, y: 4, color: "B" },
+                    gameState.moves[1],
+                    { type: "play", x: 5, y: 5, color: "B" },
+                ],
+            },
+            selectedMoveIndexes: [],
+            status: null,
+            hasUnsavedChanges: true,
+        });
+    });
+
+    it("uses the latest selection as the tap anchor for multi-stone corrections", () => {
+        const result = applyRecorderCorrection({
+            boardSize: 19,
+            gameState,
+            selectedMoveIndexes: [2, 0],
+            vertex: { x: 5, y: 5 },
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            gameState: {
+                ...gameState,
+                moves: [
+                    { type: "play", x: 5, y: 5, color: "B" },
+                    gameState.moves[1],
+                    { type: "play", x: 6, y: 6, color: "B" },
+                ],
+            },
+            selectedMoveIndexes: [],
+            status: null,
+            hasUnsavedChanges: true,
         });
     });
 

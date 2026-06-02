@@ -167,6 +167,23 @@ export function createMoveEdits({
     });
 }
 
+function getMoveVertex({
+    gameState,
+    moveIndex,
+}: {
+    gameState: GameState;
+    moveIndex: number | undefined;
+}): Vertex | null {
+    const move = moveIndex === undefined ? null : gameState.moves[moveIndex];
+
+    if (move?.type !== "play") return null;
+
+    return {
+        x: move.x,
+        y: move.y,
+    };
+}
+
 function getDefaultCorrectionOrigin({
     gameState,
     selectedMoveIndexes,
@@ -174,16 +191,12 @@ function getDefaultCorrectionOrigin({
     gameState: GameState;
     selectedMoveIndexes: number[];
 }): Vertex | null {
-    const anchorMoveIndex = selectedMoveIndexes[0];
-    const anchorMove =
-        anchorMoveIndex === undefined ? null : gameState.moves[anchorMoveIndex];
+    const anchorMoveIndex = selectedMoveIndexes.at(-1);
 
-    if (anchorMove?.type !== "play") return null;
-
-    return {
-        x: anchorMove.x,
-        y: anchorMove.y,
-    };
+    return getMoveVertex({
+        gameState,
+        moveIndex: anchorMoveIndex,
+    });
 }
 
 export function applyRecorderCorrection({
@@ -212,15 +225,16 @@ export function applyRecorderCorrection({
                   gameState,
                   selectedMoveIndexes,
               })
-            : from;
+            : from ??
+              getDefaultCorrectionOrigin({
+                  gameState,
+                  selectedMoveIndexes,
+              });
 
     if (!origin) {
         return {
             ok: false,
-            error:
-                selectedMoveIndexes.length === 1
-                    ? "No stone is selected"
-                    : "Multiple stones need a drag origin",
+            error: "No stone is selected",
         };
     }
 
