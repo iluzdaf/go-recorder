@@ -8,17 +8,6 @@ vi.mock("../lib/supabaseAdmin", () => ({
     supabaseAdmin: mockSupabaseAdmin,
 }));
 
-vi.mock("next/og", () => ({
-    ImageResponse: class MockImageResponse extends Response {
-        constructor() {
-            super("image", {
-                headers: {
-                    "Content-Type": "image/png",
-                },
-            });
-        }
-    },
-}));
 
 import Image from "../app/shares/[slug]/opengraph-image";
 
@@ -64,6 +53,7 @@ describe("/shares/[slug]/opengraph-image", () => {
 
         expect(response.status).toBe(200);
         expect(response.headers.get("Content-Type")).toBe("image/png");
+        expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0);
         expect(mockSupabaseAdmin.from).toHaveBeenCalledWith("shares");
         expect(query.select).toHaveBeenCalledWith("*");
         expect(query.eq).toHaveBeenCalledWith("slug", "share123");

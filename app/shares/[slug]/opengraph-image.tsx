@@ -126,6 +126,7 @@ export default async function Image({ params }: ImageProps) {
                         border: "3px solid #6f4617",
                         borderRadius: 20,
                         boxShadow: "0 22px 44px rgba(31, 19, 4, 0.28)",
+                        display: "flex",
                         height: boardPixelSize,
                         left: boardLeft,
                         position: "absolute",
@@ -137,7 +138,10 @@ export default async function Image({ params }: ImageProps) {
                         const offset = boardPadding + index * gridStep;
 
                         return (
-                            <div key={`line-${index}`}>
+                            <div
+                                key={`line-${index}`}
+                                style={{ display: "flex" }}
+                            >
                                 <div
                                     style={{
                                         background: "#5f3910",
@@ -197,6 +201,7 @@ export default async function Image({ params }: ImageProps) {
                                         boxShadow: isBlack
                                             ? "inset 8px 10px 12px rgba(255, 255, 255, 0.12), 0 3px 5px rgba(0, 0, 0, 0.35)"
                                             : "inset -8px -10px 12px rgba(0, 0, 0, 0.12), 0 3px 5px rgba(0, 0, 0, 0.28)",
+                                        display: "flex",
                                         height: stoneRadius * 2,
                                         left,
                                         position: "absolute",
