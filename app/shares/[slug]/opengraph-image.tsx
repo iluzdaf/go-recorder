@@ -24,10 +24,10 @@ function getLastPlayMove(moves: Move[]) {
     return [...moves].reverse().find((move) => move.type === "play") ?? null;
 }
 
-function getPlayerName(name: string | null, fallback: string) {
+function getPlayerName(name: string | null) {
     const trimmedName = name?.trim();
 
-    return trimmedName && trimmedName.length > 0 ? trimmedName : fallback;
+    return trimmedName && trimmedName.length > 0 ? trimmedName : null;
 }
 
 function getStarPoints(boardSize: number) {
@@ -48,8 +48,8 @@ function renderFallbackImage(message: string) {
             <div
                 style={{
                     alignItems: "center",
-                    background: "#f4e0aa",
-                    color: "#1f1304",
+                    background: "#f4f4f5",
+                    color: "#18181b",
                     display: "flex",
                     fontSize: 54,
                     fontWeight: 700,
@@ -96,24 +96,24 @@ export default async function Image({ params }: ImageProps) {
     }
 
     const boardSize = share.boardSize;
-    const boardPixelSize = 520;
-    const boardPadding = 34;
+    const boardPixelSize = 560;
+    const boardPadding = 36;
     const gridSize = boardPixelSize - boardPadding * 2;
     const gridStep = gridSize / (boardSize - 1);
     const stoneRadius = Math.max(10, gridStep * 0.42);
-    const boardLeft = 84;
-    const boardTop = 55;
+    const blackPlayerName = getPlayerName(share.blackPlayerName);
+    const whitePlayerName = getPlayerName(share.whitePlayerName);
+    const hasPlayerNames = blackPlayerName !== null || whitePlayerName !== null;
+    const boardLeft = hasPlayerNames ? 80 : (size.width - boardPixelSize) / 2;
+    const boardTop = (size.height - boardPixelSize) / 2;
     const lastPlayMove = getLastPlayMove(share.gameState.moves);
-    const moveCount = share.gameState.moves.length;
-    const blackPlayerName = getPlayerName(share.blackPlayerName, "Black");
-    const whitePlayerName = getPlayerName(share.whitePlayerName, "White");
 
     return new ImageResponse(
         (
             <div
                 style={{
-                    background: "#f5e4b8",
-                    color: "#1f1304",
+                    background: "#f4f4f5",
+                    color: "#18181b",
                     display: "flex",
                     height: "100%",
                     position: "relative",
@@ -122,10 +122,7 @@ export default async function Image({ params }: ImageProps) {
             >
                 <div
                     style={{
-                        background: "#d7a44f",
-                        border: "3px solid #6f4617",
-                        borderRadius: 20,
-                        boxShadow: "0 22px 44px rgba(31, 19, 4, 0.28)",
+                        background: "#f4f4f5",
                         display: "flex",
                         height: boardPixelSize,
                         left: boardLeft,
@@ -144,7 +141,7 @@ export default async function Image({ params }: ImageProps) {
                             >
                                 <div
                                     style={{
-                                        background: "#5f3910",
+                                        background: "#52525b",
                                         height: 2,
                                         left: boardPadding,
                                         position: "absolute",
@@ -154,7 +151,7 @@ export default async function Image({ params }: ImageProps) {
                                 />
                                 <div
                                     style={{
-                                        background: "#5f3910",
+                                        background: "#52525b",
                                         height: gridSize,
                                         left: offset,
                                         position: "absolute",
@@ -170,7 +167,7 @@ export default async function Image({ params }: ImageProps) {
                         <div
                             key={`star-${x}-${y}`}
                             style={{
-                                background: "#5f3910",
+                                background: "#3f3f46",
                                 borderRadius: "50%",
                                 height: 8,
                                 left: boardPadding + x * gridStep - 4,
@@ -193,14 +190,11 @@ export default async function Image({ params }: ImageProps) {
                                 <div
                                     key={`stone-${x}-${y}`}
                                     style={{
-                                        background: isBlack ? "#151515" : "#f8f4eb",
+                                        background: isBlack ? "#09090b" : "#fafafa",
                                         border: isBlack
-                                            ? "1px solid #050505"
-                                            : "1px solid #a8926c",
+                                            ? "1px solid #09090b"
+                                            : "1px solid #18181b",
                                         borderRadius: "50%",
-                                        boxShadow: isBlack
-                                            ? "inset 8px 10px 12px rgba(255, 255, 255, 0.12), 0 3px 5px rgba(0, 0, 0, 0.35)"
-                                            : "inset -8px -10px 12px rgba(0, 0, 0, 0.12), 0 3px 5px rgba(0, 0, 0, 0.28)",
                                         display: "flex",
                                         height: stoneRadius * 2,
                                         left,
@@ -215,8 +209,8 @@ export default async function Image({ params }: ImageProps) {
                                             <div
                                                 style={{
                                                     border: isBlack
-                                                        ? "3px solid #f8f4eb"
-                                                        : "3px solid #151515",
+                                                        ? "3px solid #fafafa"
+                                                        : "3px solid #09090b",
                                                     borderRadius: "50%",
                                                     height: stoneRadius * 0.9,
                                                     left: stoneRadius * 0.55,
@@ -232,49 +226,51 @@ export default async function Image({ params }: ImageProps) {
                     )}
                 </div>
 
-                <div
-                    style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 28,
-                        left: 665,
-                        position: "absolute",
-                        top: 84,
-                        width: 420,
-                    }}
-                >
+                {hasPlayerNames && (
                     <div
                         style={{
                             display: "flex",
                             flexDirection: "column",
-                            fontSize: 62,
-                            fontWeight: 800,
-                            letterSpacing: "-0.04em",
-                            lineHeight: 1,
+                            gap: 16,
+                            left: 700,
+                            position: "absolute",
+                            top: 150,
+                            width: 360,
                         }}
                     >
-                        <span>{blackPlayerName}</span>
-                        <span style={{ color: "#7c4d16", fontSize: 38 }}>vs</span>
-                        <span>{whitePlayerName}</span>
+                        {blackPlayerName && (
+                            <span
+                                style={{
+                                    color: "#18181b",
+                                    fontSize: 62,
+                                    fontWeight: 800,
+                                    letterSpacing: "-0.04em",
+                                    lineHeight: 1,
+                                }}
+                            >
+                                {blackPlayerName}
+                            </span>
+                        )}
+                        {blackPlayerName && whitePlayerName && (
+                            <span style={{ color: "#52525b", fontSize: 34 }}>
+                                vs
+                            </span>
+                        )}
+                        {whitePlayerName && (
+                            <span
+                                style={{
+                                    color: "#18181b",
+                                    fontSize: 62,
+                                    fontWeight: 800,
+                                    letterSpacing: "-0.04em",
+                                    lineHeight: 1,
+                                }}
+                            >
+                                {whitePlayerName}
+                            </span>
+                        )}
                     </div>
-
-                    <div
-                        style={{
-                            background: "rgba(255, 255, 255, 0.38)",
-                            border: "2px solid rgba(111, 70, 23, 0.24)",
-                            borderRadius: 24,
-                            display: "flex",
-                            flexDirection: "column",
-                            fontSize: 36,
-                            fontWeight: 700,
-                            gap: 12,
-                            padding: "24px 28px",
-                        }}
-                    >
-                        <span>{boardSize}×{boardSize} board</span>
-                        <span>{moveCount} moves</span>
-                    </div>
-                </div>
+                )}
             </div>
         ),
         size
