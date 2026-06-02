@@ -790,11 +790,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 visibleStoneOwners: replay.visibleStoneOwners,
                             });
 
-                            if (
-                                editableMoveIndex !== null &&
-                                selectedMoveIndexes.length > 1 &&
-                                selectedMoveIndexes.includes(editableMoveIndex)
-                            ) {
+                            if (selectedMoveIndexes.length > 1) {
                                 selectedGroupDragOriginRef.current = vertex;
                             }
 

@@ -308,6 +308,31 @@ describe("game correction UI helpers", () => {
         });
     });
 
+    it("applies dragged recorder corrections relative to an unselected origin", () => {
+        const result = applyRecorderCorrection({
+            boardSize: 19,
+            from: { x: 1, y: 1 },
+            gameState,
+            selectedMoveIndexes: [0, 2],
+            vertex: { x: 2, y: 3 },
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            gameState: {
+                ...gameState,
+                moves: [
+                    { type: "play", x: 4, y: 5, color: "B" },
+                    gameState.moves[1],
+                    { type: "play", x: 5, y: 6, color: "B" },
+                ],
+            },
+            selectedMoveIndexes: [],
+            status: null,
+            hasUnsavedChanges: true,
+        });
+    });
+
     it("rejects a recorder correction that would make replay illegal", () => {
         expect(
             applyRecorderCorrection({
