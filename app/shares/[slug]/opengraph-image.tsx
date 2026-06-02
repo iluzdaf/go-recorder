@@ -1,6 +1,5 @@
 import { ImageResponse } from "next/og";
 
-import type { Move } from "../../../components/types";
 import { replayGame } from "../../../lib/gameReplay";
 import { mapShareRowToShareRecord } from "../../../lib/shareView";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
@@ -19,10 +18,6 @@ type ImageProps = {
         slug: string;
     }>;
 };
-
-function getLastPlayMove(moves: Move[]) {
-    return [...moves].reverse().find((move) => move.type === "play") ?? null;
-}
 
 function getPlayerName(name: string | null) {
     const trimmedName = name?.trim();
@@ -106,7 +101,6 @@ export default async function Image({ params }: ImageProps) {
     const hasPlayerNames = blackPlayerName !== null || whitePlayerName !== null;
     const boardLeft = hasPlayerNames ? 80 : (size.width - boardPixelSize) / 2;
     const boardTop = (size.height - boardPixelSize) / 2;
-    const lastPlayMove = getLastPlayMove(share.gameState.moves);
 
     return new ImageResponse(
         (
@@ -195,32 +189,13 @@ export default async function Image({ params }: ImageProps) {
                                             ? "1px solid #09090b"
                                             : "1px solid #18181b",
                                         borderRadius: "50%",
-                                        display: "flex",
                                         height: stoneRadius * 2,
                                         left,
                                         position: "absolute",
                                         top,
                                         width: stoneRadius * 2,
                                     }}
-                                >
-                                    {lastPlayMove?.type === "play" &&
-                                        lastPlayMove.x === x &&
-                                        lastPlayMove.y === y && (
-                                            <div
-                                                style={{
-                                                    border: isBlack
-                                                        ? "3px solid #fafafa"
-                                                        : "3px solid #09090b",
-                                                    borderRadius: "50%",
-                                                    height: stoneRadius * 0.9,
-                                                    left: stoneRadius * 0.55,
-                                                    position: "absolute",
-                                                    top: stoneRadius * 0.55,
-                                                    width: stoneRadius * 0.9,
-                                                }}
-                                            />
-                                        )}
-                                </div>
+                                />
                             );
                         })
                     )}
@@ -239,17 +214,34 @@ export default async function Image({ params }: ImageProps) {
                         }}
                     >
                         {blackPlayerName && (
-                            <span
+                            <div
                                 style={{
-                                    color: "#18181b",
-                                    fontSize: 62,
-                                    fontWeight: 800,
-                                    letterSpacing: "-0.04em",
-                                    lineHeight: 1,
+                                    alignItems: "center",
+                                    display: "flex",
+                                    gap: 20,
                                 }}
                             >
-                                {blackPlayerName}
-                            </span>
+                                <div
+                                    style={{
+                                        background: "#09090b",
+                                        border: "1px solid #09090b",
+                                        borderRadius: "50%",
+                                        height: 40,
+                                        width: 40,
+                                    }}
+                                />
+                                <span
+                                    style={{
+                                        color: "#18181b",
+                                        fontSize: 62,
+                                        fontWeight: 800,
+                                        letterSpacing: "-0.04em",
+                                        lineHeight: 1,
+                                    }}
+                                >
+                                    {blackPlayerName}
+                                </span>
+                            </div>
                         )}
                         {blackPlayerName && whitePlayerName && (
                             <span style={{ color: "#52525b", fontSize: 34 }}>
@@ -257,17 +249,34 @@ export default async function Image({ params }: ImageProps) {
                             </span>
                         )}
                         {whitePlayerName && (
-                            <span
+                            <div
                                 style={{
-                                    color: "#18181b",
-                                    fontSize: 62,
-                                    fontWeight: 800,
-                                    letterSpacing: "-0.04em",
-                                    lineHeight: 1,
+                                    alignItems: "center",
+                                    display: "flex",
+                                    gap: 20,
                                 }}
                             >
-                                {whitePlayerName}
-                            </span>
+                                <div
+                                    style={{
+                                        background: "#fafafa",
+                                        border: "1px solid #18181b",
+                                        borderRadius: "50%",
+                                        height: 40,
+                                        width: 40,
+                                    }}
+                                />
+                                <span
+                                    style={{
+                                        color: "#18181b",
+                                        fontSize: 62,
+                                        fontWeight: 800,
+                                        letterSpacing: "-0.04em",
+                                        lineHeight: 1,
+                                    }}
+                                >
+                                    {whitePlayerName}
+                                </span>
+                            </div>
                         )}
                     </div>
                 )}
