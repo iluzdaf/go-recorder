@@ -483,6 +483,53 @@ describe("game correction UI helpers", () => {
         ).toEqual([{ x: 5, y: 5, color: "W" }]);
     });
 
+    it("previews a single selected stone at the target even when a drag origin is present", () => {
+        expect(
+            getCorrectionPreviewStones({
+                currentPlayer: "W",
+                from: { x: 0, y: 0 },
+                gameState,
+                selectedMoveIndexes: [0],
+                vertex: { x: 5, y: 5 },
+            })
+        ).toEqual([{ x: 5, y: 5, color: "B" }]);
+    });
+
+    it("previews multi-stone taps from the last selected stone and preserves colors", () => {
+        const mixedColorGameState: GameState = {
+            setupStones: [],
+            moves: [
+                { type: "play", x: 3, y: 3, color: "B" },
+                { type: "play", x: 10, y: 10, color: "W" },
+                { type: "play", x: 4, y: 4, color: "B" },
+            ],
+            currentPlayer: "W",
+        };
+
+        expect(
+            getCorrectionPreviewStones({
+                currentPlayer: "B",
+                gameState: mixedColorGameState,
+                selectedMoveIndexes: [0, 1],
+                vertex: { x: 12, y: 11 },
+            })
+        ).toEqual([
+            { x: 5, y: 4, color: "B" },
+            { x: 12, y: 11, color: "W" },
+        ]);
+    });
+
+    it("does not preview missing or non-play selected moves", () => {
+        expect(
+            getCorrectionPreviewStones({
+                currentPlayer: "W",
+                gameState,
+                selectedMoveIndexes: [1, 99],
+                vertex: { x: 5, y: 5 },
+            })
+        ).toEqual([]);
+    });
+
     it("rejects a recorder correction that would make replay illegal", () => {
         expect(
             applyRecorderCorrection({
