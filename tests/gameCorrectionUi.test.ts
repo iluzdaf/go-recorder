@@ -4,6 +4,7 @@ import type { GameState } from "../components/types";
 import {
     applyRecorderCorrection,
     didPointerLeaveHoldVertex,
+    getCorrectionPreviewStones,
     getCorrectionTapAction,
     getEditableMoveIndexAtVertex,
     getPreviewStone,
@@ -440,6 +441,46 @@ describe("game correction UI helpers", () => {
             status: null,
             hasUnsavedChanges: true,
         });
+    });
+
+    it("previews all selected stones for a multi-stone tap correction", () => {
+        expect(
+            getCorrectionPreviewStones({
+                currentPlayer: "W",
+                gameState,
+                selectedMoveIndexes: [0, 2],
+                vertex: { x: 5, y: 5 },
+            })
+        ).toEqual([
+            { x: 4, y: 4, color: "B" },
+            { x: 5, y: 5, color: "B" },
+        ]);
+    });
+
+    it("previews all selected stones for a multi-stone drag correction", () => {
+        expect(
+            getCorrectionPreviewStones({
+                currentPlayer: "W",
+                from: { x: 1, y: 1 },
+                gameState,
+                selectedMoveIndexes: [0, 2],
+                vertex: { x: 2, y: 3 },
+            })
+        ).toEqual([
+            { x: 4, y: 5, color: "B" },
+            { x: 5, y: 6, color: "B" },
+        ]);
+    });
+
+    it("previews the current player for unselected move placement", () => {
+        expect(
+            getCorrectionPreviewStones({
+                currentPlayer: "W",
+                gameState,
+                selectedMoveIndexes: [],
+                vertex: { x: 5, y: 5 },
+            })
+        ).toEqual([{ x: 5, y: 5, color: "W" }]);
     });
 
     it("rejects a recorder correction that would make replay illegal", () => {
