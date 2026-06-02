@@ -9,6 +9,10 @@ export type Vertex = {
 
 export type CorrectionTapAction = "correct" | "deselect" | "play";
 
+export type CorrectionPreviewStone = Vertex & {
+    color: Stone;
+};
+
 export type ApplyRecorderCorrectionResult =
     | {
         ok: true;
@@ -196,6 +200,58 @@ function getDefaultCorrectionOrigin({
     return getMoveVertex({
         gameState,
         moveIndex: anchorMoveIndex,
+    });
+}
+
+export function getCorrectionPreviewStones({
+    currentPlayer,
+    from,
+    gameState,
+    selectedMoveIndexes,
+    vertex,
+}: {
+    currentPlayer: Stone;
+    from?: Vertex | null;
+    gameState: GameState;
+    selectedMoveIndexes: number[];
+    vertex: Vertex;
+}): CorrectionPreviewStone[] {
+    if (selectedMoveIndexes.length === 0) {
+        return [
+            {
+                ...vertex,
+                color: currentPlayer,
+            },
+        ];
+    }
+
+    const origin =
+        selectedMoveIndexes.length === 1
+            ? getDefaultCorrectionOrigin({
+                  gameState,
+                  selectedMoveIndexes,
+              })
+            : from ??
+              getDefaultCorrectionOrigin({
+                  gameState,
+                  selectedMoveIndexes,
+              });
+
+    if (!origin) return [];
+
+    const dx = vertex.x - origin.x;
+    const dy = vertex.y - origin.y;
+
+    return selectedMoveIndexes.flatMap((moveIndex) => {
+        const move = gameState.moves[moveIndex];
+
+        if (move?.type !== "play") return [];
+
+        return {
+            x: move.x + dx,
+            y: move.y + dy,
+            color: move.color,
+        };
     });
 }
 
