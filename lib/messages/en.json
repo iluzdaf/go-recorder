@@ -29,7 +29,6 @@
     "invalidShareInput": "Invalid share input",
     "stoneCorrectionIllegal": "That stone edit is not legal.",
     "stoneCorrectionChangesCaptures": "That stone edit changes later captures.",
-    "stoneCorrectionNeedsDrag": "Drag selected stones to move them together.",
     "stoneCorrectionFailed": "That stone edit could not be applied.",
     "changelog": "Changelog",
     "version": "Version"
