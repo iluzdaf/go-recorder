@@ -27,6 +27,9 @@
     "downloadSgf": "Download SGF",
     "share": "Share",
     "invalidShareInput": "Invalid share input",
+    "stoneCorrectionIllegal": "That stone edit is not legal.",
+    "stoneCorrectionChangesCaptures": "That stone edit changes later captures.",
+    "stoneCorrectionFailed": "That stone edit could not be applied.",
     "changelog": "Changelog",
     "version": "Version"
 }

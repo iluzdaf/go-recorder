@@ -1,5 +1,16 @@
 [
     {
+        "version": "0.2.0",
+        "date": "2026-06-02",
+        "title": "Good shape is good.",
+        "items": [
+            {
+                "id": "stone-edits",
+                "text": "Add stone edits."
+            }
+        ]
+    },
+    {
         "version": "0.1.0",
         "date": "2026-06-01",
         "title": "Lose your first 50 games as quickly as possible.",
