@@ -24,8 +24,9 @@ beforeEach(() => {
     mockSupabaseAdmin.from.mockReset();
     mockNotFound.mockClear();
     delete process.env.NEXT_PUBLIC_SITE_URL;
-    delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
-    process.env.VERCEL_URL = "go-recorder.vercel.app";
+    delete process.env.VERCEL_ENV;
+    process.env.VERCEL_PROJECT_PRODUCTION_URL = "go-recorder.vercel.app";
+    process.env.VERCEL_URL = "go-recorder-preview.vercel.app";
 });
 
 function createSelectResult(result: unknown) {
@@ -121,7 +122,7 @@ describe("/shares/[slug] page", () => {
                 description: "View this shared Go game position.",
                 images: [
                     {
-                        url: "https://go-recorder.vercel.app/shares/share123/opengraph-image",
+                        url: "https://go-recorder-preview.vercel.app/shares/share123/opengraph-image",
                         width: 1200,
                         height: 630,
                         alt: "Shared Go game final position",
@@ -133,7 +134,7 @@ describe("/shares/[slug] page", () => {
                 title: "Black vs White",
                 description: "View this shared Go game position.",
                 images: [
-                    "https://go-recorder.vercel.app/shares/share123/opengraph-image",
+                    "https://go-recorder-preview.vercel.app/shares/share123/opengraph-image",
                 ],
             },
         });
@@ -141,6 +142,44 @@ describe("/shares/[slug] page", () => {
         expect(query.select).toHaveBeenCalledWith("*");
         expect(query.eq).toHaveBeenCalledWith("slug", "share123");
         expect(query.maybeSingle).toHaveBeenCalled();
+    });
+
+
+    it("uses the production Vercel URL for production deployments", async () => {
+        process.env.VERCEL_ENV = "production";
+        const query = createSelectResult({
+            data: {
+                slug: "share123",
+                source_kind: "game",
+                board_size: 19,
+                game_state: {
+                    setupStones: [],
+                    moves: [{ type: "play", x: 3, y: 3, color: "B" }],
+                    currentPlayer: "W",
+                },
+                black_player_name: "Black",
+                white_player_name: "White",
+                handicap: 0,
+                created_at: "2026-05-29T00:00:00.000Z",
+            },
+            error: null,
+        });
+
+        mockSupabaseAdmin.from.mockReturnValueOnce(query);
+
+        const metadata = await generateMetadata({
+            params: Promise.resolve({
+                slug: "share123",
+            }),
+        });
+
+        expect(metadata.openGraph).toMatchObject({
+            images: [
+                {
+                    url: "https://go-recorder.vercel.app/shares/share123/opengraph-image",
+                },
+            ],
+        });
     });
 
     it("uses generic metadata titles when player names are missing", async () => {
