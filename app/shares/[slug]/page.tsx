@@ -16,10 +16,11 @@ export const dynamic = "force-dynamic";
 function getSiteUrl() {
     const vercelUrl = process.env.VERCEL_URL;
     const configuredUrl =
-        process.env.NEXT_PUBLIC_SITE_URL ??
-        (process.env.VERCEL_ENV === "production"
-            ? process.env.VERCEL_PROJECT_PRODUCTION_URL ?? vercelUrl
-            : vercelUrl ?? process.env.VERCEL_PROJECT_PRODUCTION_URL);
+        process.env.VERCEL_ENV === "preview"
+            ? vercelUrl ?? process.env.NEXT_PUBLIC_SITE_URL
+            : process.env.NEXT_PUBLIC_SITE_URL ??
+              process.env.VERCEL_PROJECT_PRODUCTION_URL ??
+              vercelUrl;
 
     if (!configuredUrl) {
         return "http://localhost:3000";
