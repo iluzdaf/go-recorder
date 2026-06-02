@@ -26,17 +26,17 @@ export default function BoardStatusMessage({
     }, [autoDismissMs, message, onDismiss]);
 
     return (
-        <div className="flex h-16 shrink-0 items-start px-3 pt-3">
+        <div className="board-status-message relative flex h-16 shrink-0 items-start px-3 pt-3">
             {message && (
                 <div
-                    className="mx-auto flex max-w-xl items-start gap-3 rounded-lg border border-zinc-200 bg-white/95 px-3 py-2 text-sm text-zinc-800 shadow-lg dark:border-neutral-700 dark:bg-neutral-900/95 dark:text-neutral-100"
+                    className="board-status-card mx-auto flex max-w-xl items-start gap-3 rounded-lg border border-zinc-200 bg-white/95 px-3 py-2 text-sm text-zinc-800 shadow-lg dark:border-neutral-700 dark:bg-neutral-900/95 dark:text-neutral-100"
                     role="status"
                     aria-live="polite"
                 >
                     <p className="min-w-0 flex-1">{message}</p>
                     <button
                         type="button"
-                        className="-mr-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-lg leading-none text-zinc-500 hover:bg-zinc-100 hover:text-zinc-950 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+                        className="board-status-dismiss -mr-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-lg leading-none text-zinc-500 hover:bg-zinc-100 hover:text-zinc-950 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
                         onClick={onDismiss}
                         aria-label={t("dismissMessage")}
                     >
