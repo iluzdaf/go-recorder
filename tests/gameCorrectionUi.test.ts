@@ -333,6 +333,81 @@ describe("game correction UI helpers", () => {
         });
     });
 
+    it("keeps single-stone corrections anchored to the destination even with a drag origin", () => {
+        const result = applyRecorderCorrection({
+            boardSize: 19,
+            from: { x: 0, y: 0 },
+            gameState,
+            selectedMoveIndexes: [0],
+            vertex: { x: 5, y: 5 },
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            gameState: {
+                ...gameState,
+                moves: [
+                    { type: "play", x: 5, y: 5, color: "B" },
+                    gameState.moves[1],
+                    gameState.moves[2],
+                ],
+            },
+            selectedMoveIndexes: [],
+            status: null,
+            hasUnsavedChanges: true,
+        });
+    });
+
+    it("moves the dragged selected stone to the target and keeps selected stones in formation", () => {
+        const result = applyRecorderCorrection({
+            boardSize: 19,
+            from: { x: 4, y: 4 },
+            gameState,
+            selectedMoveIndexes: [0, 2],
+            vertex: { x: 7, y: 5 },
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            gameState: {
+                ...gameState,
+                moves: [
+                    { type: "play", x: 6, y: 4, color: "B" },
+                    gameState.moves[1],
+                    { type: "play", x: 7, y: 5, color: "B" },
+                ],
+            },
+            selectedMoveIndexes: [],
+            status: null,
+            hasUnsavedChanges: true,
+        });
+    });
+
+    it("moves selected stones by negative drag deltas while preserving formation", () => {
+        const result = applyRecorderCorrection({
+            boardSize: 19,
+            from: { x: 5, y: 5 },
+            gameState,
+            selectedMoveIndexes: [0, 2],
+            vertex: { x: 4, y: 3 },
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            gameState: {
+                ...gameState,
+                moves: [
+                    { type: "play", x: 2, y: 1, color: "B" },
+                    gameState.moves[1],
+                    { type: "play", x: 3, y: 2, color: "B" },
+                ],
+            },
+            selectedMoveIndexes: [],
+            status: null,
+            hasUnsavedChanges: true,
+        });
+    });
+
     it("rejects a recorder correction that would make replay illegal", () => {
         expect(
             applyRecorderCorrection({
