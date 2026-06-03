@@ -23,6 +23,7 @@ import { createLoadedLocalGame } from "../lib/localGameView";
 import { createShareFromLocalGame } from "../lib/shareClient";
 import { formatMoveEditError, formatShareCreated, t } from "../lib/i18n";
 import { useHeaderActions, useTheme } from "./AppShell";
+import BoardStatusMessage from "./BoardStatusMessage";
 import { replayGame } from "../lib/gameReplay";
 import {
     applyRecorderCorrection,
@@ -143,6 +144,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
+    const dismissShareStatus = useCallback(() => setShareStatus(null), []);
     const [gameMetadata, setGameMetadata] = useState({
         blackPlayerName: null as string | null,
         whitePlayerName: null as string | null,
@@ -769,8 +771,12 @@ export default function GoBoard({ id }: GoBoardProps) {
             {!loadError && (
                 <div
                     ref={boardAreaRef}
-                    className="flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
+                    className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
                 >
+                    <BoardStatusMessage
+                        message={shareStatus}
+                        onDismiss={dismissShareStatus}
+                    />
                     <div
                         ref={gobanWrapperRef}
                         className="relative"
@@ -1128,13 +1134,8 @@ export default function GoBoard({ id }: GoBoardProps) {
                             </div>
                         </div>
                     )}
-                    {shareStatus && (
-                        <div className="pointer-events-none absolute bottom-3 left-1/2 z-40 -translate-x-1/2 rounded bg-neutral-950/90 px-3 py-1 text-xs text-white shadow-lg dark:bg-neutral-100/90 dark:text-black">
-                            {shareStatus}
-                        </div>
-                    )}
+                    </div>
                 </div>
-            </div>
             )}
         </div>
     );

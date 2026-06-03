@@ -22,6 +22,7 @@
     "creatingShare": "Creating share...",
     "shareCreated": "Share created",
     "failedToCreateShare": "Failed to create share",
+    "dismissMessage": "Dismiss message",
     "undo": "Undo",
     "pass": "Pass",
     "downloadSgf": "Download SGF",
