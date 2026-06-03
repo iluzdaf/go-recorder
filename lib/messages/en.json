@@ -10,6 +10,8 @@
     "recordGame": "Record Game",
     "recording": "Recording...",
     "home": "Home",
+    "showHeader": "Show header",
+    "hideHeader": "Hide header",
     "gameRecordingInProgress": "Game recording in progress",
     "shareView": "Share view",
     "switchToLightMode": "Switch to light mode",
