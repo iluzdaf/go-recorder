@@ -10,7 +10,7 @@ import {
     useState,
     useSyncExternalStore,
 } from "react";
-import { Home, Menu, Moon, Share2, Sun, X } from "lucide-react";
+import { Home, Menu, Moon, Sun, X } from "lucide-react";
 import { t } from "@/lib/i18n";
 
 type ThemeContextValue = {
@@ -200,9 +200,8 @@ export default function AppShell({
     }, [isDarkMode]);
 
     const isRecordingGame = pathname?.startsWith("/games/");
-    const isShareView = pathname?.startsWith("/shares/");
     const usesOverlayHeader = Boolean(
-        isShortViewport && (isRecordingGame || isShareView)
+        isShortViewport && (isRecordingGame || pathname?.startsWith("/shares/"))
     );
     const isHeaderVisible = !usesOverlayHeader || isHeaderExpanded;
 
@@ -254,15 +253,6 @@ export default function AppShell({
                                 <Home size={18} />
                             </Link>
 
-                            {isShareView ? (
-                                <div
-                                    className="inline-flex h-9 w-9 items-center justify-center text-sky-600 dark:text-sky-400"
-                                    aria-label={t("shareView")}
-                                    title={t("shareView")}
-                                >
-                                    <Share2 size={18} />
-                                </div>
-                            ) : null}
                         </div>
 
                         <div className="flex min-w-0 flex-1 items-center justify-center px-3">
