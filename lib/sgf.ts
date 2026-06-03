@@ -31,10 +31,16 @@ function sanitizeFilenamePart(value: string) {
         .replace(/\s+/g, " ");
 }
 
+function formatIsoTimestampForFilename(date: Date) {
+    return date.toISOString().replace(/:/g, "-");
+}
+
 export function createSgfFilename(
     blackPlayerName?: string | null,
-    whitePlayerName?: string | null
+    whitePlayerName?: string | null,
+    now = new Date()
 ) {
+    const timestamp = formatIsoTimestampForFilename(now);
     const blackName = blackPlayerName
         ? sanitizeFilenamePart(blackPlayerName)
         : null;
@@ -44,10 +50,10 @@ export function createSgfFilename(
         : null;
 
     if (blackName && whiteName) {
-        return `${blackName} (b) vs ${whiteName} (w).sgf`;
+        return `${timestamp} ${blackName} (b) vs ${whiteName} (w).sgf`;
     }
 
-    return "game.sgf";
+    return `${timestamp}.sgf`;
 }
 
 export function exportSgf({

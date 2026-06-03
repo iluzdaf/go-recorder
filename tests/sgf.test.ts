@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { exportSgf, toSgfCoord } from "../lib/sgf";
+import { createSgfFilename, exportSgf, toSgfCoord } from "../lib/sgf";
 
 describe("toSgfCoord", () => {
     it("converts zero-based board coordinates to SGF coordinates", () => {
@@ -157,6 +157,24 @@ describe("exportSgf", () => {
 
         expect(sgf).toBe(
             "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19]HA[2]AB[dp][pd];W[jj])"
+        );
+    });
+});
+
+describe("createSgfFilename", () => {
+    it("prefixes the filename with an ISO timestamp", () => {
+        const date = new Date("2026-06-03T10:24:42.303Z");
+
+        expect(
+            createSgfFilename("Black Player", "White Player", date)
+        ).toBe("2026-06-03T10-24-42.303Z Black Player (b) vs White Player (w).sgf");
+    });
+
+    it("prefixes the fallback filename with an ISO timestamp", () => {
+        const date = new Date("2026-06-03T10:24:42.303Z");
+
+        expect(createSgfFilename(undefined, undefined, date)).toBe(
+            "2026-06-03T10-24-42.303Z.sgf"
         );
     });
 });
