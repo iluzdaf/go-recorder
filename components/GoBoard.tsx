@@ -1,15 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType, PointerEvent as ReactPointerEvent } from "react";
 import {
     CircleDot,
+    Copy,
     Download,
-    Share2,
+    Link2,
+    SquareArrowUpRight,
+    SquareArrowOutUpRight,
     Hand,
     Undo2,
 } from "lucide-react";
+import QRCode from "qrcode";
 
 import type {
     BoardSize,
@@ -27,8 +33,8 @@ import {
 import { getLocalGame, saveLocalGame } from "../lib/localGames";
 import { createLoadedLocalGame } from "../lib/localGameView";
 import { createShareFromLocalGame } from "../lib/shareClient";
-import { formatMoveEditError, formatShareCreated, t } from "../lib/i18n";
-import { useHeaderActions, useTheme } from "./AppShell";
+import { formatMoveEditError, t } from "../lib/i18n";
+import { useTheme } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
 import { replayGame } from "../lib/gameReplay";
 import {
@@ -68,6 +74,8 @@ type ActionBarAnchor = "left" | "center" | "right";
 type ActionBarDragState = {
     pointerId: number;
 };
+
+type ShareMenuMode = "chooser" | "created";
 
 function stoneToSign(stone: Stone) {
     return stone === "B" ? 1 : -1;
@@ -144,7 +152,6 @@ function getActionBarAnchorFromClientX({
 export default function GoBoard({ id }: GoBoardProps) {
     const [size, setSize] = useState<BoardSize>(19);
     const { isDarkMode } = useTheme();
-    const { setHeaderActions } = useHeaderActions();
     const boardAreaRef = useRef<HTMLDivElement | null>(null);
     const gobanWrapperRef = useRef<HTMLDivElement | null>(null);
     const hasLoadedGameRef = useRef(false);
@@ -180,6 +187,20 @@ export default function GoBoard({ id }: GoBoardProps) {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
+    const [shareMenuOpen, setShareMenuOpen] = useState(false);
+    const [shareMenuMode, setShareMenuMode] =
+        useState<ShareMenuMode>("chooser");
+    const [shareSlug, setShareSlug] = useState<string | null>(null);
+    const [shareQrCodeDataUrl, setShareQrCodeDataUrl] = useState<string | null>(
+        null
+    );
+    const [shareMenuMessage, setShareMenuMessage] = useState<string | null>(
+        null
+    );
+    const [shareMenuIsCreating, setShareMenuIsCreating] = useState(false);
+    const shareMenuRef = useRef<HTMLDivElement | null>(null);
+    const shareTriggerRef = useRef<HTMLButtonElement | null>(null);
+    const shareAutoCreateAttemptedRef = useRef(false);
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
     const isStonePlacementActiveRef = useRef(false);
     const stonePlacementCanCommitRef = useRef(false);
@@ -237,6 +258,11 @@ export default function GoBoard({ id }: GoBoardProps) {
             const loadedGame = createLoadedLocalGame(gameRecord);
 
             localGameRecordRef.current = gameRecord;
+            setShareSlug(gameRecord.lastShareSlug ?? null);
+            setShareMenuMode(gameRecord.lastShareSlug ? "created" : "chooser");
+            setShareQrCodeDataUrl(null);
+            setShareMenuMessage(null);
+            setShareMenuIsCreating(false);
             setSize(loadedGame.size);
             setGameState(loadedGame.gameState);
             setUpdatedAt(loadedGame.updatedAt);
@@ -474,6 +500,8 @@ export default function GoBoard({ id }: GoBoardProps) {
             return;
         }
 
+        clearCachedShareLink();
+
         const newMove: Move = {
             type: "play",
             x,
@@ -511,6 +539,8 @@ export default function GoBoard({ id }: GoBoardProps) {
             setShareStatus(formatMoveEditError(result.error));
             return true;
         }
+
+        clearCachedShareLink();
 
         setGameState(result.gameState);
         setSelectedMoveIndexes(result.selectedMoveIndexes);
@@ -573,6 +603,45 @@ export default function GoBoard({ id }: GoBoardProps) {
 
     const canShareGame = gameState.moves.some((move) => move.type === "play");
 
+    const resetShareMenuState = useCallback(() => {
+        shareAutoCreateAttemptedRef.current = false;
+        setShareMenuMessage(null);
+        setShareMenuIsCreating(false);
+    }, []);
+
+    const openShareMenu = useCallback(() => {
+        setShareMenuMode(shareSlug ? "created" : "chooser");
+        setShareMenuOpen(true);
+    }, [shareSlug]);
+
+    const closeShareMenu = useCallback(() => {
+        resetShareMenuState();
+        setShareMenuOpen(false);
+    }, [resetShareMenuState]);
+
+    const toggleShareMenu = useCallback(() => {
+        if (shareMenuOpen) {
+            closeShareMenu();
+            return;
+        }
+
+        openShareMenu();
+    }, [closeShareMenu, openShareMenu, shareMenuOpen]);
+
+    const clearCachedShareLink = () => {
+        setShareSlug(null);
+        setShareMenuMode("chooser");
+        setShareQrCodeDataUrl(null);
+
+        const localGameRecord = localGameRecordRef.current;
+        if (!localGameRecord) return;
+
+        localGameRecordRef.current = {
+            ...localGameRecord,
+            lastShareSlug: null,
+        };
+    };
+
     const createCurrentLocalGameRecord = useCallback(() => {
         const localGameRecord = localGameRecordRef.current;
         if (!localGameRecord) return null;
@@ -584,8 +653,10 @@ export default function GoBoard({ id }: GoBoardProps) {
         };
     }, [gameState, size]);
 
-    const handleUndo = useCallback(() => {
+    const handleUndo = () => {
         if (gameState.moves.length === 0) return;
+
+        clearCachedShareLink();
 
         const previousMoves = gameState.moves.slice(0, -1);
         const lastMove = gameState.moves.at(-1);
@@ -597,13 +668,15 @@ export default function GoBoard({ id }: GoBoardProps) {
         });
         setSelectedMoveIndexes([]);
         setHasUnsavedChanges(true);
-    }, [gameState]);
+    };
 
-    const handlePass = useCallback(() => {
+    const handlePass = () => {
         const newMove: Move = {
             type: "pass",
             color: gameState.currentPlayer,
         };
+
+        clearCachedShareLink();
 
         setGameState({
             ...gameState,
@@ -612,7 +685,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         });
         setSelectedMoveIndexes([]);
         setHasUnsavedChanges(true);
-    }, [gameState]);
+    };
 
     const handleDownloadSgf = useCallback(() => {
         const sgf = exportSgf({
@@ -645,16 +718,19 @@ export default function GoBoard({ id }: GoBoardProps) {
         const currentLocalGame = createCurrentLocalGameRecord();
 
         if (!currentLocalGame) {
-            setShareStatus(t("gameNotLoaded"));
+            setShareMenuMessage(t("gameNotLoaded"));
+            setShareMenuIsCreating(false);
             return;
         }
 
         if (!canShareGame) {
-            setShareStatus(t("addMoveBeforeSharing"));
+            setShareMenuMessage(t("addMoveBeforeSharing"));
+            setShareMenuIsCreating(false);
             return;
         }
 
-        setShareStatus(t("creatingShare"));
+        setShareMenuIsCreating(true);
+        setShareMenuMessage(t("creatingShare"));
 
         try {
             const { slug } = await createShareFromLocalGame({
@@ -667,14 +743,102 @@ export default function GoBoard({ id }: GoBoardProps) {
             });
 
             localGameRecordRef.current = updatedLocalGame;
-            setShareStatus(formatShareCreated(`/shares/${slug}`));
-            window.location.href = `/shares/${slug}`;
+            setShareSlug(slug);
+            setShareMenuMode("created");
+            setShareMenuOpen(true);
+            setShareQrCodeDataUrl(null);
+            setShareMenuMessage(null);
+            setShareMenuIsCreating(false);
         } catch (error) {
-            setShareStatus(
+            setShareMenuMessage(
                 error instanceof Error ? error.message : t("failedToCreateShare")
             );
+            setShareMenuIsCreating(false);
         }
     }, [canShareGame, createCurrentLocalGameRecord]);
+
+    const sharePath = shareSlug ? `/shares/${shareSlug}` : null;
+
+    useEffect(() => {
+        if (!shareMenuOpen) {
+            shareAutoCreateAttemptedRef.current = false;
+            return;
+        }
+
+        const handlePointerDown = (event: PointerEvent) => {
+            const target = event.target;
+            if (!(target instanceof Node)) return;
+
+            const menuElement = shareMenuRef.current;
+            const triggerElement = shareTriggerRef.current;
+
+            if (
+                menuElement?.contains(target) ||
+                triggerElement?.contains(target)
+            ) {
+                return;
+            }
+
+            closeShareMenu();
+        };
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                closeShareMenu();
+            }
+        };
+
+        window.addEventListener("pointerdown", handlePointerDown);
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            window.removeEventListener("pointerdown", handlePointerDown);
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [closeShareMenu, shareMenuOpen]);
+
+    useEffect(() => {
+        if (!shareMenuOpen || shareMenuMode !== "chooser" || sharePath) {
+            return;
+        }
+
+        if (!canShareGame || shareAutoCreateAttemptedRef.current) {
+            return;
+        }
+
+        shareAutoCreateAttemptedRef.current = true;
+        void handleShare();
+    }, [canShareGame, handleShare, shareMenuMode, shareMenuOpen, sharePath]);
+
+    useEffect(() => {
+        if (!shareMenuOpen || shareMenuMode !== "created" || !sharePath) {
+            return;
+        }
+
+        let cancelled = false;
+        const shareUrl = `${window.location.origin}${sharePath}`;
+
+        void QRCode.toDataURL(shareUrl, {
+            errorCorrectionLevel: "M",
+            margin: 1,
+            width: 240,
+        })
+            .then((nextQrCodeDataUrl: string) => {
+                if (!cancelled) {
+                    setShareQrCodeDataUrl(nextQrCodeDataUrl);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setShareQrCodeDataUrl(null);
+                    setShareStatus(t("failedToGenerateQrCode"));
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [shareMenuMode, shareMenuOpen, sharePath]);
 
     const handleActionBarPointerDown = useCallback(
         (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -790,45 +954,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         [finishActionBarDrag]
     );
 
-    const headerActions = useMemo(
-        () => (
-            <div className="flex items-center gap-1">
-                <button
-                    type="button"
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                    onClick={handleDownloadSgf}
-                    aria-label={t("downloadSgf")}
-                    title={t("downloadSgf")}
-                >
-                    <Download size={18} />
-                </button>
-                <button
-                    type="button"
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                    disabled={!canShareGame}
-                    onClick={() => {
-                        void handleShare();
-                    }}
-                    aria-label={t("share")}
-                    title={t("share")}
-                >
-                    <Share2 size={18} />
-                </button>
-            </div>
-        ),
-        [canShareGame, handleDownloadSgf, handleShare]
-    );
-
-    useEffect(() => {
-        setHeaderActions(headerActions);
-    }, [headerActions, setHeaderActions]);
-
-    useEffect(() => {
-        return () => {
-            setHeaderActions(null);
-        };
-    }, [setHeaderActions]);
-
     useEffect(() => {
         return () => {
             clearStoneSelectTimeout();
@@ -919,6 +1044,107 @@ export default function GoBoard({ id }: GoBoardProps) {
                         message={shareStatus}
                         onDismiss={dismissShareStatus}
                     />
+                    {shareMenuOpen ? (
+                        <div
+                            id="share-menu"
+                            ref={shareMenuRef}
+                            className="fixed right-4 top-16 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
+                        >
+                            <div className="mb-3">
+                                <p className="text-sm font-semibold text-zinc-950 dark:text-white">
+                                    {t("share")}
+                                </p>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                    <button
+                                        type="button"
+                                        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                        onClick={() => {
+                                            handleDownloadSgf();
+                                            closeShareMenu();
+                                        }}
+                                    aria-label={t("downloadSgf")}
+                                    title={t("downloadSgf")}
+                                >
+                                    <Download size={16} />
+                                    <span>{t("downloadSgf")}</span>
+                                </button>
+                                {shareMenuMode === "created" && sharePath ? (
+                                    <>
+                                        <div className="flex items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-neutral-700 dark:bg-neutral-950">
+                                            {shareQrCodeDataUrl ? (
+                                                <Image
+                                                    src={shareQrCodeDataUrl}
+                                                    alt={t("shareLink")}
+                                                    width={240}
+                                                    height={240}
+                                                    unoptimized
+                                                    className="h-48 w-48"
+                                                />
+                                            ) : (
+                                                <div className="flex h-48 w-48 items-center justify-center text-sm text-zinc-500 dark:text-zinc-400">
+                                                    {t("creatingQrCode")}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                            onClick={async () => {
+                                                try {
+                                                    await navigator.clipboard.writeText(
+                                                        `${window.location.origin}${sharePath}`
+                                                    );
+                                                    setShareStatus(t("linkCopied"));
+                                                } catch {
+                                                    setShareStatus(t("failedToCopyLink"));
+                                                }
+                                            }}
+                                            aria-label={t("copyLink")}
+                                            title={t("copyLink")}
+                                        >
+                                            <Copy size={16} />
+                                            <span>{t("copyLink")}</span>
+                                        </button>
+                                        <Link
+                                            href={sharePath}
+                                            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                        >
+                                            <SquareArrowOutUpRight size={16} />
+                                            <span>{t("goToSharePage")}</span>
+                                        </Link>
+                                    </>
+                                ) : (
+                                    <>
+                                        {shareMenuMessage ? (
+                                            <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-zinc-300">
+                                                {shareMenuMessage}
+                                            </div>
+                                        ) : null}
+                                        {shareMenuIsCreating ? null : (
+                                            <button
+                                                type="button"
+                                                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                                disabled={!canShareGame}
+                                                onClick={() => {
+                                                    void handleShare();
+                                                }}
+                                                aria-label={t("createLink")}
+                                                title={
+                                                    canShareGame
+                                                        ? t("createLink")
+                                                        : t("addMoveBeforeSharing")
+                                                }
+                                            >
+                                                <Link2 size={16} />
+                                                <span>{t("createLink")}</span>
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    ) : null}
                     <div
                         ref={actionBarRailRef}
                         className="absolute inset-x-3 bottom-3 z-40 h-14 select-none sm:bottom-4"
@@ -965,6 +1191,20 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     title={t("pass")}
                                 >
                                     <Hand size={18} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        ref={shareTriggerRef}
+                                        className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                        onClick={() => {
+                                            toggleShareMenu();
+                                        }}
+                                        aria-label={t("share")}
+                                        aria-expanded={shareMenuOpen}
+                                        aria-controls="share-menu"
+                                        title={t("share")}
+                                    >
+                                        <SquareArrowUpRight size={18} />
                                     </button>
                                     <div
                                         className="flex h-11 w-10 cursor-grab items-center justify-center active:cursor-grabbing"
