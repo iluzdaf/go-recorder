@@ -2,8 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
-import type { ComponentType } from "react";
-import { Download, Share2, SkipForward, Undo2 } from "lucide-react";
+import type { ComponentType, PointerEvent as ReactPointerEvent } from "react";
+import {
+    CircleDot,
+    Download,
+    Share2,
+    SkipForward,
+    Undo2,
+} from "lucide-react";
 
 import type {
     BoardSize,
@@ -57,6 +63,12 @@ type GoBoardProps = {
     id: string;
 };
 
+type ActionBarAnchor = "left" | "center" | "right";
+
+type ActionBarDragState = {
+    pointerId: number;
+};
+
 function stoneToSign(stone: Stone) {
     return stone === "B" ? 1 : -1;
 }
@@ -104,6 +116,30 @@ function toDisplayCoord(x: number, y: number, boardSize: BoardSize) {
 
 const BOARD_PADDING_PX = 16;
 const STONE_SELECT_HOLD_MS = 450;
+const ACTION_BAR_STORAGE_KEY_PREFIX = "go-recorder:game-action-bar-anchor:";
+
+function getActionBarStorageKey(id: string) {
+    return `${ACTION_BAR_STORAGE_KEY_PREFIX}${id}`;
+}
+
+function isActionBarAnchor(value: string | null): value is ActionBarAnchor {
+    return value === "left" || value === "center" || value === "right";
+}
+
+function getActionBarAnchorFromClientX({
+    clientX,
+    container,
+}: {
+    clientX: number;
+    container: HTMLElement;
+}): ActionBarAnchor {
+    const { left, width } = container.getBoundingClientRect();
+    const relativeX = clientX - left;
+
+    if (relativeX < width / 3) return "left";
+    if (relativeX < (width * 2) / 3) return "center";
+    return "right";
+}
 
 export default function GoBoard({ id }: GoBoardProps) {
     const [size, setSize] = useState<BoardSize>(19);
@@ -145,6 +181,18 @@ export default function GoBoard({ id }: GoBoardProps) {
     const [loadError, setLoadError] = useState<string | null>(null);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
+    const actionBarDragRef = useRef<ActionBarDragState | null>(null);
+    const actionBarRailRef = useRef<HTMLDivElement | null>(null);
+    const [actionBarAnchor, setActionBarAnchor] = useState<ActionBarAnchor>(() => {
+        if (typeof window === "undefined") return "center";
+
+        const storedAnchor = window.localStorage.getItem(
+            getActionBarStorageKey(id)
+        );
+
+        return isActionBarAnchor(storedAnchor) ? storedAnchor : "center";
+    });
+    const [actionBarDragX, setActionBarDragX] = useState<number | null>(null);
     const [gameMetadata, setGameMetadata] = useState({
         blackPlayerName: null as string | null,
         whitePlayerName: null as string | null,
@@ -622,28 +670,123 @@ export default function GoBoard({ id }: GoBoardProps) {
         }
     }, [canShareGame, createCurrentLocalGameRecord]);
 
+    const handleActionBarPointerDown = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            if (
+                event.target instanceof HTMLElement &&
+                event.target.closest("button")
+            ) {
+                return;
+            }
+
+            const rail = actionBarRailRef.current;
+            if (!rail) return;
+
+            event.preventDefault();
+            event.currentTarget.setPointerCapture(event.pointerId);
+
+            const railRect = rail.getBoundingClientRect();
+            const nextDragX = Math.max(0, Math.min(event.clientX - railRect.left, railRect.width));
+
+            actionBarDragRef.current = {
+                pointerId: event.pointerId,
+            };
+
+            setActionBarDragX(nextDragX);
+        },
+        []
+    );
+
+    const handleActionBarPointerMove = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            const dragState = actionBarDragRef.current;
+
+            if (!dragState || dragState.pointerId !== event.pointerId) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const rail = actionBarRailRef.current;
+            if (!rail) return;
+
+            const railRect = rail.getBoundingClientRect();
+            const nextDragX = Math.max(0, Math.min(event.clientX - railRect.left, railRect.width));
+            setActionBarDragX(nextDragX);
+        },
+        []
+    );
+
+    const clearActionBarDragState = useCallback(
+        (container: HTMLDivElement, pointerId: number) => {
+            const dragState = actionBarDragRef.current;
+
+            if (container?.hasPointerCapture(pointerId)) {
+                container.releasePointerCapture(pointerId);
+            }
+
+            if (dragState?.pointerId === pointerId) {
+                actionBarDragRef.current = null;
+            }
+        },
+        []
+    );
+
+    const finishActionBarDrag = useCallback(
+        (container: HTMLDivElement, pointerId: number) => {
+            clearActionBarDragState(container, pointerId);
+            setActionBarDragX(null);
+        },
+        [clearActionBarDragState]
+    );
+
+    const handleActionBarPointerUp = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            const dragState = actionBarDragRef.current;
+
+            if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+            event.preventDefault();
+
+            const rail = actionBarRailRef.current;
+            if (!rail) {
+                finishActionBarDrag(event.currentTarget, event.pointerId);
+                return;
+            }
+
+            const nextAnchor = getActionBarAnchorFromClientX({
+                clientX: event.clientX,
+                container: rail,
+            });
+
+            setActionBarAnchor(nextAnchor);
+            window.localStorage.setItem(getActionBarStorageKey(id), nextAnchor);
+            finishActionBarDrag(event.currentTarget, event.pointerId);
+        },
+        [finishActionBarDrag, id]
+    );
+
+    const handleActionBarPointerCancel = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            if (actionBarDragRef.current?.pointerId !== event.pointerId) return;
+
+            finishActionBarDrag(event.currentTarget, event.pointerId);
+        },
+        [finishActionBarDrag]
+    );
+
+    const handleActionBarLostPointerCapture = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            if (actionBarDragRef.current?.pointerId !== event.pointerId) return;
+
+            finishActionBarDrag(event.currentTarget, event.pointerId);
+        },
+        [finishActionBarDrag]
+    );
+
     const headerActions = useMemo(
         () => (
             <div className="flex items-center gap-1">
-                <button
-                    type="button"
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                    disabled={gameState.moves.length === 0}
-                    onClick={handleUndo}
-                    aria-label={t("undo")}
-                    title={t("undo")}
-                >
-                    <Undo2 size={18} />
-                </button>
-                <button
-                    type="button"
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                    onClick={handlePass}
-                    aria-label={t("pass")}
-                    title={t("pass")}
-                >
-                    <SkipForward size={18} />
-                </button>
                 <button
                     type="button"
                     className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
@@ -667,14 +810,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                 </button>
             </div>
         ),
-        [
-            canShareGame,
-            gameState.moves.length,
-            handleDownloadSgf,
-            handlePass,
-            handleShare,
-            handleUndo,
-        ]
+        [canShareGame, handleDownloadSgf, handleShare]
     );
 
     useEffect(() => {
@@ -777,6 +913,77 @@ export default function GoBoard({ id }: GoBoardProps) {
                         message={shareStatus}
                         onDismiss={dismissShareStatus}
                     />
+                    <div
+                        ref={actionBarRailRef}
+                        className="absolute inset-x-3 bottom-3 z-40 h-14 select-none sm:bottom-4"
+                    >
+                        <div className="relative h-full w-full">
+                            <div
+                                className={
+                                    actionBarDragX !== null
+                                        ? "absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
+                                        : actionBarAnchor === "left"
+                                        ? "absolute left-0 top-1/2 -translate-y-1/2"
+                                        : actionBarAnchor === "right"
+                                            ? "absolute right-0 top-1/2 -translate-y-1/2"
+                                            : "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+                                }
+                                style={
+                                    actionBarDragX !== null
+                                        ? { left: `${actionBarDragX}px` }
+                                        : undefined
+                                }
+                            >
+                                <div className="flex items-center gap-1 rounded-full border border-zinc-200 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                                    <div
+                                        className="inline-flex h-11 w-11 items-center justify-center text-zinc-700 dark:text-zinc-200"
+                                        aria-hidden="true"
+                                    >
+                                        <CircleDot size={18} />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                        disabled={gameState.moves.length === 0}
+                                        onClick={handleUndo}
+                                        aria-label={t("undo")}
+                                        title={t("undo")}
+                                    >
+                                        <Undo2 size={18} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                        onClick={handlePass}
+                                        aria-label={t("pass")}
+                                        title={t("pass")}
+                                        >
+                                        <SkipForward size={18} />
+                                    </button>
+                                    <div
+                                        className="flex h-11 w-10 cursor-grab items-center justify-center active:cursor-grabbing"
+                                        onPointerDown={handleActionBarPointerDown}
+                                        onPointerMove={handleActionBarPointerMove}
+                                        onPointerUp={handleActionBarPointerUp}
+                                        onPointerCancel={handleActionBarPointerCancel}
+                                        onLostPointerCapture={handleActionBarLostPointerCapture}
+                                    >
+                                        <span
+                                            aria-hidden="true"
+                                            className="grid h-6 w-4 grid-cols-2 gap-x-1 gap-y-1"
+                                        >
+                                            <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
+                                            <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
+                                            <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
+                                            <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
+                                            <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
+                                            <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div
                         ref={gobanWrapperRef}
                         className="relative"

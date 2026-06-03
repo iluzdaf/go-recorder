@@ -11,5 +11,5 @@ const GoBoard = dynamic(() => import("@/components/GoBoard"), {
 });
 
 export default function GoBoardLoader({ id }: GoBoardLoaderProps) {
-    return <GoBoard id={id} />;
+    return <GoBoard key={id} id={id} />;
 }
