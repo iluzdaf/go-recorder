@@ -769,15 +769,14 @@ export default function GoBoard({ id }: GoBoardProps) {
             )}
 
             {!loadError && (
-                <>
+                <div
+                    ref={boardAreaRef}
+                    className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
+                >
                     <BoardStatusMessage
                         message={shareStatus}
                         onDismiss={dismissShareStatus}
                     />
-                    <div
-                        ref={boardAreaRef}
-                        className="flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
-                    >
                     <div
                         ref={gobanWrapperRef}
                         className="relative"
@@ -1137,7 +1136,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                     )}
                     </div>
                 </div>
-                </>
             )}
         </div>
     );
