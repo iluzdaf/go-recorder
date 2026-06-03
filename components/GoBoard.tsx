@@ -7,7 +7,7 @@ import {
     CircleDot,
     Download,
     Share2,
-    SkipForward,
+    Hand,
     Undo2,
 } from "lucide-react";
 
@@ -953,12 +953,12 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     </button>
                                     <button
                                         type="button"
-                                        className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                        onClick={handlePass}
-                                        aria-label={t("pass")}
-                                        title={t("pass")}
-                                        >
-                                        <SkipForward size={18} />
+                                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                    onClick={handlePass}
+                                    aria-label={t("pass")}
+                                    title={t("pass")}
+                                >
+                                    <Hand size={18} />
                                     </button>
                                     <div
                                         className="flex h-11 w-10 cursor-grab items-center justify-center active:cursor-grabbing"
