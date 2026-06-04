@@ -33,6 +33,7 @@ import {
 } from "../lib/gameLogic";
 import { getLocalGame, saveLocalGame } from "../lib/localGames";
 import { createLoadedLocalGame } from "../lib/localGameView";
+import { getMagnifierAnchor, type MagnifierAnchor } from "../lib/magnifierAnchor";
 import { createShareFromLocalGame } from "../lib/shareClient";
 import { formatMoveEditError, t } from "../lib/i18n";
 import { useTheme } from "./AppShell";
@@ -134,6 +135,8 @@ function toDisplayCoord(x: number, y: number, boardSize: BoardSize) {
 const BOARD_PADDING_PX = 16;
 const STONE_SELECT_HOLD_MS = 450;
 const ACTION_BAR_STORAGE_KEY_PREFIX = "go-recorder:game-action-bar-anchor:";
+const MAGNIFIER_SIZE_PX = 144;
+const MAGNIFIER_COORDINATE_CLEARANCE_PX = 12;
 
 function getActionBarStorageKey(id: string) {
     return `${ACTION_BAR_STORAGE_KEY_PREFIX}${id}`;
@@ -190,6 +193,8 @@ export default function GoBoard({ id }: GoBoardProps) {
     });
     const [vertexSize, setVertexSize] = useState(24);
     const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
+    const [magnifierAnchor, setMagnifierAnchor] =
+        useState<MagnifierAnchor>("right");
     const [selectedGroupDragOrigin, setSelectedGroupDragOriginState] =
         useState<Vertex | null>(null);
     const [selectedMoveIndexes, setSelectedMoveIndexes] = useState<number[]>([]);
@@ -239,6 +244,18 @@ export default function GoBoard({ id }: GoBoardProps) {
         cellSize: 24,
         boardSizePx: 24 * 19,
     });
+    const [gridViewportRect, setGridViewportRect] = useState<{
+        left: number;
+        top: number;
+        right: number;
+        bottom: number;
+    } | null>(null);
+    const [coordinateViewportRect, setCoordinateViewportRect] = useState<{
+        left: number;
+        top: number;
+        right: number;
+        bottom: number;
+    } | null>(null);
 
     const [gameState, setGameState] = useState<GameState>({
         setupStones: [],
@@ -388,7 +405,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         const boardArea = boardAreaRef.current;
         if (!boardArea) return;
 
-        const updateVertexSize = () => {
+        const updateBoardGeometry = () => {
             const { width, height } = boardArea.getBoundingClientRect();
             const availableSize = Math.max(0, Math.min(width, height) - BOARD_PADDING_PX);
             const coordinateGutterVertices = 1;
@@ -398,11 +415,41 @@ export default function GoBoard({ id }: GoBoardProps) {
             );
 
             setVertexSize(nextVertexSize);
+
+            const grid = boardArea.querySelector(".shudan-grid");
+            if (!(grid instanceof SVGElement)) return;
+            const coordX = boardArea.querySelector(".shudan-coordx");
+
+            const wrapperRect = boardArea.getBoundingClientRect();
+            const gridRect = grid.getBoundingClientRect();
+            const nextGridMetrics = {
+                left: gridRect.left - wrapperRect.left,
+                top: gridRect.top - wrapperRect.top,
+                cellSize: gridRect.width / size,
+                boardSizePx: gridRect.width,
+            };
+
+            setGridMetrics(nextGridMetrics);
+            setGridViewportRect({
+                left: gridRect.left,
+                top: gridRect.top,
+                right: gridRect.right,
+                bottom: gridRect.bottom,
+            });
+            if (coordX instanceof Element) {
+                const coordXRect = coordX.getBoundingClientRect();
+                setCoordinateViewportRect({
+                    left: coordXRect.left,
+                    top: coordXRect.top,
+                    right: coordXRect.right,
+                    bottom: coordXRect.bottom,
+                });
+            }
         };
 
-        updateVertexSize();
+        updateBoardGeometry();
 
-        const resizeObserver = new ResizeObserver(updateVertexSize);
+        const resizeObserver = new ResizeObserver(updateBoardGeometry);
         resizeObserver.observe(boardArea);
 
         return () => resizeObserver.disconnect();
@@ -519,9 +566,25 @@ export default function GoBoard({ id }: GoBoardProps) {
 
         const grid = gobanWrapper.querySelector(".shudan-grid");
         if (!(grid instanceof SVGElement)) return null;
+        const coordX = gobanWrapper.querySelector(".shudan-coordx");
 
         const wrapperRect = gobanWrapper.getBoundingClientRect();
         const gridRect = grid.getBoundingClientRect();
+        setGridViewportRect({
+            left: gridRect.left,
+            top: gridRect.top,
+            right: gridRect.right,
+            bottom: gridRect.bottom,
+        });
+        if (coordX instanceof Element) {
+            const coordXRect = coordX.getBoundingClientRect();
+            setCoordinateViewportRect({
+                left: coordXRect.left,
+                top: coordXRect.top,
+                right: coordXRect.right,
+                bottom: coordXRect.bottom,
+            });
+        }
         const nextGridMetrics = {
             left: gridRect.left - wrapperRect.left,
             top: gridRect.top - wrapperRect.top,
@@ -656,6 +719,13 @@ export default function GoBoard({ id }: GoBoardProps) {
         }
 
         touchPreviewVertexRef.current = vertex;
+        setMagnifierAnchor(
+            getMagnifierAnchor({
+                boardX: vertex.x,
+                boardY: vertex.y,
+                boardSize: size,
+            })
+        );
         setTouchPreview({
             ...vertex,
             screenX: clientX,
@@ -697,6 +767,21 @@ export default function GoBoard({ id }: GoBoardProps) {
     };
 
     const canShareGame = gameState.moves.some((move) => move.type === "play");
+    const magnifierGridRect = gridViewportRect;
+    const magnifierCoordinatesRect = coordinateViewportRect;
+    const magnifierTop = magnifierCoordinatesRect
+        ? Math.max(
+              0,
+              magnifierCoordinatesRect.bottom + MAGNIFIER_COORDINATE_CLEARANCE_PX
+          )
+        : magnifierGridRect
+            ? Math.max(0, magnifierGridRect.top)
+            : 0;
+    const magnifierLeft = magnifierGridRect
+        ? magnifierAnchor === "right"
+            ? magnifierGridRect.right - MAGNIFIER_SIZE_PX
+            : magnifierGridRect.left
+        : 0;
 
     const resetShareMenuState = useCallback(() => {
         shareAutoCreateAttemptedRef.current = false;
@@ -1375,11 +1460,19 @@ export default function GoBoard({ id }: GoBoardProps) {
                             clearStoneSelectTimeout();
                             isStonePlacementActiveRef.current = Boolean(vertex);
                             stonePlacementCanCommitRef.current = Boolean(vertex);
-
                             if (!vertex) {
+                                setMagnifierAnchor("right");
                                 setTouchPreview(null);
                                 return;
                             }
+
+                            setMagnifierAnchor(
+                                getMagnifierAnchor({
+                                    boardX: vertex.x,
+                                    boardY: vertex.y,
+                                    boardSize: size,
+                                })
+                            );
 
                             setTouchPreview({
                                 ...vertex,
@@ -1590,6 +1683,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                             isStonePlacementActiveRef.current = false;
                             stonePlacementCanCommitRef.current = false;
                             setTouchPreview(null);
+                            setMagnifierAnchor("right");
                             if (event.currentTarget.hasPointerCapture(event.pointerId)) {
                                 event.currentTarget.releasePointerCapture(event.pointerId);
                             }
@@ -1679,14 +1773,14 @@ export default function GoBoard({ id }: GoBoardProps) {
                             <div
                                 className={
                                     isDarkMode
-                                        ? "pointer-events-none fixed z-50 h-36 w-36 -translate-x-1/2 overflow-hidden rounded-full border border-sky-400/70 bg-neutral-950/95 text-white shadow-2xl"
-                                    : "pointer-events-none fixed z-50 h-36 w-36 -translate-x-1/2 overflow-hidden rounded-full border border-sky-600/70 bg-zinc-100/95 text-zinc-950 shadow-2xl"
-                            }
-                            style={{
-                                left: touchPreview.screenX,
-                                top: Math.max(12, touchPreview.screenY - 170),
-                            }}
-                        >
+                                        ? "pointer-events-none fixed z-50 h-36 w-36 overflow-hidden rounded-full border border-sky-400/70 bg-neutral-950/95 text-white shadow-2xl"
+                                        : "pointer-events-none fixed z-50 h-36 w-36 overflow-hidden rounded-full border border-sky-600/70 bg-zinc-100/95 text-zinc-950 shadow-2xl"
+                                }
+                                style={{
+                                    top: magnifierTop,
+                                    left: magnifierLeft,
+                                }}
+                            >
                             <div
                                 className={
                                     isDarkMode
