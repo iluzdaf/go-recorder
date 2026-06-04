@@ -7,10 +7,11 @@ import {
     useContext,
     useEffect,
     useMemo,
+    useCallback,
     useState,
     useSyncExternalStore,
 } from "react";
-import { Home, Menu, Moon, Sun, X } from "lucide-react";
+import { Expand, Home, Menu, Minimize2, Moon, Sun, X } from "lucide-react";
 import { t } from "@/lib/i18n";
 
 type ThemeContextValue = {
@@ -61,6 +62,12 @@ function getIsShortViewport() {
     if (typeof window === "undefined") return false;
 
     return window.matchMedia(SHORT_VIEWPORT_QUERY).matches;
+}
+
+function getIsFullscreen() {
+    if (typeof document === "undefined") return false;
+
+    return Boolean(document.fullscreenElement);
 }
 
 function isThemePreference(value: string | null): value is ThemePreference {
@@ -142,6 +149,7 @@ export default function AppShell({
     const pathname = usePathname();
     const [headerActions, setHeaderActions] = useState<React.ReactNode>(null);
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(() => getIsFullscreen());
     const isShortViewport = useSyncExternalStore(
         subscribeToShortViewport,
         getIsShortViewport,
@@ -191,13 +199,39 @@ export default function AppShell({
 
             return getResolvedThemeFromStorage();
         },
-        () => true
+            () => true
     );
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(getIsFullscreen());
+        };
+
+        document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+        return () => {
+            document.removeEventListener(
+                "fullscreenchange",
+                handleFullscreenChange
+            );
+        };
+    }, []);
 
     useEffect(() => {
         document.documentElement.classList.toggle("dark", isDarkMode);
         document.body.classList.toggle("dark", isDarkMode);
     }, [isDarkMode]);
+
+    const toggleFullscreen = useCallback(async () => {
+        if (typeof document === "undefined") return;
+
+        if (document.fullscreenElement) {
+            await document.exitFullscreen();
+            return;
+        }
+
+        await document.documentElement.requestFullscreen();
+    }, []);
 
     const isRecordingGame = pathname?.startsWith("/games/");
     const usesOverlayHeader = Boolean(
@@ -279,6 +313,30 @@ export default function AppShell({
                                 }}
                             >
                                 {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                            </button>
+
+                            <button
+                                type="button"
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
+                                aria-label={
+                                    isFullscreen
+                                        ? t("exitFullscreen")
+                                        : t("enterFullscreen")
+                                }
+                                title={
+                                    isFullscreen
+                                        ? t("exitFullscreen")
+                                        : t("enterFullscreen")
+                                }
+                                onClick={() => {
+                                    void toggleFullscreen();
+                                }}
+                            >
+                                {isFullscreen ? (
+                                    <Minimize2 size={18} />
+                                ) : (
+                                    <Expand size={18} />
+                                )}
                             </button>
 
                             {usesOverlayHeader ? (

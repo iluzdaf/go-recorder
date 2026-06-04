@@ -12,6 +12,8 @@
     "home": "Home",
     "showHeader": "Show header",
     "hideHeader": "Hide header",
+    "enterFullscreen": "Enter fullscreen",
+    "exitFullscreen": "Exit fullscreen",
     "gameRecordingInProgress": "Game recording in progress",
     "shareView": "Share view",
     "switchToLightMode": "Switch to light mode",
