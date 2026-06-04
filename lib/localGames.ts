@@ -4,6 +4,7 @@ import type {
     LocalGameRecord,
 } from "../components/types";
 import { isValidBoardSize, isValidGameState } from "./gameLogic";
+import { createRandomId } from "./randomId";
 
 const LOCAL_GAME_STORAGE_KEY_PREFIX = "go-recorder:local-game:";
 
@@ -61,7 +62,7 @@ export function createLocalGame({
 }: CreateLocalGameInput) {
     const now = new Date().toISOString();
     const record: LocalGameRecord = {
-        id: crypto.randomUUID(),
+        id: createRandomId(),
         boardSize,
         gameState,
         blackPlayerName,

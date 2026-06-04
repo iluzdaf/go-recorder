@@ -1,7 +1,8 @@
 import type { BoardSize, GameState, SetupStone } from "../components/types";
+import { createRandomId } from "./randomId";
 
 export function createSlug() {
-    return crypto.randomUUID().slice(0, 8);
+    return createRandomId().slice(0, 8);
 }
 
 export function isValidBoardSize(value: unknown) {

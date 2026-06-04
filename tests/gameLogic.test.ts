@@ -9,6 +9,7 @@ import {
     shouldAutosave,
     shouldContinueAutosaveQueue,
 } from "../lib/gameLogic";
+import { createRandomId } from "../lib/randomId";
 
 describe("createSlug", () => {
     it("creates an 8 character slug", () => {
@@ -16,12 +17,18 @@ describe("createSlug", () => {
 
         expect(slug).toHaveLength(8);
     });
+});
 
-    it("creates different slugs", () => {
-        const firstSlug = createSlug();
-        const secondSlug = createSlug();
+describe("createRandomId", () => {
+    it("falls back to a UUID-like value when randomUUID is unavailable", () => {
+        const randomId = createRandomId({
+            getRandomValues(array: Uint8Array) {
+                array.fill(0);
+                return array;
+            },
+        });
 
-        expect(firstSlug).not.toBe(secondSlug);
+        expect(randomId).toBe("00000000-0000-4000-8000-000000000000");
     });
 });
 

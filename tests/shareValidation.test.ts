@@ -19,18 +19,17 @@ const validShareInput = {
 };
 
 describe("validateCreateShareInput", () => {
-    it("accepts a valid game share input", () => {
-        expect(validateCreateShareInput(validShareInput)).toBe(true);
-    });
-
-    it("accepts draft as a source kind", () => {
-        expect(
-            validateCreateShareInput({
-                ...validShareInput,
-                sourceKind: "draft",
-            })
-        ).toBe(true);
-    });
+    it.each(["game", "draft"] as const)(
+        "accepts a valid %s share input",
+        (sourceKind) => {
+            expect(
+                validateCreateShareInput({
+                    ...validShareInput,
+                    sourceKind,
+                })
+            ).toBe(true);
+        }
+    );
 
     it("rejects invalid source kinds", () => {
         expect(
