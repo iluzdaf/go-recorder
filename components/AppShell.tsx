@@ -64,10 +64,81 @@ function getIsShortViewport() {
     return window.matchMedia(SHORT_VIEWPORT_QUERY).matches;
 }
 
+function getIsFullscreenSupported() {
+    if (typeof document === "undefined") return false;
+
+    const documentElement = document.documentElement as HTMLElement & {
+        webkitRequestFullscreen?: () => Promise<void> | void;
+    };
+    const fullscreenDocument = document as Document & {
+        webkitExitFullscreen?: () => Promise<void> | void;
+    };
+
+    return Boolean(
+        documentElement.requestFullscreen ||
+            documentElement.webkitRequestFullscreen
+    ) &&
+        Boolean(document.exitFullscreen || fullscreenDocument.webkitExitFullscreen);
+}
+
 function getIsFullscreen() {
     if (typeof document === "undefined") return false;
 
-    return Boolean(document.fullscreenElement);
+    return Boolean(
+        document.fullscreenElement ||
+            (document as Document & {
+                webkitFullscreenElement?: Element | null;
+                webkitCurrentFullScreenElement?: Element | null;
+            }).webkitFullscreenElement ||
+            (document as Document & {
+                webkitFullscreenElement?: Element | null;
+                webkitCurrentFullScreenElement?: Element | null;
+            }).webkitCurrentFullScreenElement
+    );
+}
+
+function getFullscreenChangeEvents() {
+    return ["fullscreenchange", "webkitfullscreenchange"];
+}
+
+function getFullscreenErrorEvents() {
+    return ["fullscreenerror", "webkitfullscreenerror"];
+}
+
+async function requestFullscreen(element: HTMLElement) {
+    const webkitElement = element as HTMLElement & {
+        webkitRequestFullscreen?: () => Promise<void> | void;
+    };
+
+    if (element.requestFullscreen) {
+        await element.requestFullscreen();
+        return;
+    }
+
+    if (webkitElement.webkitRequestFullscreen) {
+        await webkitElement.webkitRequestFullscreen();
+        return;
+    }
+
+    throw new Error("Fullscreen is not supported on this device");
+}
+
+async function exitFullscreen() {
+    const webkitDocument = document as Document & {
+        webkitExitFullscreen?: () => Promise<void> | void;
+    };
+
+    if (document.exitFullscreen) {
+        await document.exitFullscreen();
+        return;
+    }
+
+    if (webkitDocument.webkitExitFullscreen) {
+        await webkitDocument.webkitExitFullscreen();
+        return;
+    }
+
+    throw new Error("Fullscreen is not supported on this device");
 }
 
 function isThemePreference(value: string | null): value is ThemePreference {
@@ -150,6 +221,11 @@ export default function AppShell({
     const [headerActions, setHeaderActions] = useState<React.ReactNode>(null);
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(() => getIsFullscreen());
+    const isFullscreenSupported = useSyncExternalStore(
+        () => () => {},
+        getIsFullscreenSupported,
+        () => false
+    );
     const isShortViewport = useSyncExternalStore(
         subscribeToShortViewport,
         getIsShortViewport,
@@ -207,13 +283,24 @@ export default function AppShell({
             setIsFullscreen(getIsFullscreen());
         };
 
-        document.addEventListener("fullscreenchange", handleFullscreenChange);
+        const handleFullscreenError = () => {
+            setIsFullscreen(getIsFullscreen());
+        };
+
+        for (const eventName of getFullscreenChangeEvents()) {
+            document.addEventListener(eventName, handleFullscreenChange);
+        }
+        for (const eventName of getFullscreenErrorEvents()) {
+            document.addEventListener(eventName, handleFullscreenError);
+        }
 
         return () => {
-            document.removeEventListener(
-                "fullscreenchange",
-                handleFullscreenChange
-            );
+            for (const eventName of getFullscreenChangeEvents()) {
+                document.removeEventListener(eventName, handleFullscreenChange);
+            }
+            for (const eventName of getFullscreenErrorEvents()) {
+                document.removeEventListener(eventName, handleFullscreenError);
+            }
         };
     }, []);
 
@@ -225,12 +312,16 @@ export default function AppShell({
     const toggleFullscreen = useCallback(async () => {
         if (typeof document === "undefined") return;
 
-        if (document.fullscreenElement) {
-            await document.exitFullscreen();
-            return;
-        }
+        try {
+            if (getIsFullscreen()) {
+                await exitFullscreen();
+                return;
+            }
 
-        await document.documentElement.requestFullscreen();
+            await requestFullscreen(document.documentElement);
+        } catch {
+            setIsFullscreen(getIsFullscreen());
+        }
     }, []);
 
     const isRecordingGame = pathname?.startsWith("/games/");
@@ -315,29 +406,31 @@ export default function AppShell({
                                 {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
                             </button>
 
-                            <button
-                                type="button"
-                                className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
-                                aria-label={
-                                    isFullscreen
-                                        ? t("exitFullscreen")
-                                        : t("enterFullscreen")
-                                }
-                                title={
-                                    isFullscreen
-                                        ? t("exitFullscreen")
-                                        : t("enterFullscreen")
-                                }
-                                onClick={() => {
-                                    void toggleFullscreen();
-                                }}
-                            >
-                                {isFullscreen ? (
-                                    <Minimize2 size={18} />
-                                ) : (
-                                    <Expand size={18} />
-                                )}
-                            </button>
+                            {isFullscreenSupported ? (
+                                <button
+                                    type="button"
+                                    className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
+                                    aria-label={
+                                        isFullscreen
+                                            ? t("exitFullscreen")
+                                            : t("enterFullscreen")
+                                    }
+                                    title={
+                                        isFullscreen
+                                            ? t("exitFullscreen")
+                                            : t("enterFullscreen")
+                                    }
+                                    onClick={() => {
+                                        void toggleFullscreen();
+                                    }}
+                                >
+                                    {isFullscreen ? (
+                                        <Minimize2 size={18} />
+                                    ) : (
+                                        <Expand size={18} />
+                                    )}
+                                </button>
+                            ) : null}
 
                             {usesOverlayHeader ? (
                                 <button
