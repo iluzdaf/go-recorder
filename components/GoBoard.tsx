@@ -33,11 +33,21 @@ import {
 } from "../lib/gameLogic";
 import { getLocalGame, saveLocalGame } from "../lib/localGames";
 import { createLoadedLocalGame } from "../lib/localGameView";
-import { getMagnifierAnchor, type MagnifierAnchor } from "../lib/magnifierAnchor";
+import { getMagnifierAnchor } from "../lib/magnifierAnchor";
+import {
+    MAGNIFIER_INSET_PERCENT,
+    MAGNIFIER_SIZE_PX,
+    getMagnifierSquareViewport,
+    getMagnifierStoneSizePx,
+    getMagnifierWindowSize,
+    getMagnifierRenderModel,
+    isMagnifierRangeEdgeVisible,
+} from "../lib/magnifier";
 import { createShareFromLocalGame } from "../lib/shareClient";
 import { formatMoveEditError, t } from "../lib/i18n";
 import { useTheme } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
+import MagnifierView from "./MagnifierView";
 import { replayGame } from "../lib/gameReplay";
 import {
     applyRecorderCorrection,
@@ -93,18 +103,6 @@ function cloneSignMap(signMap: number[][]) {
     return signMap.map((row) => [...row]);
 }
 
-function getStarPoints(boardSize: BoardSize) {
-    if (boardSize === 9) return [2, 4, 6];
-    if (boardSize === 13) return [3, 6, 9];
-    return [3, 9, 15];
-}
-
-
-function isStarPoint(x: number, y: number, boardSize: BoardSize) {
-    const starPoints = getStarPoints(boardSize);
-    return starPoints.includes(x) && starPoints.includes(y);
-}
-
 function toDisplayCoord(x: number, y: number, boardSize: BoardSize) {
     const columns = [
         "A",
@@ -137,8 +135,9 @@ function toDisplayCoord(x: number, y: number, boardSize: BoardSize) {
 const BOARD_PADDING_PX = 16;
 const STONE_SELECT_HOLD_MS = 450;
 const ACTION_BAR_STORAGE_KEY_PREFIX = "go-recorder:game-action-bar-anchor:";
-const MAGNIFIER_SIZE_PX = 144;
-const MAGNIFIER_COORDINATE_CLEARANCE_PX = 12;
+const MAGNIFIER_VIEWPORT_EDGE_PX = 8;
+const MAGNIFIER_VIEWPORT_TOP_PX = 72;
+const MAGNIFIER_COORDINATE_OFFSET_PX = 8;
 
 function getActionBarStorageKey(id: string) {
     return `${ACTION_BAR_STORAGE_KEY_PREFIX}${id}`;
@@ -195,8 +194,9 @@ export default function GoBoard({ id }: GoBoardProps) {
     });
     const [vertexSize, setVertexSize] = useState(24);
     const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
-    const [magnifierAnchor, setMagnifierAnchor] =
-        useState<MagnifierAnchor>("right");
+    const [magnifierStartColumn, setMagnifierStartColumn] = useState<
+        number | null
+    >(null);
     const [selectedGroupDragOrigin, setSelectedGroupDragOriginState] =
         useState<Vertex | null>(null);
     const [selectedMoveIndexes, setSelectedMoveIndexes] = useState<number[]>([]);
@@ -246,13 +246,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         cellSize: 24,
         boardSizePx: 24 * 19,
     });
-    const [gridViewportRect, setGridViewportRect] = useState<{
-        left: number;
-        top: number;
-        right: number;
-        bottom: number;
-    } | null>(null);
-    const [coordinateViewportRect, setCoordinateViewportRect] = useState<{
+    const [gobanWrapperRect, setGobanWrapperRect] = useState<{
         left: number;
         top: number;
         right: number;
@@ -405,7 +399,8 @@ export default function GoBoard({ id }: GoBoardProps) {
 
     useEffect(() => {
         const boardArea = boardAreaRef.current;
-        if (!boardArea) return;
+        const gobanWrapper = gobanWrapperRef.current;
+        if (!boardArea || !gobanWrapper) return;
 
         const updateBoardGeometry = () => {
             const { width, height } = boardArea.getBoundingClientRect();
@@ -417,12 +412,13 @@ export default function GoBoard({ id }: GoBoardProps) {
             );
 
             setVertexSize(nextVertexSize);
+            const nextGobanWrapperRect = gobanWrapper.getBoundingClientRect();
+            setGobanWrapperRect(nextGobanWrapperRect);
 
-            const grid = boardArea.querySelector(".shudan-grid");
+            const grid = gobanWrapper.querySelector(".shudan-grid");
             if (!(grid instanceof SVGElement)) return;
-            const coordX = boardArea.querySelector(".shudan-coordx");
 
-            const wrapperRect = boardArea.getBoundingClientRect();
+            const wrapperRect = nextGobanWrapperRect;
             const gridRect = grid.getBoundingClientRect();
             const nextGridMetrics = {
                 left: gridRect.left - wrapperRect.left,
@@ -432,21 +428,6 @@ export default function GoBoard({ id }: GoBoardProps) {
             };
 
             setGridMetrics(nextGridMetrics);
-            setGridViewportRect({
-                left: gridRect.left,
-                top: gridRect.top,
-                right: gridRect.right,
-                bottom: gridRect.bottom,
-            });
-            if (coordX instanceof Element) {
-                const coordXRect = coordX.getBoundingClientRect();
-                setCoordinateViewportRect({
-                    left: coordXRect.left,
-                    top: coordXRect.top,
-                    right: coordXRect.right,
-                    bottom: coordXRect.bottom,
-                });
-            }
         };
 
         updateBoardGeometry();
@@ -575,25 +556,10 @@ export default function GoBoard({ id }: GoBoardProps) {
 
         const grid = gobanWrapper.querySelector(".shudan-grid");
         if (!(grid instanceof SVGElement)) return null;
-        const coordX = gobanWrapper.querySelector(".shudan-coordx");
 
         const wrapperRect = gobanWrapper.getBoundingClientRect();
+        setGobanWrapperRect(wrapperRect);
         const gridRect = grid.getBoundingClientRect();
-        setGridViewportRect({
-            left: gridRect.left,
-            top: gridRect.top,
-            right: gridRect.right,
-            bottom: gridRect.bottom,
-        });
-        if (coordX instanceof Element) {
-            const coordXRect = coordX.getBoundingClientRect();
-            setCoordinateViewportRect({
-                left: coordXRect.left,
-                top: coordXRect.top,
-                right: coordXRect.right,
-                bottom: coordXRect.bottom,
-            });
-        }
         const nextGridMetrics = {
             left: gridRect.left - wrapperRect.left,
             top: gridRect.top - wrapperRect.top,
@@ -728,13 +694,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         }
 
         touchPreviewVertexRef.current = vertex;
-        setMagnifierAnchor(
-            getMagnifierAnchor({
-                boardX: vertex.x,
-                boardY: vertex.y,
-                boardSize: size,
-            })
-        );
         setTouchPreview({
             ...vertex,
             screenX: clientX,
@@ -742,55 +701,142 @@ export default function GoBoard({ id }: GoBoardProps) {
         });
     };
 
-    const getMagnifierCells = () => {
-        if (!showMagnifier || !touchPreview) return [];
-
-        const cells = [];
-
-        for (let dy = -2; dy <= 2; dy += 1) {
-            for (let dx = -2; dx <= 2; dx += 1) {
-                const x = touchPreview.x + dx;
-                const y = touchPreview.y + dy;
-                const isOnBoard = x >= 0 && x < size && y >= 0 && y < size;
-                const sign = isOnBoard ? boardSignMap[y][x] : 0;
-
-                cells.push({
-                    key: `${dx},${dy}`,
-                    x,
-                    y,
-                    dx,
-                    dy,
-                    sign,
-                    isOnBoard,
-                    isCenter: dx === 0 && dy === 0,
-                    isStarPoint: isOnBoard && isStarPoint(x, y, size),
-                });
-            }
-        }
-
-        return cells;
-    };
-
-    const getMagnifierPositionPercent = (offset: number) => {
-        return 12.5 + (offset + 2) * 18.75;
-    };
+    const magnifierWindowSize =
+        showMagnifier && touchPreview
+            ? getMagnifierWindowSize({
+                  boardX: touchPreview.x,
+                  boardY: touchPreview.y,
+                  boardSize: size,
+                  signMap,
+              })
+            : 5;
+    const magnifierViewport =
+        showMagnifier && touchPreview
+            ? getMagnifierSquareViewport({
+                  boardX: touchPreview.x,
+                  boardY: touchPreview.y,
+                  boardSize: size,
+                  windowSize: magnifierWindowSize,
+              })
+            : null;
+    const magnifierStoneSizePx = getMagnifierStoneSizePx({
+        windowSize: magnifierWindowSize,
+    });
+    const showMagnifierLeftRowCoordinates =
+        showMagnifier &&
+        touchPreview !== null &&
+        magnifierViewport !== null &&
+        isMagnifierRangeEdgeVisible({
+            boardCoord: touchPreview.x,
+            boardSize: size,
+            range: magnifierViewport.x,
+            edge: "left",
+        });
+    const showMagnifierRightRowCoordinates =
+        showMagnifier &&
+        touchPreview !== null &&
+        magnifierViewport !== null &&
+        isMagnifierRangeEdgeVisible({
+            boardCoord: touchPreview.x,
+            boardSize: size,
+            range: magnifierViewport.x,
+            edge: "right",
+        });
+    const showMagnifierTopColumnCoordinates =
+        showMagnifier &&
+        touchPreview !== null &&
+        magnifierViewport !== null &&
+        isMagnifierRangeEdgeVisible({
+            boardCoord: touchPreview.y,
+            boardSize: size,
+            range: magnifierViewport.y,
+            edge: "top",
+        });
+    const showMagnifierBottomColumnCoordinates =
+        showMagnifier &&
+        touchPreview !== null &&
+        magnifierViewport !== null &&
+        isMagnifierRangeEdgeVisible({
+            boardCoord: touchPreview.y,
+            boardSize: size,
+            range: magnifierViewport.y,
+            edge: "bottom",
+        });
+    const magnifierRenderModel = getMagnifierRenderModel({
+        boardSize: size,
+        boardSignMap,
+        touchPreview,
+        magnifierViewport,
+        showMagnifierLeftRowCoordinates,
+        showMagnifierRightRowCoordinates,
+        showMagnifierTopColumnCoordinates,
+        showMagnifierBottomColumnCoordinates,
+        magnifierXLeadingInsetPercent: showMagnifierLeftRowCoordinates
+            ? MAGNIFIER_INSET_PERCENT
+            : 0,
+        magnifierXTrailingInsetPercent: showMagnifierRightRowCoordinates
+            ? MAGNIFIER_INSET_PERCENT
+            : 0,
+        magnifierYLeadingInsetPercent: showMagnifierTopColumnCoordinates
+            ? MAGNIFIER_INSET_PERCENT
+            : 0,
+        magnifierYTrailingInsetPercent: showMagnifierBottomColumnCoordinates
+            ? MAGNIFIER_INSET_PERCENT
+            : 0,
+        magnifierCoordinateOffsetPx: MAGNIFIER_COORDINATE_OFFSET_PX,
+        formatColumnLabel: toDisplayCoord,
+    });
 
     const canShareGame = gameState.moves.some((move) => move.type === "play");
-    const magnifierGridRect = gridViewportRect;
-    const magnifierCoordinatesRect = coordinateViewportRect;
-    const magnifierTop = magnifierCoordinatesRect
-        ? Math.max(
-              0,
-              magnifierCoordinatesRect.bottom + MAGNIFIER_COORDINATE_CLEARANCE_PX
-          )
-        : magnifierGridRect
-            ? Math.max(0, magnifierGridRect.top)
-            : 0;
-    const magnifierLeft = magnifierGridRect
-        ? magnifierAnchor === "right"
-            ? magnifierGridRect.right - MAGNIFIER_SIZE_PX
-            : magnifierGridRect.left
-        : 0;
+    const magnifierTop = MAGNIFIER_VIEWPORT_TOP_PX;
+    const boardRect =
+        gobanWrapperRect && gridMetrics.boardSizePx > 0
+            ? {
+                  left: gobanWrapperRect.left + gridMetrics.left,
+                  top: gobanWrapperRect.top + gridMetrics.top,
+                  right:
+                      gobanWrapperRect.left +
+                      gridMetrics.left +
+                      gridMetrics.boardSizePx,
+                  bottom:
+                      gobanWrapperRect.top +
+                      gridMetrics.top +
+                      gridMetrics.boardSizePx,
+              }
+            : null;
+    const rightMagnifierLeft =
+        typeof window === "undefined"
+            ? MAGNIFIER_VIEWPORT_EDGE_PX
+            : Math.max(
+                  MAGNIFIER_VIEWPORT_EDGE_PX,
+                  window.innerWidth -
+                      MAGNIFIER_SIZE_PX -
+                  MAGNIFIER_VIEWPORT_EDGE_PX
+              );
+    const leftMagnifierLeft = MAGNIFIER_VIEWPORT_EDGE_PX;
+    const magnifierLeftRect = {
+        left: leftMagnifierLeft,
+        top: magnifierTop,
+        right: leftMagnifierLeft + MAGNIFIER_SIZE_PX,
+        bottom: magnifierTop + MAGNIFIER_SIZE_PX,
+    };
+    const rectsOverlap = (
+        rectA: { left: number; top: number; right: number; bottom: number },
+        rectB: { left: number; top: number; right: number; bottom: number }
+    ) =>
+        rectA.left < rectB.right &&
+        rectA.right > rectB.left &&
+        rectA.top < rectB.bottom &&
+        rectA.bottom > rectB.top;
+    const magnifierAnchor = getMagnifierAnchor({
+        startColumn: magnifierStartColumn,
+        currentColumn: touchPreview?.x ?? 0,
+        boardSize: size,
+        leftPlacementOverlapsBoard:
+            boardRect !== null && rectsOverlap(magnifierLeftRect, boardRect),
+    });
+    const magnifierLeft =
+        magnifierAnchor === "left" ? leftMagnifierLeft : rightMagnifierLeft;
 
     const resetShareMenuState = useCallback(() => {
         shareAutoCreateAttemptedRef.current = false;
@@ -1167,65 +1213,9 @@ export default function GoBoard({ id }: GoBoardProps) {
             clearStoneSelectTimeout();
         };
     }, []);
-
-    const getMagnifierGridLines = () => {
-        if (!touchPreview) {
-            return { horizontalLines: [], verticalLines: [] };
-        }
-
-        const horizontalLines = [];
-        const verticalLines = [];
-
-        for (let dy = -2; dy <= 2; dy += 1) {
-            const y = touchPreview.y + dy;
-            if (y < 0 || y >= size) continue;
-
-            const onBoardDxValues = [-2, -1, 0, 1, 2].filter((dx) => {
-                const x = touchPreview.x + dx;
-                return x >= 0 && x < size;
-            });
-
-            if (onBoardDxValues.length === 0) continue;
-
-            const firstDx = onBoardDxValues[0];
-            const lastDx = onBoardDxValues[onBoardDxValues.length - 1];
-            const boardContinuesLeft = touchPreview.x + firstDx > 0;
-            const boardContinuesRight = touchPreview.x + lastDx < size - 1;
-
-            horizontalLines.push({
-                key: `h-${dy}`,
-                top: getMagnifierPositionPercent(dy),
-                left: boardContinuesLeft ? 0 : getMagnifierPositionPercent(firstDx),
-                right: boardContinuesRight ? 100 : getMagnifierPositionPercent(lastDx),
-            });
-        }
-
-        for (let dx = -2; dx <= 2; dx += 1) {
-            const x = touchPreview.x + dx;
-            if (x < 0 || x >= size) continue;
-
-            const onBoardDyValues = [-2, -1, 0, 1, 2].filter((dy) => {
-                const y = touchPreview.y + dy;
-                return y >= 0 && y < size;
-            });
-
-            if (onBoardDyValues.length === 0) continue;
-
-            const firstDy = onBoardDyValues[0];
-            const lastDy = onBoardDyValues[onBoardDyValues.length - 1];
-            const boardContinuesTop = touchPreview.y + firstDy > 0;
-            const boardContinuesBottom = touchPreview.y + lastDy < size - 1;
-
-            verticalLines.push({
-                key: `v-${dx}`,
-                left: getMagnifierPositionPercent(dx),
-                top: boardContinuesTop ? 0 : getMagnifierPositionPercent(firstDy),
-                bottom: boardContinuesBottom ? 100 : getMagnifierPositionPercent(lastDy),
-            });
-        }
-
-        return { horizontalLines, verticalLines };
-    };
+    const magnifierGridLines = magnifierRenderModel.gridLines;
+    const magnifierCells = magnifierRenderModel.cells;
+    const magnifierCoordinateLabels = magnifierRenderModel.coordinateLabels;
 
     return (
         <div
@@ -1470,19 +1460,14 @@ export default function GoBoard({ id }: GoBoardProps) {
                             isStonePlacementActiveRef.current = Boolean(vertex);
                             stonePlacementCanCommitRef.current = Boolean(vertex);
                             if (!vertex) {
-                                setMagnifierAnchor("right");
+                                setMagnifierStartColumn(null);
+                                touchPreviewVertexRef.current = null;
                                 setTouchPreview(null);
                                 return;
                             }
 
-                            setMagnifierAnchor(
-                                getMagnifierAnchor({
-                                    boardX: vertex.x,
-                                    boardY: vertex.y,
-                                    boardSize: size,
-                                })
-                            );
-
+                            setMagnifierStartColumn(vertex.x);
+                            touchPreviewVertexRef.current = vertex;
                             setTouchPreview({
                                 ...vertex,
                                 screenX: event.clientX,
@@ -1588,6 +1573,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                             const releaseTouchPreview = () => {
                                 isStonePlacementActiveRef.current = false;
                                 stonePlacementCanCommitRef.current = false;
+                                setMagnifierStartColumn(null);
                                 setTouchPreview(null);
                                 event.currentTarget.releasePointerCapture(
                                     event.pointerId
@@ -1691,24 +1677,24 @@ export default function GoBoard({ id }: GoBoardProps) {
                             clearStoneSelectionDragState();
                             isStonePlacementActiveRef.current = false;
                             stonePlacementCanCommitRef.current = false;
+                            setMagnifierStartColumn(null);
                             setTouchPreview(null);
-                            setMagnifierAnchor("right");
                             if (event.currentTarget.hasPointerCapture(event.pointerId)) {
                                 event.currentTarget.releasePointerCapture(event.pointerId);
                             }
                         }}
                     >
-                        <BoardView
-                            vertexSize={vertexSize}
-                            signMap={boardSignMap}
-                            markerMap={boardMarkerMap}
-                            selectedVertices={renderSelectedVertices}
-                            dimmedVertices={renderDimmedVertices}
-                            showCoordinates
-                        />
-                        {showExitStoneEditModeButton ? (
-                            <button
-                                type="button"
+                    <BoardView
+                        vertexSize={vertexSize}
+                        signMap={boardSignMap}
+                        markerMap={boardMarkerMap}
+                        selectedVertices={renderSelectedVertices}
+                        dimmedVertices={renderDimmedVertices}
+                        showCoordinates
+                    />
+                    {showExitStoneEditModeButton ? (
+                        <button
+                            type="button"
                                 className={
                                     isDarkMode
                                         ? "absolute z-30 inline-flex h-9 w-9 items-center justify-center rounded-full border border-neutral-700 bg-neutral-950 text-white shadow-lg hover:bg-neutral-900"
@@ -1779,78 +1765,17 @@ export default function GoBoard({ id }: GoBoardProps) {
                             </svg>
                         )}
                         {showMagnifier && touchPreview && (
-                            <div
-                                className={
-                                    isDarkMode
-                                        ? "pointer-events-none fixed z-50 h-36 w-36 overflow-hidden rounded-full border border-sky-400/70 bg-neutral-950/95 text-white shadow-2xl"
-                                        : "pointer-events-none fixed z-50 h-36 w-36 overflow-hidden rounded-full border border-sky-600/70 bg-zinc-100/95 text-zinc-950 shadow-2xl"
-                                }
-                                style={{
-                                    top: magnifierTop,
-                                    left: magnifierLeft,
-                                }}
-                            >
-                            <div
-                                className={
-                                    isDarkMode
-                                        ? "absolute left-1/2 top-3 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-neutral-950/80 px-2 py-0.5 text-xs font-medium text-neutral-300"
-                                        : "absolute left-1/2 top-3 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-zinc-100/80 px-2 py-0.5 text-xs font-medium text-zinc-700"
-                                }
-                            >
-                                {toDisplayCoord(touchPreview.x, touchPreview.y, size)}
-                            </div>
-
-                            <div className={isDarkMode ? "relative h-full w-full bg-neutral-800" : "relative h-full w-full bg-zinc-200"}>
-                                {getMagnifierGridLines().horizontalLines.map((line) => (
-                                    <div
-                                        key={line.key}
-                                        className={isDarkMode ? "absolute h-px bg-neutral-600" : "absolute h-px bg-zinc-500"}
-                                        style={{
-                                            top: `${line.top}%`,
-                                            left: `${line.left}%`,
-                                            width: `${line.right - line.left}%`,
-                                        }}
-                                    />
-                                ))}
-                                {getMagnifierGridLines().verticalLines.map((line) => (
-                                    <div
-                                        key={line.key}
-                                        className={isDarkMode ? "absolute w-px bg-neutral-600" : "absolute w-px bg-zinc-500"}
-                                        style={{
-                                            left: `${line.left}%`,
-                                            top: `${line.top}%`,
-                                            height: `${line.bottom - line.top}%`,
-                                        }}
-                                    />
-                                ))}
-                                {getMagnifierCells().map((cell) => {
-                                    const left = `${getMagnifierPositionPercent(cell.dx)}%`;
-                                    const top = `${getMagnifierPositionPercent(cell.dy)}%`;
-
-                                    return (
-                                        <div
-                                            key={cell.key}
-                                            className="absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
-                                            style={{ left, top }}
-                                        >
-                                            {cell.sign === 0 && cell.isStarPoint && (
-                                                <div className={isDarkMode ? "absolute h-2 w-2 rounded-full bg-neutral-400" : "absolute h-2 w-2 rounded-full bg-zinc-600"} />
-                                            )}
-                                            {cell.isCenter && (
-                                                <div className="absolute h-7 w-7 rounded-full border border-sky-400" />
-                                            )}
-                                            {cell.sign === 1 && (
-                                                <div className="relative h-6 w-6 rounded-full bg-black" />
-                                            )}
-                                            {cell.sign === -1 && (
-                                                <div className="relative h-6 w-6 rounded-full border border-neutral-900 bg-white" />
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
+                            <MagnifierView
+                                isDarkMode={isDarkMode}
+                                left={magnifierLeft}
+                                top={magnifierTop}
+                                magnifierStoneSizePx={magnifierStoneSizePx}
+                                horizontalLines={magnifierGridLines.horizontalLines}
+                                verticalLines={magnifierGridLines.verticalLines}
+                                cells={magnifierCells}
+                                coordinateLabels={magnifierCoordinateLabels}
+                            />
+                        )}
                     </div>
                 </div>
             )}
