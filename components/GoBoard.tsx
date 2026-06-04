@@ -77,6 +77,7 @@ type ActionBarAnchor = "left" | "center" | "right";
 
 type ActionBarDragState = {
     pointerId: number;
+    grabOffsetX: number;
 };
 
 type ShareMenuMode = "chooser" | "created";
@@ -949,12 +950,22 @@ export default function GoBoard({ id }: GoBoardProps) {
             event.preventDefault();
             event.currentTarget.setPointerCapture(event.pointerId);
 
-            const railRect = rail.getBoundingClientRect();
-            const nextDragX = Math.max(0, Math.min(event.clientX - railRect.left, railRect.width));
+            const barRect = event.currentTarget.parentElement?.getBoundingClientRect();
+            if (!barRect) return;
 
+            const railRect = rail.getBoundingClientRect();
             actionBarDragRef.current = {
                 pointerId: event.pointerId,
+                grabOffsetX: event.clientX - barRect.left,
             };
+
+            const nextDragX = Math.max(
+                0,
+                Math.min(
+                    barRect.left - railRect.left,
+                    Math.max(0, railRect.width - barRect.width)
+                )
+            );
 
             setActionBarDragX(nextDragX);
         },
@@ -975,7 +986,16 @@ export default function GoBoard({ id }: GoBoardProps) {
             if (!rail) return;
 
             const railRect = rail.getBoundingClientRect();
-            const nextDragX = Math.max(0, Math.min(event.clientX - railRect.left, railRect.width));
+            const barRect = event.currentTarget.parentElement?.getBoundingClientRect();
+            if (!barRect) return;
+
+            const nextDragX = Math.max(
+                0,
+                Math.min(
+                    event.clientX - railRect.left - dragState.grabOffsetX,
+                    Math.max(0, railRect.width - barRect.width)
+                )
+            );
             setActionBarDragX(nextDragX);
         },
         []
@@ -1239,27 +1259,27 @@ export default function GoBoard({ id }: GoBoardProps) {
                             </div>
                         </div>
                     ) : null}
-                    <div
-                        ref={actionBarRailRef}
-                        className="absolute inset-x-3 bottom-3 z-40 h-14 select-none sm:bottom-4"
-                    >
-                        <div className="relative h-full w-full">
-                            <div
-                                className={
-                                    actionBarDragX !== null
-                                        ? "absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
-                                        : actionBarAnchor === "left"
+                <div
+                    ref={actionBarRailRef}
+                    className="absolute inset-x-3 bottom-3 z-40 h-14 select-none sm:bottom-4"
+                >
+                    <div className="relative h-full w-full">
+                        <div
+                            className={
+                                actionBarDragX !== null
+                                    ? "absolute top-1/2 -translate-y-1/2"
+                                    : actionBarAnchor === "left"
                                         ? "absolute left-0 top-1/2 -translate-y-1/2"
                                         : actionBarAnchor === "right"
                                             ? "absolute right-0 top-1/2 -translate-y-1/2"
                                             : "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-                                }
-                                style={
-                                    actionBarDragX !== null
-                                        ? { left: `${actionBarDragX}px` }
-                                        : undefined
-                                }
-                            >
+                            }
+                            style={
+                                actionBarDragX !== null
+                                    ? { left: `${actionBarDragX}px` }
+                                    : undefined
+                            }
+                        >
                                 <div className="flex items-center gap-1 rounded-full border border-zinc-200 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
                                     <div
                                         className="inline-flex h-11 w-11 items-center justify-center text-zinc-700 dark:text-zinc-200"

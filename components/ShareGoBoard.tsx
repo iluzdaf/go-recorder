@@ -34,6 +34,7 @@ type ActionBarAnchor = "left" | "center" | "right";
 
 type ActionBarDragState = {
     pointerId: number;
+    grabOffsetX: number;
 };
 
 function stoneToSign(stone: Stone) {
@@ -239,15 +240,22 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
             event.preventDefault();
             event.currentTarget.setPointerCapture(event.pointerId);
 
-            const railRect = rail.getBoundingClientRect();
-            const nextDragX = Math.max(
-                0,
-                Math.min(event.clientX - railRect.left, railRect.width)
-            );
+            const barRect = event.currentTarget.parentElement?.getBoundingClientRect();
+            if (!barRect) return;
 
+            const railRect = rail.getBoundingClientRect();
             actionBarDragRef.current = {
                 pointerId: event.pointerId,
+                grabOffsetX: event.clientX - barRect.left,
             };
+
+            const nextDragX = Math.max(
+                0,
+                Math.min(
+                    barRect.left - railRect.left,
+                    Math.max(0, railRect.width - barRect.width)
+                )
+            );
 
             setActionBarDragX(nextDragX);
         },
@@ -268,9 +276,15 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
             if (!rail) return;
 
             const railRect = rail.getBoundingClientRect();
+            const barRect = event.currentTarget.parentElement?.getBoundingClientRect();
+            if (!barRect) return;
+
             const nextDragX = Math.max(
                 0,
-                Math.min(event.clientX - railRect.left, railRect.width)
+                Math.min(
+                    event.clientX - railRect.left - dragState.grabOffsetX,
+                    Math.max(0, railRect.width - barRect.width)
+                )
             );
             setActionBarDragX(nextDragX);
         },
@@ -361,7 +375,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                         <div
                             className={
                                 actionBarDragX !== null
-                                    ? "absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
+                                    ? "absolute top-1/2 -translate-y-1/2"
                                     : actionBarAnchor === "left"
                                         ? "absolute left-0 top-1/2 -translate-y-1/2"
                                         : actionBarAnchor === "right"
