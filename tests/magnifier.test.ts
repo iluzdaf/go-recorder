@@ -164,6 +164,17 @@ describe("magnifier sizing", () => {
         ).toBe(7);
     });
 
+    it("allows 9x9 boards to use a 5x5 minimum window near the corner", () => {
+        expect(
+            getMagnifierWindowSize({
+                boardX: 1,
+                boardY: 1,
+                boardSize: 9,
+                signMap: createEmptySignMap(9),
+            })
+        ).toBe(5);
+    });
+
     it("keeps the current 7x7 spacing math when window size is seven", () => {
         expect(
             getMagnifierPositionPercent({

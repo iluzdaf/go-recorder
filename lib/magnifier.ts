@@ -148,7 +148,7 @@ export function getMagnifierWindowSize({
     boardY,
     boardSize,
     signMap,
-    minWindowSize = MAGNIFIER_MIN_WINDOW_SIZE,
+    minWindowSize,
     maxWindowSize = MAGNIFIER_MAX_WINDOW_SIZE,
 }: {
     boardX: number;
@@ -159,9 +159,12 @@ export function getMagnifierWindowSize({
     maxWindowSize?: number;
 }) {
     const boardWindowBounds = getMagnifierWindowBoundsForBoardSize(boardSize);
+    const requestedMinWindowSize = minWindowSize ?? boardWindowBounds.minWindowSize;
     const normalizedMinWindowSize = Math.max(
         boardWindowBounds.minWindowSize,
-        minWindowSize % 2 === 0 ? minWindowSize + 1 : minWindowSize
+        requestedMinWindowSize % 2 === 0
+            ? requestedMinWindowSize + 1
+            : requestedMinWindowSize
     );
     const normalizedMaxWindowSize = Math.min(
         boardWindowBounds.maxWindowSize,
