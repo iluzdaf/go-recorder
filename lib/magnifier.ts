@@ -1,6 +1,6 @@
 import type { BoardSize } from "../components/types";
 
-export const MAGNIFIER_MIN_WINDOW_SIZE = 5;
+export const MAGNIFIER_MIN_WINDOW_SIZE = 7;
 export const MAGNIFIER_MAX_WINDOW_SIZE = 9;
 export const MAGNIFIER_VISIBLE_SPAN_PERCENT = 75;
 export const MAGNIFIER_INSET_PERCENT = 12.5;
@@ -10,6 +10,11 @@ export const MAGNIFIER_STONE_SIZE_RATIO = 0.78;
 type MagnifierAxisRange = {
     minOffset: number;
     maxOffset: number;
+};
+
+type MagnifierWindowBounds = {
+    minWindowSize: number;
+    maxWindowSize: number;
 };
 
 export type MagnifierSquareViewport = {
@@ -65,6 +70,22 @@ export function getStarPoints(boardSize: BoardSize) {
     if (boardSize === 9) return [2, 4, 6];
     if (boardSize === 13) return [3, 6, 9];
     return [3, 9, 15];
+}
+
+export function getMagnifierWindowBoundsForBoardSize(
+    boardSize: BoardSize
+): MagnifierWindowBounds {
+    if (boardSize === 9) {
+        return {
+            minWindowSize: 5,
+            maxWindowSize: 7,
+        };
+    }
+
+    return {
+        minWindowSize: MAGNIFIER_MIN_WINDOW_SIZE,
+        maxWindowSize: MAGNIFIER_MAX_WINDOW_SIZE,
+    };
 }
 
 export function isStarPoint(x: number, y: number, boardSize: BoardSize) {
@@ -137,12 +158,13 @@ export function getMagnifierWindowSize({
     minWindowSize?: number;
     maxWindowSize?: number;
 }) {
+    const boardWindowBounds = getMagnifierWindowBoundsForBoardSize(boardSize);
     const normalizedMinWindowSize = Math.max(
-        MAGNIFIER_MIN_WINDOW_SIZE,
+        boardWindowBounds.minWindowSize,
         minWindowSize % 2 === 0 ? minWindowSize + 1 : minWindowSize
     );
     const normalizedMaxWindowSize = Math.min(
-        MAGNIFIER_MAX_WINDOW_SIZE,
+        boardWindowBounds.maxWindowSize,
         maxWindowSize % 2 === 0 ? maxWindowSize - 1 : maxWindowSize
     );
 

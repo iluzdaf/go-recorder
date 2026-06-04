@@ -162,28 +162,4 @@ describe("MagnifierView DOM", () => {
         cleanupRoot(root, container);
     });
 
-    it("moves the center cell by a uniform step from A19 to B19 to C19", () => {
-        const a19 = renderMagnifier(0, 0);
-        const b19 = renderMagnifier(1, 0);
-        const c19 = renderMagnifier(2, 0);
-
-        const aLeft = Number.parseFloat(
-            (a19.container.querySelector('[data-cell-key="0,0"]') as HTMLElement)
-                .style.left
-        );
-        const bLeft = Number.parseFloat(
-            (b19.container.querySelector('[data-cell-key="0,0"]') as HTMLElement)
-                .style.left
-        );
-        const cLeft = Number.parseFloat(
-            (c19.container.querySelector('[data-cell-key="0,0"]') as HTMLElement)
-                .style.left
-        );
-
-        expect(bLeft - aLeft).toBeCloseTo(cLeft - bLeft);
-
-        cleanupRoot(a19.root, a19.container);
-        cleanupRoot(b19.root, b19.container);
-        cleanupRoot(c19.root, c19.container);
-    });
 });

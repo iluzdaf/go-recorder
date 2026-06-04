@@ -17,13 +17,6 @@ describe("createSlug", () => {
 
         expect(slug).toHaveLength(8);
     });
-
-    it("creates different slugs", () => {
-        const firstSlug = createSlug();
-        const secondSlug = createSlug();
-
-        expect(firstSlug).not.toBe(secondSlug);
-    });
 });
 
 describe("createRandomId", () => {

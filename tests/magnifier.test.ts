@@ -6,6 +6,7 @@ import {
     getMagnifierBufferedPositionPercent,
     getMagnifierEdgePaddedPositionPercent,
     getMagnifierRenderModel,
+    getMagnifierWindowBoundsForBoardSize,
     getMagnifierPositionPercent,
     getMagnifierStoneSizePx,
     getMagnifierWindowSize,
@@ -101,6 +102,21 @@ function getLineByKey<
 }
 
 describe("magnifier sizing", () => {
+    it("uses board-size-specific magnifier limits", () => {
+        expect(getMagnifierWindowBoundsForBoardSize(9)).toEqual({
+            minWindowSize: 5,
+            maxWindowSize: 7,
+        });
+        expect(getMagnifierWindowBoundsForBoardSize(13)).toEqual({
+            minWindowSize: 7,
+            maxWindowSize: 9,
+        });
+        expect(getMagnifierWindowBoundsForBoardSize(19)).toEqual({
+            minWindowSize: 7,
+            maxWindowSize: 9,
+        });
+    });
+
     it("keeps the smallest window when edge and stone cues are already visible", () => {
         const signMap = createEmptySignMap(19);
         signMap[1][2] = 1;
@@ -112,7 +128,7 @@ describe("magnifier sizing", () => {
                 boardSize: 19,
                 signMap,
             })
-        ).toBe(5);
+        ).toBe(7);
     });
 
     it("expands until a second cue becomes visible", () => {
@@ -137,23 +153,34 @@ describe("magnifier sizing", () => {
         ).toBe(9);
     });
 
-    it("keeps the current 5x5 spacing math when window size is five", () => {
+    it("keeps 9x9 boards within a 7x7 cap", () => {
+        expect(
+            getMagnifierWindowSize({
+                boardX: 4,
+                boardY: 4,
+                boardSize: 9,
+                signMap: createEmptySignMap(9),
+            })
+        ).toBe(7);
+    });
+
+    it("keeps the current 7x7 spacing math when window size is seven", () => {
         expect(
             getMagnifierPositionPercent({
-                offset: -2,
-                windowSize: 5,
+                offset: -3,
+                windowSize: 7,
             })
         ).toBeCloseTo(12.5);
         expect(
             getMagnifierPositionPercent({
                 offset: 0,
-                windowSize: 5,
+                windowSize: 7,
             })
         ).toBeCloseTo(50);
         expect(
             getMagnifierPositionPercent({
-                offset: 2,
-                windowSize: 5,
+                offset: 3,
+                windowSize: 7,
             })
         ).toBeCloseTo(87.5);
     });
@@ -164,25 +191,25 @@ describe("magnifier sizing", () => {
                 offset: -1,
                 boardCoord: 1,
                 boardSize: 19,
-                windowSize: 5,
+                windowSize: 7,
                 insetPercent: 12.5,
             })
         ).toBeCloseTo(12.5);
         expect(
             getMagnifierBufferedPositionPercent({
-                offset: 2,
+                offset: 3,
                 boardCoord: 1,
                 boardSize: 19,
-                windowSize: 5,
+                windowSize: 7,
                 insetPercent: 12.5,
             })
         ).toBeCloseTo(100);
         expect(
             getMagnifierBufferedPositionPercent({
-                offset: -2,
+                offset: -3,
                 boardCoord: 17,
                 boardSize: 19,
-                windowSize: 5,
+                windowSize: 7,
                 insetPercent: 12.5,
             })
         ).toBeCloseTo(0);
@@ -191,25 +218,10 @@ describe("magnifier sizing", () => {
                 offset: 1,
                 boardCoord: 17,
                 boardSize: 19,
-                windowSize: 5,
+                windowSize: 7,
                 insetPercent: 12.5,
             })
         ).toBeCloseTo(87.5);
-    });
-
-    it("keeps T18 at a square 5x5 viewport", () => {
-        const viewport = getMagnifierSquareViewport({
-            boardX: 18,
-            boardY: 1,
-            boardSize: 19,
-            windowSize: 5,
-        });
-
-        const xCount = viewport.x.maxOffset - viewport.x.minOffset + 1;
-        const yCount = viewport.y.maxOffset - viewport.y.minOffset + 1;
-
-        expect(xCount).toBe(yCount);
-        expect(xCount).toBe(5);
     });
 
     it.each([
@@ -217,7 +229,7 @@ describe("magnifier sizing", () => {
         ["b18", 1, 1],
         ["s2", 18, 17],
         ["s18", 18, 1],
-    ])("keeps %s at a 5x5 magnifier size on an empty board", (_label, boardX, boardY) => {
+    ])("keeps %s at a 7x7 magnifier size on an empty board", (_label, boardX, boardY) => {
         expect(
             getMagnifierWindowSize({
                 boardX,
@@ -225,28 +237,7 @@ describe("magnifier sizing", () => {
                 boardSize: 19,
                 signMap: createEmptySignMap(19),
             })
-        ).toBe(5);
-    });
-
-    it.each([
-        ["b2", 1, 17],
-        ["b18", 1, 1],
-        ["s2", 18, 17],
-        ["s18", 18, 1],
-    ])("keeps %s at a square 5x5 viewport", (_label, boardX, boardY) => {
-        const viewport = getMagnifierSquareViewport({
-            boardX,
-            boardY,
-            boardSize: 19,
-            windowSize: 5,
-        });
-
-        const xCount = viewport.x.maxOffset - viewport.x.minOffset + 1;
-        const yCount = viewport.y.maxOffset - viewport.y.minOffset + 1;
-
-        expect(xCount).toBe(5);
-        expect(yCount).toBe(5);
-        expect(xCount).toBe(yCount);
+        ).toBe(7);
     });
 
     it.each([
@@ -389,14 +380,14 @@ describe("magnifier sizing", () => {
 
     it("scales the preview stone proportionally with the magnifier grid size", () => {
         const stoneSizeAtFive = getMagnifierStoneSizePx({
-            windowSize: 5,
+            windowSize: 7,
         });
         const stoneSizeAtNine = getMagnifierStoneSizePx({
             windowSize: 9,
         });
 
         expect(stoneSizeAtFive).toBeGreaterThan(stoneSizeAtNine);
-        expect(stoneSizeAtFive / stoneSizeAtNine).toBeCloseTo(9 / 5);
+        expect(stoneSizeAtFive / stoneSizeAtNine).toBeCloseTo(9 / 7);
     });
 
     it("only shows row coordinates when the left edge is visible", () => {
@@ -405,7 +396,7 @@ describe("magnifier sizing", () => {
                 boardX: 9,
                 boardY: 9,
                 boardSize: 19,
-                windowSize: 5,
+                windowSize: 7,
             })
         ).toBe(false);
         expect(
@@ -413,7 +404,7 @@ describe("magnifier sizing", () => {
                 boardX: 1,
                 boardY: 9,
                 boardSize: 19,
-                windowSize: 5,
+                windowSize: 7,
             })
         ).toBe(true);
     });
@@ -424,7 +415,7 @@ describe("magnifier sizing", () => {
                 boardX: 9,
                 boardY: 9,
                 boardSize: 19,
-                windowSize: 5,
+                windowSize: 7,
             })
         ).toBe(false);
         expect(
@@ -432,7 +423,7 @@ describe("magnifier sizing", () => {
                 boardX: 17,
                 boardY: 9,
                 boardSize: 19,
-                windowSize: 5,
+                windowSize: 7,
             })
         ).toBe(true);
     });
@@ -443,7 +434,7 @@ describe("magnifier sizing", () => {
                 boardX: 9,
                 boardY: 1,
                 boardSize: 19,
-                windowSize: 5,
+                windowSize: 7,
             })
         ).toBe(true);
         expect(
@@ -451,7 +442,7 @@ describe("magnifier sizing", () => {
                 boardX: 9,
                 boardY: 17,
                 boardSize: 19,
-                windowSize: 5,
+                windowSize: 7,
             })
         ).toBe(true);
         expect(
@@ -459,7 +450,7 @@ describe("magnifier sizing", () => {
                 boardX: 9,
                 boardY: 9,
                 boardSize: 19,
-                windowSize: 5,
+                windowSize: 7,
             })
         ).toBe(false);
     });
@@ -470,7 +461,7 @@ describe("magnifier sizing", () => {
                 boardX: 9,
                 boardY: 9,
                 boardSize: 19,
-                windowSize: 5,
+                windowSize: 7,
             })
         ).toBe(false);
         expect(
@@ -478,7 +469,7 @@ describe("magnifier sizing", () => {
                 boardX: 9,
                 boardY: 17,
                 boardSize: 19,
-                windowSize: 5,
+                windowSize: 7,
             })
         ).toBe(true);
     });

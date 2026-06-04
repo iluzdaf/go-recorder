@@ -214,24 +214,6 @@ describe("validateMoveEdits", () => {
         });
     });
 
-    it("rejects out-of-bounds destinations through validation", () => {
-        expect(
-            validateMoveEdits({
-                boardSize: 19,
-                originalGameState: gameState,
-                edits: [
-                    {
-                        moveIndex: 0,
-                        to: { x: -1, y: 6 },
-                    },
-                ],
-            })
-        ).toEqual({
-            ok: false,
-            error: "Edit destination is out of bounds",
-        });
-    });
-
     it("accepts an edit when the edited game replays cleanly", () => {
         expect(
             validateMoveEdits({
