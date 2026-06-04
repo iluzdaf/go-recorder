@@ -9,6 +9,7 @@ import {
     getEditableMoveIndexAtVertex,
     getPreviewStone,
     getSelectedMoveVertices,
+    getStoneCorrectionOrigin,
     shouldApplyHoldDragCorrection,
     shouldStartStoneSelectionHold,
 } from "../lib/gameCorrectionUi";
@@ -177,13 +178,13 @@ describe("game correction UI helpers", () => {
                 editableMoveIndexAtVertex: 2,
                 selectedMoveIndexes: [2],
             })
-        ).toBe(true);
+        ).toBe(false);
         expect(
             shouldStartStoneSelectionHold({
                 editableMoveIndexAtVertex: 0,
                 selectedMoveIndexes: [2],
             })
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it("detects when a pointer leaves the held vertex", () => {
@@ -240,7 +241,7 @@ describe("game correction UI helpers", () => {
         ).toBe(false);
     });
 
-    it("applies a recorder correction and returns recorder UI state changes", () => {
+    it("applies a stone correction and returns recorder UI state changes", () => {
         const result = applyRecorderCorrection({
             boardSize: 19,
             gameState,
@@ -258,7 +259,7 @@ describe("game correction UI helpers", () => {
                     gameState.moves[2],
                 ],
             },
-            selectedMoveIndexes: [],
+            selectedMoveIndexes: [0],
             status: null,
             hasUnsavedChanges: true,
         });
@@ -288,7 +289,7 @@ describe("game correction UI helpers", () => {
                     { type: "play", x: 5, y: 5, color: "B" },
                 ],
             },
-            selectedMoveIndexes: [],
+            selectedMoveIndexes: [0, 2],
             status: null,
             hasUnsavedChanges: true,
         });
@@ -312,13 +313,13 @@ describe("game correction UI helpers", () => {
                     { type: "play", x: 6, y: 6, color: "B" },
                 ],
             },
-            selectedMoveIndexes: [],
+            selectedMoveIndexes: [2, 0],
             status: null,
             hasUnsavedChanges: true,
         });
     });
 
-    it("applies dragged recorder corrections relative to the dragged origin", () => {
+    it("applies dragged stone corrections relative to the dragged origin", () => {
         const result = applyRecorderCorrection({
             boardSize: 19,
             from: { x: 4, y: 4 },
@@ -337,13 +338,13 @@ describe("game correction UI helpers", () => {
                     { type: "play", x: 5, y: 6, color: "B" },
                 ],
             },
-            selectedMoveIndexes: [],
+            selectedMoveIndexes: [0, 2],
             status: null,
             hasUnsavedChanges: true,
         });
     });
 
-    it("applies dragged recorder corrections relative to an unselected origin", () => {
+    it("applies dragged stone corrections relative to an unselected origin", () => {
         const result = applyRecorderCorrection({
             boardSize: 19,
             from: { x: 1, y: 1 },
@@ -362,7 +363,7 @@ describe("game correction UI helpers", () => {
                     { type: "play", x: 5, y: 6, color: "B" },
                 ],
             },
-            selectedMoveIndexes: [],
+            selectedMoveIndexes: [0, 2],
             status: null,
             hasUnsavedChanges: true,
         });
@@ -387,7 +388,7 @@ describe("game correction UI helpers", () => {
                     gameState.moves[2],
                 ],
             },
-            selectedMoveIndexes: [],
+            selectedMoveIndexes: [0],
             status: null,
             hasUnsavedChanges: true,
         });
@@ -412,7 +413,7 @@ describe("game correction UI helpers", () => {
                     { type: "play", x: 7, y: 5, color: "B" },
                 ],
             },
-            selectedMoveIndexes: [],
+            selectedMoveIndexes: [0, 2],
             status: null,
             hasUnsavedChanges: true,
         });
@@ -437,7 +438,7 @@ describe("game correction UI helpers", () => {
                     { type: "play", x: 3, y: 2, color: "B" },
                 ],
             },
-            selectedMoveIndexes: [],
+            selectedMoveIndexes: [0, 2],
             status: null,
             hasUnsavedChanges: true,
         });
@@ -530,7 +531,30 @@ describe("game correction UI helpers", () => {
         ).toEqual([]);
     });
 
-    it("rejects a recorder correction that would make replay illegal", () => {
+    it("resolves stone correction origins from selection state", () => {
+        expect(
+            getStoneCorrectionOrigin({
+                from: { x: 1, y: 1 },
+                gameState,
+                selectedMoveIndexes: [0],
+            })
+        ).toEqual({ x: 3, y: 3 });
+        expect(
+            getStoneCorrectionOrigin({
+                from: { x: 1, y: 1 },
+                gameState,
+                selectedMoveIndexes: [0, 2],
+            })
+        ).toEqual({ x: 1, y: 1 });
+        expect(
+            getStoneCorrectionOrigin({
+                gameState,
+                selectedMoveIndexes: [2, 0],
+            })
+        ).toEqual({ x: 3, y: 3 });
+    });
+
+    it("rejects a stone correction that would make replay illegal", () => {
         expect(
             applyRecorderCorrection({
                 boardSize: 19,
@@ -544,7 +568,7 @@ describe("game correction UI helpers", () => {
         });
     });
 
-    it("rejects recorder correction when no move is selected", () => {
+    it("rejects stone correction when no move is selected", () => {
         expect(
             applyRecorderCorrection({
                 boardSize: 19,

@@ -17,7 +17,7 @@ export type ApplyRecorderCorrectionResult =
     | {
         ok: true;
         gameState: GameState;
-        selectedMoveIndexes: [];
+        selectedMoveIndexes: number[];
         status: null;
         hasUnsavedChanges: true;
     }
@@ -103,11 +103,12 @@ export function getCorrectionTapAction({
 
 export function shouldStartStoneSelectionHold({
     editableMoveIndexAtVertex,
+    selectedMoveIndexes,
 }: {
     editableMoveIndexAtVertex: number | null;
     selectedMoveIndexes: number[];
 }) {
-    return editableMoveIndexAtVertex !== null;
+    return selectedMoveIndexes.length === 0 && editableMoveIndexAtVertex !== null;
 }
 
 export function didPointerLeaveHoldVertex({
@@ -203,6 +204,25 @@ function getDefaultCorrectionOrigin({
     });
 }
 
+export function getStoneCorrectionOrigin({
+    from,
+    gameState,
+    selectedMoveIndexes,
+}: {
+    from?: Vertex | null;
+    gameState: GameState;
+    selectedMoveIndexes: number[];
+}): Vertex | null {
+    if (selectedMoveIndexes.length === 1) {
+        return getDefaultCorrectionOrigin({
+            gameState,
+            selectedMoveIndexes,
+        });
+    }
+
+    return from ?? getDefaultCorrectionOrigin({ gameState, selectedMoveIndexes });
+}
+
 export function getCorrectionPreviewStones({
     currentPlayer,
     from,
@@ -225,17 +245,11 @@ export function getCorrectionPreviewStones({
         ];
     }
 
-    const origin =
-        selectedMoveIndexes.length === 1
-            ? getDefaultCorrectionOrigin({
-                  gameState,
-                  selectedMoveIndexes,
-              })
-            : from ??
-              getDefaultCorrectionOrigin({
-                  gameState,
-                  selectedMoveIndexes,
-              });
+    const origin = getStoneCorrectionOrigin({
+        from,
+        gameState,
+        selectedMoveIndexes,
+    });
 
     if (!origin) return [];
 
@@ -275,17 +289,11 @@ export function applyRecorderCorrection({
         };
     }
 
-    const origin =
-        selectedMoveIndexes.length === 1
-            ? getDefaultCorrectionOrigin({
-                  gameState,
-                  selectedMoveIndexes,
-              })
-            : from ??
-              getDefaultCorrectionOrigin({
-                  gameState,
-                  selectedMoveIndexes,
-              });
+    const origin = getStoneCorrectionOrigin({
+        from,
+        gameState,
+        selectedMoveIndexes,
+    });
 
     if (!origin) {
         return {
@@ -310,7 +318,7 @@ export function applyRecorderCorrection({
     return {
         ok: true,
         gameState: result.gameState,
-        selectedMoveIndexes: [],
+        selectedMoveIndexes,
         status: null,
         hasUnsavedChanges: true,
     };

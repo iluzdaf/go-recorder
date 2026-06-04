@@ -34,14 +34,15 @@
     "creatingQrCode": "Generating QR code...",
     "failedToGenerateQrCode": "Failed to generate QR code",
     "dismissMessage": "Dismiss message",
+    "exitStoneCorrectionMode": "Exit stone correction mode",
     "undo": "Undo",
     "pass": "Pass",
     "downloadSgf": "Download SGF",
     "share": "Share",
     "invalidShareInput": "Invalid share input",
-    "stoneCorrectionIllegal": "That stone edit is not legal.",
-    "stoneCorrectionChangesCaptures": "That stone edit changes later captures.",
-    "stoneCorrectionFailed": "That stone edit could not be applied.",
+    "stoneCorrectionIllegal": "That stone correction is not legal.",
+    "stoneCorrectionChangesCaptures": "That stone correction changes later captures.",
+    "stoneCorrectionFailed": "That stone correction could not be applied.",
     "changelog": "Changelog",
     "version": "Version"
 }
