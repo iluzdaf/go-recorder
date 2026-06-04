@@ -1,21 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType, PointerEvent as ReactPointerEvent } from "react";
 import {
+    Copy,
     Download,
     ChevronLeft,
     ChevronRight,
     SkipBack,
     SkipForward,
     FileText,
+    SquareArrowUpRight,
 } from "lucide-react";
+import QRCode from "qrcode";
 
 import type { Move, SetupStone, ShareRecord, Stone } from "./types";
 import { exportSgf, createSgfFilename } from "./sgf";
 import { t } from "../lib/i18n";
-import { useHeaderActions, useTheme } from "./AppShell";
+import { useTheme } from "./AppShell";
+import BoardStatusMessage from "./BoardStatusMessage";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -89,13 +94,19 @@ function getActionBarAnchorFromClientX({
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const [vertexSize, setVertexSize] = useState(24);
     const { isDarkMode } = useTheme();
-    const { setHeaderActions } = useHeaderActions();
     const boardAreaRef = useRef<HTMLDivElement | null>(null);
+    const shareMenuRef = useRef<HTMLDivElement | null>(null);
+    const shareTriggerRef = useRef<HTMLButtonElement | null>(null);
     const actionBarRailRef = useRef<HTMLDivElement | null>(null);
     const actionBarDragRef = useRef<ActionBarDragState | null>(null);
     const [actionBarAnchor, setActionBarAnchor] =
         useState<ActionBarAnchor>("center");
     const [actionBarDragX, setActionBarDragX] = useState<number | null>(null);
+    const [shareMenuOpen, setShareMenuOpen] = useState(false);
+    const [shareStatus, setShareStatus] = useState<string | null>(null);
+    const [shareQrCodeDataUrl, setShareQrCodeDataUrl] = useState<string | null>(
+        null
+    );
     const [visibleMoveCount, setVisibleMoveCount] = useState(
         share.gameState.moves.length
     );
@@ -148,6 +159,28 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         markerMap[lastMove.y][lastMove.x] = { type: "circle" };
     }
 
+    const sharePath = `/shares/${share.slug}`;
+
+    const dismissShareStatus = useCallback(() => setShareStatus(null), []);
+
+    const openShareMenu = useCallback(() => {
+        setShareMenuOpen(true);
+    }, []);
+
+    const closeShareMenu = useCallback(() => {
+        setShareMenuOpen(false);
+        setShareQrCodeDataUrl(null);
+    }, []);
+
+    const toggleShareMenu = useCallback(() => {
+        if (shareMenuOpen) {
+            closeShareMenu();
+            return;
+        }
+
+        openShareMenu();
+    }, [closeShareMenu, openShareMenu, shareMenuOpen]);
+
     const handleDownloadSgf = useCallback(() => {
         const sgfFilename = createSgfFilename(
             share.blackPlayerName,
@@ -184,28 +217,80 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         share.whitePlayerName,
     ]);
 
-    const headerActions = useMemo(
-        () => (
-            <button
-                type="button"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                onClick={handleDownloadSgf}
-                aria-label={t("downloadSgf")}
-                title={t("downloadSgf")}
-            >
-                <Download size={18} />
-            </button>
-        ),
-        [handleDownloadSgf]
-    );
+    const handleCopyLink = useCallback(async () => {
+        try {
+            await navigator.clipboard.writeText(
+                `${window.location.origin}${sharePath}`
+            );
+            setShareStatus(t("linkCopied"));
+        } catch {
+            setShareStatus(t("failedToCopyLink"));
+        }
+    }, [sharePath]);
 
     useEffect(() => {
-        setHeaderActions(headerActions);
+        if (!shareMenuOpen) return;
+
+        const handlePointerDown = (event: PointerEvent) => {
+            const target = event.target;
+            if (!(target instanceof Node)) return;
+
+            const menuElement = shareMenuRef.current;
+            const triggerElement = shareTriggerRef.current;
+
+            if (
+                menuElement?.contains(target) ||
+                triggerElement?.contains(target)
+            ) {
+                return;
+            }
+
+            closeShareMenu();
+        };
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                closeShareMenu();
+            }
+        };
+
+        window.addEventListener("pointerdown", handlePointerDown);
+        window.addEventListener("keydown", handleKeyDown);
 
         return () => {
-            setHeaderActions(null);
+            window.removeEventListener("pointerdown", handlePointerDown);
+            window.removeEventListener("keydown", handleKeyDown);
         };
-    }, [headerActions, setHeaderActions]);
+    }, [closeShareMenu, shareMenuOpen]);
+
+    useEffect(() => {
+        if (!shareMenuOpen) {
+            return;
+        }
+
+        let cancelled = false;
+
+        void QRCode.toDataURL(`${window.location.origin}${sharePath}`, {
+            errorCorrectionLevel: "M",
+            margin: 1,
+            width: 240,
+        })
+            .then((nextQrCodeDataUrl: string) => {
+                if (!cancelled) {
+                    setShareQrCodeDataUrl(nextQrCodeDataUrl);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setShareQrCodeDataUrl(null);
+                    setShareStatus(t("failedToGenerateQrCode"));
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [shareMenuOpen, sharePath]);
 
     const handleJumpToStart = useCallback(() => {
         setVisibleMoveCount(0);
@@ -367,6 +452,64 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                 ref={boardAreaRef}
                 className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
             >
+                <BoardStatusMessage
+                    message={shareStatus}
+                    onDismiss={dismissShareStatus}
+                />
+                {shareMenuOpen ? (
+                    <div
+                        id="share-menu"
+                        ref={shareMenuRef}
+                        className="fixed right-4 top-16 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
+                    >
+                        <div className="mb-3">
+                            <p className="text-sm font-semibold text-zinc-950 dark:text-white">
+                                {t("share")}
+                            </p>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <button
+                                type="button"
+                                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                onClick={() => {
+                                    handleDownloadSgf();
+                                    closeShareMenu();
+                                }}
+                                aria-label={t("downloadSgf")}
+                                title={t("downloadSgf")}
+                            >
+                                <Download size={16} />
+                                <span>{t("downloadSgf")}</span>
+                            </button>
+                            <div className="flex items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-neutral-700 dark:bg-neutral-950">
+                                {shareQrCodeDataUrl ? (
+                                    <Image
+                                        src={shareQrCodeDataUrl}
+                                        alt={t("shareLink")}
+                                        width={240}
+                                        height={240}
+                                        unoptimized
+                                        className="h-48 w-48"
+                                    />
+                                ) : (
+                                    <div className="flex h-48 w-48 items-center justify-center text-sm text-zinc-500 dark:text-zinc-400">
+                                        {t("creatingQrCode")}
+                                    </div>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                onClick={handleCopyLink}
+                                aria-label={t("copyLink")}
+                                title={t("copyLink")}
+                            >
+                                <Copy size={16} />
+                                <span>{t("copyLink")}</span>
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
                 <div
                     ref={actionBarRailRef}
                     className="absolute inset-x-3 bottom-3 z-40 h-14 select-none sm:bottom-4"
@@ -438,8 +581,20 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                                         visibleMoveCount ===
                                         share.gameState.moves.length
                                     }
+                                    >
+                                        <SkipForward size={18} />
+                                </button>
+                                <button
+                                    type="button"
+                                    ref={shareTriggerRef}
+                                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                    onClick={toggleShareMenu}
+                                    aria-label={t("share")}
+                                    aria-expanded={shareMenuOpen}
+                                    aria-controls="share-menu"
+                                    title={t("share")}
                                 >
-                                    <SkipForward size={18} />
+                                    <SquareArrowUpRight size={18} />
                                 </button>
                                 <div
                                     className="flex h-11 w-10 cursor-grab items-center justify-center active:cursor-grabbing"
