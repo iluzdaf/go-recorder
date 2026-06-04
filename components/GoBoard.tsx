@@ -45,7 +45,9 @@ import {
     getEditableMoveIndexAtVertex,
     getSelectedMoveVertices,
     getStoneCorrectionOrigin,
+    isStoneSelectionDragActive,
     shouldApplyHoldDragCorrection,
+    shouldShowStoneSelectionCloseButton,
     shouldStartStoneSelectionHold,
     type Vertex,
 } from "../lib/gameCorrectionUi";
@@ -526,7 +528,11 @@ export default function GoBoard({ id }: GoBoardProps) {
               };
           })()
         : null;
-    const isMovingSelectedStones = Boolean(touchPreview) && selectedMoveIndexes.length > 0;
+    const isMovingSelectedStones = isStoneSelectionDragActive({
+        hasTouchPreview: Boolean(touchPreview),
+        selectedMoveIndexes,
+        didStartStoneSelectionDrag,
+    });
     const renderSelectedVertices = isMovingSelectedStones ? [] : selectedVertices;
     const renderDimmedVertices = dragPreview ? dragPreview.selectedVertices : [];
     const placementPreviewSignMap =
@@ -557,7 +563,10 @@ export default function GoBoard({ id }: GoBoardProps) {
                   return nextMarkerMap;
               })()
             : markerMap;
-    const showExitStoneEditModeButton = Boolean(selectedMoveVertices[0]) && !dragPreview;
+    const showExitStoneEditModeButton = shouldShowStoneSelectionCloseButton({
+        hasSelectedStone: Boolean(selectedMoveVertices[0]),
+        isDraggingSelectedStones: isMovingSelectedStones,
+    });
     const showMagnifier = Boolean(touchPreview) && selectedMoveIndexes.length <= 1;
 
     const getGridMetrics = () => {

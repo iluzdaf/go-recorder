@@ -138,6 +138,32 @@ export function shouldApplyHoldDragCorrection({
     );
 }
 
+export function isStoneSelectionDragActive({
+    hasTouchPreview,
+    selectedMoveIndexes,
+    didStartStoneSelectionDrag,
+}: {
+    hasTouchPreview: boolean;
+    selectedMoveIndexes: number[];
+    didStartStoneSelectionDrag: boolean;
+}) {
+    return (
+        hasTouchPreview &&
+        selectedMoveIndexes.length > 0 &&
+        didStartStoneSelectionDrag
+    );
+}
+
+export function shouldShowStoneSelectionCloseButton({
+    hasSelectedStone,
+    isDraggingSelectedStones,
+}: {
+    hasSelectedStone: boolean;
+    isDraggingSelectedStones: boolean;
+}) {
+    return hasSelectedStone && !isDraggingSelectedStones;
+}
+
 export function createMoveEdits({
     from,
     gameState,

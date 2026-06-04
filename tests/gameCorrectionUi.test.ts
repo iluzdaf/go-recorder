@@ -10,7 +10,9 @@ import {
     getPreviewStone,
     getSelectedMoveVertices,
     getStoneCorrectionOrigin,
+    isStoneSelectionDragActive,
     shouldApplyHoldDragCorrection,
+    shouldShowStoneSelectionCloseButton,
     shouldStartStoneSelectionHold,
 } from "../lib/gameCorrectionUi";
 
@@ -237,6 +239,58 @@ describe("game correction UI helpers", () => {
             shouldApplyHoldDragCorrection({
                 origin: null,
                 vertex: { x: 4, y: 3 },
+            })
+        ).toBe(false);
+    });
+
+    it("keeps stone selection in highlight mode until dragging starts", () => {
+        expect(
+            isStoneSelectionDragActive({
+                hasTouchPreview: true,
+                selectedMoveIndexes: [0],
+                didStartStoneSelectionDrag: false,
+            })
+        ).toBe(false);
+        expect(
+            isStoneSelectionDragActive({
+                hasTouchPreview: true,
+                selectedMoveIndexes: [0],
+                didStartStoneSelectionDrag: true,
+            })
+        ).toBe(true);
+        expect(
+            isStoneSelectionDragActive({
+                hasTouchPreview: false,
+                selectedMoveIndexes: [0],
+                didStartStoneSelectionDrag: true,
+            })
+        ).toBe(false);
+        expect(
+            isStoneSelectionDragActive({
+                hasTouchPreview: true,
+                selectedMoveIndexes: [],
+                didStartStoneSelectionDrag: true,
+            })
+        ).toBe(false);
+    });
+
+    it("shows the close button after selection and hides it while dragging", () => {
+        expect(
+            shouldShowStoneSelectionCloseButton({
+                hasSelectedStone: true,
+                isDraggingSelectedStones: false,
+            })
+        ).toBe(true);
+        expect(
+            shouldShowStoneSelectionCloseButton({
+                hasSelectedStone: true,
+                isDraggingSelectedStones: true,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowStoneSelectionCloseButton({
+                hasSelectedStone: false,
+                isDraggingSelectedStones: false,
             })
         ).toBe(false);
     });
