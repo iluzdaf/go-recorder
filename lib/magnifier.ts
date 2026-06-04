@@ -1,6 +1,5 @@
 import type { BoardSize } from "../components/types";
 
-export const MAGNIFIER_MIN_WINDOW_SIZE = 7;
 export const MAGNIFIER_MAX_WINDOW_SIZE = 9;
 export const MAGNIFIER_VISIBLE_SPAN_PERCENT = 75;
 export const MAGNIFIER_INSET_PERCENT = 12.5;
@@ -15,6 +14,24 @@ type MagnifierAxisRange = {
 type MagnifierWindowBounds = {
     minWindowSize: number;
     maxWindowSize: number;
+};
+
+const MAGNIFIER_WINDOW_BOUNDS_BY_BOARD_SIZE: Record<
+    BoardSize,
+    MagnifierWindowBounds
+> = {
+    9: {
+        minWindowSize: 5,
+        maxWindowSize: 7,
+    },
+    13: {
+        minWindowSize: 7,
+        maxWindowSize: 9,
+    },
+    19: {
+        minWindowSize: 7,
+        maxWindowSize: 9,
+    },
 };
 
 export type MagnifierSquareViewport = {
@@ -75,17 +92,7 @@ export function getStarPoints(boardSize: BoardSize) {
 export function getMagnifierWindowBoundsForBoardSize(
     boardSize: BoardSize
 ): MagnifierWindowBounds {
-    if (boardSize === 9) {
-        return {
-            minWindowSize: 5,
-            maxWindowSize: 7,
-        };
-    }
-
-    return {
-        minWindowSize: MAGNIFIER_MIN_WINDOW_SIZE,
-        maxWindowSize: MAGNIFIER_MAX_WINDOW_SIZE,
-    };
+    return MAGNIFIER_WINDOW_BOUNDS_BY_BOARD_SIZE[boardSize];
 }
 
 export function isStarPoint(x: number, y: number, boardSize: BoardSize) {
@@ -227,10 +234,7 @@ function isMagnifierEdgeVisible({
 }
 
 function getMagnifierAxisRange(windowSize: number): MagnifierAxisRange {
-    const visibleCount = Math.max(
-        MAGNIFIER_MIN_WINDOW_SIZE,
-        windowSize % 2 === 0 ? windowSize + 1 : windowSize
-    );
+    const visibleCount = windowSize % 2 === 0 ? windowSize + 1 : windowSize;
     const radius = Math.floor(visibleCount / 2);
 
     return {
@@ -280,10 +284,7 @@ export function getMagnifierSquareViewport({
     boardSize: BoardSize;
     windowSize: number;
 }): MagnifierSquareViewport {
-    const normalizedWindowSize = Math.max(
-        MAGNIFIER_MIN_WINDOW_SIZE,
-        windowSize % 2 === 0 ? windowSize + 1 : windowSize
-    );
+    const normalizedWindowSize = windowSize % 2 === 0 ? windowSize + 1 : windowSize;
 
     return {
         x: getMagnifierAxisRangeForCoordinate({
