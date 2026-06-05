@@ -601,14 +601,24 @@ export default function GoBoard({ id }: GoBoardProps) {
         event.stopPropagation();
         event.currentTarget.setPointerCapture(event.pointerId);
 
-        const gridLeft = gridMetrics.left + origin.x * gridMetrics.cellSize + gridMetrics.cellSize / 2;
-        const gridTop = gridMetrics.top + origin.y * gridMetrics.cellSize + gridMetrics.cellSize / 2;
+        const metrics = getGridMetrics();
+        if (!metrics) return;
+
+        const { gridRect, nextGridMetrics } = metrics;
+        const stoneCenterX =
+            gridRect.left +
+            origin.x * nextGridMetrics.cellSize +
+            nextGridMetrics.cellSize / 2;
+        const stoneCenterY =
+            gridRect.top +
+            origin.y * nextGridMetrics.cellSize +
+            nextGridMetrics.cellSize / 2;
 
         stoneSelectionDragStateRef.current = {
             pointerId: event.pointerId,
             origin,
-            offsetX: event.clientX - gridLeft,
-            offsetY: event.clientY - gridTop,
+            offsetX: event.clientX - stoneCenterX,
+            offsetY: event.clientY - stoneCenterY,
         };
         selectedGroupDragOriginRef.current = origin;
         setSelectedGroupDragOriginState(origin);
