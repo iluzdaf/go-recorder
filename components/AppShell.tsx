@@ -434,11 +434,11 @@ export default function AppShell({
                     <header
                         className={
                             usesOverlayHeader
-                                ? "fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-zinc-200 bg-white/95 px-4 text-zinc-950 shadow-lg backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95 dark:text-white"
-                                : "flex h-14 flex-shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 text-zinc-950 dark:border-neutral-800 dark:bg-neutral-950 dark:text-white"
+                                ? "fixed left-0 right-0 top-0 z-50 flex min-h-14 items-center justify-between border-b border-zinc-200 bg-white/95 px-4 py-1 text-zinc-950 shadow-lg backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95 dark:text-white"
+                                : "flex min-h-14 flex-shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 py-1 text-zinc-950 dark:border-neutral-800 dark:bg-neutral-950 dark:text-white"
                         }
                     >
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex shrink-0 items-center gap-1.5">
                             <Link
                                 href="/"
                                 className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
@@ -455,7 +455,7 @@ export default function AppShell({
                             {headerActions}
                         </div>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex shrink-0 items-center gap-1.5">
                             <button
                                 ref={changelogButtonRef}
                                 type="button"

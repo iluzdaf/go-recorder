@@ -30,11 +30,13 @@ export default function BoardStatusMessage({
     return (
         <div className="pointer-events-none min-w-0 max-w-xl flex-1">
             <div
-                className="flex min-w-0 items-center gap-3 rounded-lg border border-zinc-200 bg-white/95 px-3 py-1.5 text-sm text-zinc-800 shadow-lg dark:border-neutral-700 dark:bg-neutral-900/95 dark:text-neutral-100"
+                className="flex min-w-0 items-start gap-3 rounded-lg border border-zinc-200 bg-white/95 px-3 py-1.5 text-sm text-zinc-800 shadow-lg dark:border-neutral-700 dark:bg-neutral-900/95 dark:text-neutral-100"
                 role="status"
                 aria-live="polite"
             >
-                <p className="min-w-0 flex-1 truncate">{message}</p>
+                <p className="min-w-0 flex-1 whitespace-normal break-words">
+                    {message}
+                </p>
                 <button
                     type="button"
                     className="pointer-events-auto -mr-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-lg leading-none text-zinc-500 hover:bg-zinc-100 hover:text-zinc-950 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
