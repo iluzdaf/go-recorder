@@ -612,6 +612,26 @@ export default function GoBoard({ id }: GoBoardProps) {
               .filter(Boolean)
               .join(" ")
         : "";
+    const touchGuideMetrics =
+        touchPreview && placementZoomWindow
+            ? {
+                  left: gridMetrics.left,
+                  top: gridMetrics.top,
+                  cellSize: placementZoomVertexSize,
+                  boardSizePx: gridMetrics.boardSizePx,
+                  x: touchPreview.x - placementZoomWindow.startX,
+                  y: touchPreview.y - placementZoomWindow.startY,
+              }
+            : touchPreview
+              ? {
+                    left: gridMetrics.left,
+                    top: gridMetrics.top,
+                    cellSize: gridMetrics.cellSize,
+                    boardSizePx: gridMetrics.boardSizePx,
+                    x: touchPreview.x,
+                    y: touchPreview.y,
+                }
+              : null;
 
     const getGridMetrics = () => {
         const gobanWrapper = gobanWrapperRef.current;
@@ -1953,31 +1973,47 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 </button>
                             </div>
                         ) : null}
-                        {shouldShowTouchGuide && touchPreview && (
+                        {shouldShowTouchGuide && touchGuideMetrics && (
                             <svg
                                 className="pointer-events-none absolute z-20"
                                 style={{
-                                    left: gridMetrics.left,
-                                    top: gridMetrics.top,
+                                    left: touchGuideMetrics.left,
+                                    top: touchGuideMetrics.top,
                                 }}
-                                width={gridMetrics.boardSizePx}
-                                height={gridMetrics.boardSizePx}
-                                viewBox={`0 0 ${gridMetrics.boardSizePx} ${gridMetrics.boardSizePx}`}
+                                width={touchGuideMetrics.boardSizePx}
+                                height={touchGuideMetrics.boardSizePx}
+                                viewBox={`0 0 ${touchGuideMetrics.boardSizePx} ${touchGuideMetrics.boardSizePx}`}
                             >
                                 <line
                                     x1={0}
-                                    y1={touchPreview.y * gridMetrics.cellSize + gridMetrics.cellSize / 2}
-                                    x2={gridMetrics.boardSizePx}
-                                    y2={touchPreview.y * gridMetrics.cellSize + gridMetrics.cellSize / 2}
+                                    y1={
+                                        touchGuideMetrics.y *
+                                            touchGuideMetrics.cellSize +
+                                        touchGuideMetrics.cellSize / 2
+                                    }
+                                    x2={touchGuideMetrics.boardSizePx}
+                                    y2={
+                                        touchGuideMetrics.y *
+                                            touchGuideMetrics.cellSize +
+                                        touchGuideMetrics.cellSize / 2
+                                    }
                                     stroke="rgb(56 189 248 / 0.8)"
                                     strokeWidth="1"
                                     vectorEffect="non-scaling-stroke"
                                 />
                                 <line
-                                    x1={touchPreview.x * gridMetrics.cellSize + gridMetrics.cellSize / 2}
+                                    x1={
+                                        touchGuideMetrics.x *
+                                            touchGuideMetrics.cellSize +
+                                        touchGuideMetrics.cellSize / 2
+                                    }
                                     y1={0}
-                                    x2={touchPreview.x * gridMetrics.cellSize + gridMetrics.cellSize / 2}
-                                    y2={gridMetrics.boardSizePx}
+                                    x2={
+                                        touchGuideMetrics.x *
+                                            touchGuideMetrics.cellSize +
+                                        touchGuideMetrics.cellSize / 2
+                                    }
+                                    y2={touchGuideMetrics.boardSizePx}
                                     stroke="rgb(56 189 248 / 0.8)"
                                     strokeWidth="1"
                                     vectorEffect="non-scaling-stroke"
