@@ -27,6 +27,12 @@ export type BoardGridGeometry = {
     boardSize: BoardSize;
 };
 
+export type BoardAreaZoomWindow = {
+    startX: number;
+    startY: number;
+    size: 9;
+};
+
 export type ApplyRecorderCorrectionResult =
     | {
         ok: true;
@@ -202,6 +208,28 @@ export function shouldShowPlacementPreview({
     isCorrectionDragActive: boolean;
 }) {
     return hasTouchPreview && !hasSelectedStone && !isCorrectionDragActive;
+}
+
+function getPlacementZoomWindowStart(coordinate: number) {
+    if (coordinate < 7) return 0;
+    if (coordinate < 12) return 5;
+    return 10;
+}
+
+export function getPlacementZoomWindow({
+    boardSize,
+    vertex,
+}: {
+    boardSize: BoardSize;
+    vertex: Vertex;
+}): BoardAreaZoomWindow | null {
+    if (boardSize !== 19) return null;
+
+    return {
+        startX: getPlacementZoomWindowStart(vertex.x),
+        startY: getPlacementZoomWindowStart(vertex.y),
+        size: 9,
+    };
 }
 
 export function toggleCorrectionSelection({

@@ -44,6 +44,7 @@ import {
     didPointerLeaveHoldVertex,
     getCorrectionTapAction,
     getEditableMoveIndexAtVertex,
+    getPlacementZoomWindow,
     getSelectedMoveVertices,
     getStoneCorrectionOrigin,
     getStoneSelectionDragVertexFromPointer,
@@ -56,6 +57,7 @@ import {
     shouldStartStoneSelectionHold,
     toggleCorrectionSelection,
     visitCorrectionSelectionDragMove,
+    type BoardAreaZoomWindow,
     type BoardGridGeometry,
     type StoneSelectionDragState,
     type Vertex,
@@ -173,6 +175,8 @@ export default function GoBoard({ id }: GoBoardProps) {
     });
     const [vertexSize, setVertexSize] = useState(24);
     const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
+    const [placementZoomWindow, setPlacementZoomWindow] =
+        useState<BoardAreaZoomWindow | null>(null);
     const [selectedGroupDragOrigin, setSelectedGroupDragOriginState] =
         useState<Vertex | null>(null);
     const [selectedMoveIndexes, setSelectedMoveIndexes] = useState<number[]>([]);
@@ -199,6 +203,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
     const isStonePlacementActiveRef = useRef(false);
     const stonePlacementCanCommitRef = useRef(false);
+    const isPlacementZoomEligibleRef = useRef(false);
     const actionBarDragRef = useRef<ActionBarDragState | null>(null);
     const actionBarRailRef = useRef<HTMLDivElement | null>(null);
     const [actionBarAnchor, setActionBarAnchor] = useState<ActionBarAnchor>(() => {
@@ -571,6 +576,15 @@ export default function GoBoard({ id }: GoBoardProps) {
                   STONE_CORRECTION_PILL_HEIGHT_PX
           )
         : 0;
+    const placementZoomScale = placementZoomWindow
+        ? size / placementZoomWindow.size
+        : 1;
+    const placementZoomSourceLeft = placementZoomWindow
+        ? gridMetrics.left + placementZoomWindow.startX * gridMetrics.cellSize
+        : 0;
+    const placementZoomSourceTop = placementZoomWindow
+        ? gridMetrics.top + placementZoomWindow.startY * gridMetrics.cellSize
+        : 0;
 
     const getGridMetrics = () => {
         const gobanWrapper = gobanWrapperRef.current;
@@ -618,11 +632,17 @@ export default function GoBoard({ id }: GoBoardProps) {
         stoneSelectOriginRef.current = null;
     };
 
+    const clearPlacementZoom = () => {
+        isPlacementZoomEligibleRef.current = false;
+        setPlacementZoomWindow(null);
+    };
+
     const clearStoneSelectionDragState = () => {
         didSelectStoneByHoldRef.current = false;
         setDidStartStoneSelectionDrag(false);
         setIsCorrectionDragActive(false);
         didDragStoneSelectionRef.current = false;
+        clearPlacementZoom();
         stoneSelectOriginRef.current = null;
         selectedGroupDragOriginRef.current = null;
         setSelectedGroupDragOriginState(null);
@@ -875,7 +895,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             stonePlacementCanCommitRef.current = false;
             touchPreviewVertexRef.current = null;
             setTouchPreview(null);
-            return;
+            return null;
         }
 
         touchPreviewVertexRef.current = vertex;
@@ -884,6 +904,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             screenX: clientX,
             screenY: clientY,
         });
+        return vertex;
     };
 
     const canShareGame = gameState.moves.some((move) => move.type === "play");
@@ -1498,6 +1519,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                             didSelectStoneByHoldRef.current = false;
                             setDidStartStoneSelectionDrag(false);
                             clearStoneSelectTimeout();
+                            clearPlacementZoom();
                             isStonePlacementActiveRef.current = Boolean(vertex);
                             stonePlacementCanCommitRef.current = Boolean(vertex);
                             if (!vertex) {
@@ -1518,6 +1540,9 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 vertex,
                                 visibleStoneOwners: replay.visibleStoneOwners,
                             });
+                            isPlacementZoomEligibleRef.current =
+                                selectedMoveIndexes.length === 0 &&
+                                editableMoveIndex === null;
 
                             if (selectedMoveIndexes.length > 0) {
                                 stoneSelectOriginRef.current = vertex;
@@ -1554,13 +1579,12 @@ export default function GoBoard({ id }: GoBoardProps) {
                         onPointerMove={(event) => {
                             if (!isStonePlacementActiveRef.current) return;
                             event.preventDefault();
-                            updateTouchPreview(event.clientX, event.clientY);
-
-                            const vertex = getVertexFromPointer(
+                            const vertex = updateTouchPreview(
                                 event.clientX,
                                 event.clientY
                             );
                             if (selectedMoveIndexesRef.current.length > 0) {
+                                setPlacementZoomWindow(null);
                                 const origin = stoneSelectOriginRef.current;
                                 const didLeaveOrigin =
                                     origin !== null &&
@@ -1608,6 +1632,15 @@ export default function GoBoard({ id }: GoBoardProps) {
                             ) {
                                 clearStoneSelectTimeout();
                             }
+
+                            setPlacementZoomWindow(
+                                isPlacementZoomEligibleRef.current && vertex
+                                    ? getPlacementZoomWindow({
+                                          boardSize: size,
+                                          vertex,
+                                      })
+                                    : null
+                            );
                         }}
                         onPointerUp={(event) => {
                             if (
@@ -1636,6 +1669,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                             const releaseTouchPreview = () => {
                                 isStonePlacementActiveRef.current = false;
                                 stonePlacementCanCommitRef.current = false;
+                                clearPlacementZoom();
                                 setTouchPreview(null);
                                 event.currentTarget.releasePointerCapture(
                                     event.pointerId
@@ -1701,6 +1735,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                             clearStoneSelectionDragState();
                             isStonePlacementActiveRef.current = false;
                             stonePlacementCanCommitRef.current = false;
+                            clearPlacementZoom();
                             setTouchPreview(null);
                             if (event.currentTarget.hasPointerCapture(event.pointerId)) {
                                 event.currentTarget.releasePointerCapture(event.pointerId);
@@ -1715,6 +1750,41 @@ export default function GoBoard({ id }: GoBoardProps) {
                         dimmedVertices={renderDimmedVertices}
                         showCoordinates
                     />
+                        {placementZoomWindow ? (
+                            <div
+                                aria-hidden="true"
+                                className="pointer-events-none absolute z-10 overflow-hidden"
+                                style={{
+                                    left: gridMetrics.left,
+                                    top: gridMetrics.top,
+                                    width: gridMetrics.boardSizePx,
+                                    height: gridMetrics.boardSizePx,
+                                }}
+                            >
+                                <div
+                                    className="absolute"
+                                    style={{
+                                        left:
+                                            -placementZoomSourceLeft *
+                                            placementZoomScale,
+                                        top:
+                                            -placementZoomSourceTop *
+                                            placementZoomScale,
+                                        transform: `scale(${placementZoomScale})`,
+                                        transformOrigin: "top left",
+                                    }}
+                                >
+                                    <BoardView
+                                        vertexSize={vertexSize}
+                                        signMap={boardSignMap}
+                                        markerMap={boardMarkerMap}
+                                        selectedVertices={renderSelectedVertices}
+                                        dimmedVertices={renderDimmedVertices}
+                                        showCoordinates
+                                    />
+                                </div>
+                            </div>
+                        ) : null}
                         {hasStoneCorrectionSelection ? (
                             <div
                                 className={

@@ -8,6 +8,7 @@ import {
     getCorrectionPreviewStones,
     getCorrectionTapAction,
     getEditableMoveIndexAtVertex,
+    getPlacementZoomWindow,
     getPreviewStone,
     getSelectedMoveVertices,
     getStoneCorrectionOrigin,
@@ -458,6 +459,48 @@ describe("game correction UI helpers", () => {
                 clientX: 199,
                 clientY: 100 + 4 * 40 + 20,
                 grid,
+            })
+        ).toBeNull();
+    });
+
+    it("maps 19x19 placement vertices to overlapping 9x9 zoom windows", () => {
+        expect(
+            getPlacementZoomWindow({
+                boardSize: 19,
+                vertex: { x: 0, y: 0 },
+            })
+        ).toEqual({ startX: 0, startY: 0, size: 9 });
+        expect(
+            getPlacementZoomWindow({
+                boardSize: 19,
+                vertex: { x: 8, y: 8 },
+            })
+        ).toEqual({ startX: 5, startY: 5, size: 9 });
+        expect(
+            getPlacementZoomWindow({
+                boardSize: 19,
+                vertex: { x: 9, y: 9 },
+            })
+        ).toEqual({ startX: 5, startY: 5, size: 9 });
+        expect(
+            getPlacementZoomWindow({
+                boardSize: 19,
+                vertex: { x: 18, y: 18 },
+            })
+        ).toEqual({ startX: 10, startY: 10, size: 9 });
+    });
+
+    it("only enables placement zoom for 19x19 boards", () => {
+        expect(
+            getPlacementZoomWindow({
+                boardSize: 9,
+                vertex: { x: 4, y: 4 },
+            })
+        ).toBeNull();
+        expect(
+            getPlacementZoomWindow({
+                boardSize: 13,
+                vertex: { x: 6, y: 6 },
             })
         ).toBeNull();
     });
