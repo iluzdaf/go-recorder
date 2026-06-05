@@ -593,6 +593,25 @@ export default function GoBoard({ id }: GoBoardProps) {
               placementZoomWindow.startY + placementZoomWindow.size - 1,
           ]
         : undefined;
+    const placementZoomClassName = placementZoomWindow
+        ? [
+              "goban-placement-zoom pointer-events-none absolute z-10",
+              placementZoomWindow.startY > 0
+                  ? "goban-placement-zoom-hide-top"
+                  : "",
+              placementZoomWindow.startX + placementZoomWindow.size < size
+                  ? "goban-placement-zoom-hide-right"
+                  : "",
+              placementZoomWindow.startY + placementZoomWindow.size < size
+                  ? "goban-placement-zoom-hide-bottom"
+                  : "",
+              placementZoomWindow.startX > 0
+                  ? "goban-placement-zoom-hide-left"
+                  : "",
+          ]
+              .filter(Boolean)
+              .join(" ")
+        : "";
 
     const getGridMetrics = () => {
         const gobanWrapper = gobanWrapperRef.current;
@@ -1828,7 +1847,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                         {placementZoomWindow ? (
                             <div
                                 aria-hidden="true"
-                                className="pointer-events-none absolute z-10"
+                                className={placementZoomClassName}
                                 style={{
                                     left: gridMetrics.left - placementZoomVertexSize,
                                     top: gridMetrics.top - placementZoomVertexSize,
