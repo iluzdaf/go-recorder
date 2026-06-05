@@ -49,6 +49,8 @@ import {
     getStoneSelectionDragVertexFromPointer,
     getVertexFromBoardPointer,
     isStoneSelectionDragActive,
+    shouldShowCorrectionTouchGuide,
+    shouldShowOriginalSelectedStones,
     shouldStartStoneSelectionHold,
     toggleCorrectionSelection,
     visitCorrectionSelectionDragMove,
@@ -467,8 +469,19 @@ export default function GoBoard({ id }: GoBoardProps) {
         selectedMoveIndexes,
         didStartStoneSelectionDrag,
     });
-    const renderSelectedVertices = isMovingSelectedStones ? [] : selectedVertices;
+    const hasValidDragPreview = Boolean(dragPreview);
+    const renderSelectedVertices = shouldShowOriginalSelectedStones({
+        isMovingSelectedStones,
+        hasValidDragPreview,
+    })
+        ? selectedVertices
+        : [];
     const renderDimmedVertices = dragPreview ? dragPreview.selectedVertices : [];
+    const shouldShowTouchGuide = shouldShowCorrectionTouchGuide({
+        hasTouchPreview: Boolean(touchPreview),
+        isMovingSelectedStones,
+        hasValidDragPreview,
+    });
     const placementPreviewSignMap =
         touchPreview && selectedMoveIndexes.length === 0
             ? (() => {
@@ -484,6 +497,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     const boardSignMap = dragPreview?.signMap ?? placementPreviewSignMap ?? signMap;
     const boardMarkerMap =
         isMovingSelectedStones &&
+        hasValidDragPreview &&
         gameState.moves.length > 0 &&
         selectedMoveIndexes.includes(gameState.moves.length - 1)
             ? (() => {
@@ -1722,7 +1736,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 </button>
                             </div>
                         ) : null}
-                        {touchPreview && (
+                        {shouldShowTouchGuide && touchPreview && (
                             <svg
                                 className="pointer-events-none absolute z-20"
                                 style={{

@@ -164,6 +164,28 @@ export function shouldShowStoneSelectionCloseButton({
     return hasSelectedStone && !isDraggingSelectedStones;
 }
 
+export function shouldShowCorrectionTouchGuide({
+    hasTouchPreview,
+    isMovingSelectedStones,
+    hasValidDragPreview,
+}: {
+    hasTouchPreview: boolean;
+    isMovingSelectedStones: boolean;
+    hasValidDragPreview: boolean;
+}) {
+    return hasTouchPreview && (!isMovingSelectedStones || hasValidDragPreview);
+}
+
+export function shouldShowOriginalSelectedStones({
+    isMovingSelectedStones,
+    hasValidDragPreview,
+}: {
+    isMovingSelectedStones: boolean;
+    hasValidDragPreview: boolean;
+}) {
+    return !isMovingSelectedStones || !hasValidDragPreview;
+}
+
 export function toggleCorrectionSelection({
     moveIndex,
     selectedMoveIndexes,

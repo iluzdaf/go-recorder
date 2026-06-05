@@ -14,6 +14,8 @@ import {
     getStoneSelectionDragVertexFromPointer,
     getVertexFromBoardPointer,
     isStoneSelectionDragActive,
+    shouldShowCorrectionTouchGuide,
+    shouldShowOriginalSelectedStones,
     shouldShowStoneSelectionCloseButton,
     shouldStartStoneSelectionHold,
     toggleCorrectionSelection,
@@ -270,6 +272,58 @@ describe("game correction UI helpers", () => {
                 isDraggingSelectedStones: false,
             })
         ).toBe(false);
+    });
+
+    it("hides touch guides for invalid selected-stone drags", () => {
+        expect(
+            shouldShowCorrectionTouchGuide({
+                hasTouchPreview: false,
+                isMovingSelectedStones: false,
+                hasValidDragPreview: false,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowCorrectionTouchGuide({
+                hasTouchPreview: true,
+                isMovingSelectedStones: false,
+                hasValidDragPreview: false,
+            })
+        ).toBe(true);
+        expect(
+            shouldShowCorrectionTouchGuide({
+                hasTouchPreview: true,
+                isMovingSelectedStones: true,
+                hasValidDragPreview: true,
+            })
+        ).toBe(true);
+        expect(
+            shouldShowCorrectionTouchGuide({
+                hasTouchPreview: true,
+                isMovingSelectedStones: true,
+                hasValidDragPreview: false,
+            })
+        ).toBe(false);
+    });
+
+    it("shows original selected stones again for invalid selected-stone drags", () => {
+        expect(
+            shouldShowOriginalSelectedStones({
+                isMovingSelectedStones: false,
+                hasValidDragPreview: false,
+            })
+        ).toBe(true);
+        expect(
+            shouldShowOriginalSelectedStones({
+                isMovingSelectedStones: true,
+                hasValidDragPreview: true,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowOriginalSelectedStones({
+                isMovingSelectedStones: true,
+                hasValidDragPreview: false,
+            })
+        ).toBe(true);
     });
 
     it("toggles stone correction selections", () => {
