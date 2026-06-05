@@ -68,6 +68,8 @@ type ShudanGobanProps = {
     signMap: number[][];
     markerMap: (null | { type: "circle" })[][];
     showCoordinates: boolean;
+    rangeX?: [number, number];
+    rangeY?: [number, number];
     selectedVertices?: [number, number][];
     dimmedVertices?: [number, number][];
     fuzzyStonePlacement?: boolean;
@@ -576,15 +578,21 @@ export default function GoBoard({ id }: GoBoardProps) {
                   STONE_CORRECTION_PILL_HEIGHT_PX
           )
         : 0;
-    const placementZoomScale = placementZoomWindow
-        ? size / placementZoomWindow.size
-        : 1;
-    const placementZoomSourceLeft = placementZoomWindow
-        ? gridMetrics.left + placementZoomWindow.startX * gridMetrics.cellSize
-        : 0;
-    const placementZoomSourceTop = placementZoomWindow
-        ? gridMetrics.top + placementZoomWindow.startY * gridMetrics.cellSize
-        : 0;
+    const placementZoomVertexSize = placementZoomWindow
+        ? gridMetrics.boardSizePx / placementZoomWindow.size
+        : vertexSize;
+    const placementZoomRangeX: [number, number] | undefined = placementZoomWindow
+        ? [
+              placementZoomWindow.startX,
+              placementZoomWindow.startX + placementZoomWindow.size - 1,
+          ]
+        : undefined;
+    const placementZoomRangeY: [number, number] | undefined = placementZoomWindow
+        ? [
+              placementZoomWindow.startY,
+              placementZoomWindow.startY + placementZoomWindow.size - 1,
+          ]
+        : undefined;
 
     const getGridMetrics = () => {
         const gobanWrapper = gobanWrapperRef.current;
@@ -1820,36 +1828,22 @@ export default function GoBoard({ id }: GoBoardProps) {
                         {placementZoomWindow ? (
                             <div
                                 aria-hidden="true"
-                                className="pointer-events-none absolute z-10 overflow-hidden"
+                                className="pointer-events-none absolute z-10"
                                 style={{
-                                    left: gridMetrics.left,
-                                    top: gridMetrics.top,
-                                    width: gridMetrics.boardSizePx,
-                                    height: gridMetrics.boardSizePx,
+                                    left: gridMetrics.left - placementZoomVertexSize,
+                                    top: gridMetrics.top - placementZoomVertexSize,
                                 }}
                             >
-                                <div
-                                    className="absolute"
-                                    style={{
-                                        left:
-                                            -placementZoomSourceLeft *
-                                            placementZoomScale,
-                                        top:
-                                            -placementZoomSourceTop *
-                                            placementZoomScale,
-                                        transform: `scale(${placementZoomScale})`,
-                                        transformOrigin: "top left",
-                                    }}
-                                >
-                                    <BoardView
-                                        vertexSize={vertexSize}
-                                        signMap={boardSignMap}
-                                        markerMap={boardMarkerMap}
-                                        selectedVertices={renderSelectedVertices}
-                                        dimmedVertices={renderDimmedVertices}
-                                        showCoordinates
-                                    />
-                                </div>
+                                <BoardView
+                                    vertexSize={placementZoomVertexSize}
+                                    signMap={boardSignMap}
+                                    markerMap={boardMarkerMap}
+                                    selectedVertices={renderSelectedVertices}
+                                    dimmedVertices={renderDimmedVertices}
+                                    rangeX={placementZoomRangeX}
+                                    rangeY={placementZoomRangeY}
+                                    showCoordinates
+                                />
                             </div>
                         ) : null}
                         {placementZoomWindow ? (
