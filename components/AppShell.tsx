@@ -8,10 +8,12 @@ import {
     useEffect,
     useMemo,
     useCallback,
+    useRef,
     useState,
     useSyncExternalStore,
 } from "react";
 import { Expand, Home, Menu, Minimize2, Moon, Sun, X } from "lucide-react";
+import ChangelogReleaseList from "./ChangelogReleaseList";
 import { t } from "@/lib/i18n";
 
 type ThemeContextValue = {
@@ -220,7 +222,10 @@ export default function AppShell({
     const pathname = usePathname();
     const [headerActions, setHeaderActions] = useState<React.ReactNode>(null);
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
+    const [isChangelogOpen, setIsChangelogOpen] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(() => getIsFullscreen());
+    const changelogButtonRef = useRef<HTMLButtonElement | null>(null);
+    const changelogMenuRef = useRef<HTMLDivElement | null>(null);
     const isFullscreenSupported = useSyncExternalStore(
         () => () => {},
         getIsFullscreenSupported,
@@ -324,6 +329,43 @@ export default function AppShell({
         }
     }, []);
 
+    const closeChangelog = useCallback(() => {
+        setIsChangelogOpen(false);
+    }, []);
+
+    const toggleChangelog = useCallback(() => {
+        setIsChangelogOpen((nextIsChangelogOpen) => !nextIsChangelogOpen);
+    }, []);
+
+    useEffect(() => {
+        if (!isChangelogOpen) return;
+
+        const handlePointerDown = (event: PointerEvent) => {
+            if (
+                changelogButtonRef.current?.contains(event.target as Node) ||
+                changelogMenuRef.current?.contains(event.target as Node)
+            ) {
+                return;
+            }
+
+            closeChangelog();
+        };
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                closeChangelog();
+            }
+        };
+
+        document.addEventListener("pointerdown", handlePointerDown);
+        document.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            document.removeEventListener("pointerdown", handlePointerDown);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [closeChangelog, isChangelogOpen]);
+
     const isRecordingGame = pathname?.startsWith("/games/");
     const usesOverlayHeader = Boolean(
         isShortViewport && (isRecordingGame || pathname?.startsWith("/shares/"))
@@ -385,14 +427,19 @@ export default function AppShell({
                         </div>
 
                         <div className="flex items-center gap-1.5">
-                            <Link
-                                href="/changelog"
+                            <button
+                                ref={changelogButtonRef}
+                                type="button"
                                 className="inline-flex h-11 items-center justify-center rounded-md px-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-neutral-800 dark:hover:text-white"
                                 aria-label={`${t("version")} ${appVersion}`}
+                                aria-controls="changelog-menu"
+                                aria-expanded={isChangelogOpen}
+                                aria-haspopup="dialog"
                                 title={t("changelog")}
+                                onClick={toggleChangelog}
                             >
                                 v{appVersion}
-                            </Link>
+                            </button>
 
                             <button
                                 type="button"
@@ -445,6 +492,29 @@ export default function AppShell({
                             ) : null}
                         </div>
                     </header>
+                ) : null}
+                {isChangelogOpen ? (
+                    <div
+                        id="changelog-menu"
+                        ref={changelogMenuRef}
+                        className="fixed right-4 top-16 z-[60] max-h-[min(36rem,calc(100vh-5rem))] w-[min(28rem,calc(100vw-2rem))] overflow-auto rounded-lg border border-zinc-200 bg-zinc-100 p-3 text-zinc-950 shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                    >
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                            <p className="text-sm font-semibold">
+                                {t("changelog")}
+                            </p>
+                            <button
+                                type="button"
+                                className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md hover:bg-zinc-200 dark:hover:bg-neutral-800"
+                                aria-label={t("closeChangelog")}
+                                title={t("closeChangelog")}
+                                onClick={closeChangelog}
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                        <ChangelogReleaseList />
+                    </div>
                 ) : null}
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                     {children}

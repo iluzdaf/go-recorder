@@ -47,5 +47,6 @@
     "stoneCorrectionChangesCaptures": "That stone correction changes later captures.",
     "stoneCorrectionFailed": "That stone correction could not be applied.",
     "changelog": "Changelog",
+    "closeChangelog": "Close changelog",
     "version": "Version"
 }
