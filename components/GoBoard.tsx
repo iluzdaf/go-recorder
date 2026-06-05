@@ -1552,12 +1552,13 @@ export default function GoBoard({ id }: GoBoardProps) {
                                         {hasStoneCorrectionSelection ? (
                                             <button
                                                 type="button"
-                                                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 shadow-lg hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                                className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-950 shadow-lg hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
                                                 onClick={handleExitStoneEditMode}
                                                 aria-label={t("exitStoneCorrectionMode")}
                                                 title={t("exitStoneCorrectionMode")}
                                             >
                                                 <X size={18} />
+                                                <span>{t("exitStoneCorrectionMode")}</span>
                                             </button>
                                         ) : null}
                                     </div>
