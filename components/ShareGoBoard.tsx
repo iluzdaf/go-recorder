@@ -19,7 +19,7 @@ import QRCode from "qrcode";
 import type { Move, SetupStone, ShareRecord, Stone } from "./types";
 import { exportSgf, createSgfFilename } from "./sgf";
 import { t } from "../lib/i18n";
-import { useTheme } from "./AppShell";
+import { useHeaderStatus, useTheme } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
@@ -94,6 +94,7 @@ function getActionBarAnchorFromClientX({
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const [vertexSize, setVertexSize] = useState(24);
     const { isDarkMode } = useTheme();
+    const { setHeaderStatus } = useHeaderStatus();
     const boardAreaRef = useRef<HTMLDivElement | null>(null);
     const shareMenuRef = useRef<HTMLDivElement | null>(null);
     const shareTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -162,6 +163,19 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const sharePath = `/shares/${share.slug}`;
 
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
+
+    useEffect(() => {
+        setHeaderStatus(
+            shareStatus ? (
+                <BoardStatusMessage
+                    message={shareStatus}
+                    onDismiss={dismissShareStatus}
+                />
+            ) : null
+        );
+
+        return () => setHeaderStatus(null);
+    }, [dismissShareStatus, setHeaderStatus, shareStatus]);
 
     const openShareMenu = useCallback(() => {
         setShareMenuOpen(true);
@@ -452,10 +466,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                 ref={boardAreaRef}
                 className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
             >
-                <BoardStatusMessage
-                    message={shareStatus}
-                    onDismiss={dismissShareStatus}
-                />
                 {shareMenuOpen ? (
                     <div
                         id="share-menu"

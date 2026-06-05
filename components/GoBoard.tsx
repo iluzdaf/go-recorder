@@ -35,7 +35,7 @@ import { getLocalGame, saveLocalGame } from "../lib/localGames";
 import { createLoadedLocalGame } from "../lib/localGameView";
 import { createShareFromLocalGame } from "../lib/shareClient";
 import { formatMoveEditError, t } from "../lib/i18n";
-import { useTheme } from "./AppShell";
+import { useHeaderStatus, useTheme } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
 import { replayGame } from "../lib/gameReplay";
 import {
@@ -134,6 +134,7 @@ function getActionBarAnchorFromClientX({
 export default function GoBoard({ id }: GoBoardProps) {
     const [size, setSize] = useState<BoardSize>(19);
     const { isDarkMode } = useTheme();
+    const { setHeaderStatus } = useHeaderStatus();
     const boardAreaRef = useRef<HTMLDivElement | null>(null);
     const gobanWrapperRef = useRef<HTMLDivElement | null>(null);
     const hasLoadedGameRef = useRef(false);
@@ -239,6 +240,19 @@ export default function GoBoard({ id }: GoBoardProps) {
     useEffect(() => {
         selectedMoveIndexesRef.current = selectedMoveIndexes;
     }, [selectedMoveIndexes]);
+
+    useEffect(() => {
+        setHeaderStatus(
+            shareStatus ? (
+                <BoardStatusMessage
+                    message={shareStatus}
+                    onDismiss={dismissShareStatus}
+                />
+            ) : null
+        );
+
+        return () => setHeaderStatus(null);
+    }, [dismissShareStatus, setHeaderStatus, shareStatus]);
 
     useEffect(() => {
         const loadGame = () => {
@@ -1270,10 +1284,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                     ref={boardAreaRef}
                     className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
                 >
-                    <BoardStatusMessage
-                        message={shareStatus}
-                        onDismiss={dismissShareStatus}
-                    />
                     {shareMenuOpen ? (
                         <div
                             id="share-menu"
