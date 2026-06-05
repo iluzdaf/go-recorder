@@ -1,7 +1,7 @@
 .shudan-goban,
 .shudan-goban.shudan-goban-image,
 .shudan-content {
-    background: #27272a !important;
+    background: #60606a !important;
     background-image: none !important;
     box-shadow: none !important;
     border: none !important;
@@ -33,16 +33,16 @@
 }
 
 .shudan-grid {
-    background: #27272a !important;
+    background: #60606a !important;
 }
 
 .shudan-gridline {
-    fill: #71717a !important;
-    stroke: #71717a !important;
+    fill: #a1a1aa !important;
+    stroke: #a1a1aa !important;
 }
 
 .shudan-hoshi {
-    fill: #a1a1aa !important;
+    fill: #d4d4d8 !important;
     r: 0.12em;
 }
 
@@ -66,7 +66,7 @@
 .goban-theme-dark .shudan-goban,
 .goban-theme-dark .shudan-goban.shudan-goban-image,
 .goban-theme-dark .shudan-content {
-    background: #27272a !important;
+    background: #60606a !important;
     background-image: none !important;
     box-shadow: none !important;
     border: none !important;
@@ -85,16 +85,16 @@
 }
 
 .goban-theme-dark .shudan-grid {
-    background: #27272a !important;
+    background: #60606a !important;
 }
 
 .goban-theme-dark .shudan-gridline {
-    fill: #71717a !important;
-    stroke: #71717a !important;
+    fill: #a1a1aa !important;
+    stroke: #a1a1aa !important;
 }
 
 .goban-theme-dark .shudan-hoshi {
-    fill: #a1a1aa !important;
+    fill: #d4d4d8 !important;
 }
 
 .goban-theme-light .shudan-goban,
@@ -141,7 +141,7 @@
 
 .goban-theme-dark .shudan-coordx,
 .goban-theme-dark .shudan-coordy {
-    color: #71717a !important;
+    color: #a1a1aa !important;
 }
 
 .goban-theme-light .shudan-coordx,
