@@ -51,6 +51,7 @@ import {
     isStoneSelectionDragActive,
     shouldStartStoneSelectionHold,
     toggleCorrectionSelection,
+    visitCorrectionSelectionDragMove,
     type BoardGridGeometry,
     type StoneSelectionDragState,
     type Vertex,
@@ -591,6 +592,25 @@ export default function GoBoard({ id }: GoBoardProps) {
             }
             return nextSelection;
         });
+        setShareStatus(null);
+    };
+
+    const visitStoneSelectionDragMove = (moveIndex: number | null) => {
+        const result = visitCorrectionSelectionDragMove({
+            moveIndex,
+            selectedMoveIndexes: selectedMoveIndexesRef.current,
+            visitedMoveIndexes: stoneSelectionDragVisitedMoveIndexesRef.current,
+        });
+
+        if (!result.didToggle) return;
+
+        stoneSelectionDragVisitedMoveIndexesRef.current =
+            result.visitedMoveIndexes;
+        selectedMoveIndexesRef.current = result.selectedMoveIndexes;
+        setSelectedMoveIndexes(result.selectedMoveIndexes);
+        if (result.selectedMoveIndexes.length === 0) {
+            setSelectedGroupDragOrigin(null);
+        }
         setShareStatus(null);
     };
 
@@ -1505,10 +1525,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     const startMoveIndex =
                                         stoneSelectionDragStartMoveIndexRef.current;
                                     if (startMoveIndex !== null) {
-                                        stoneSelectionDragVisitedMoveIndexesRef.current.add(
-                                            startMoveIndex
-                                        );
-                                        toggleSelectedMoveIndex(startMoveIndex);
+                                        visitStoneSelectionDragMove(startMoveIndex);
                                     }
                                 }
 
@@ -1527,10 +1544,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                                         editableMoveIndex
                                     )
                                 ) {
-                                    stoneSelectionDragVisitedMoveIndexesRef.current.add(
-                                        editableMoveIndex
-                                    );
-                                    toggleSelectedMoveIndex(editableMoveIndex);
+                                    visitStoneSelectionDragMove(editableMoveIndex);
                                 }
 
                                 return;

@@ -176,6 +176,36 @@ export function toggleCorrectionSelection({
         : [...selectedMoveIndexes, moveIndex];
 }
 
+export function visitCorrectionSelectionDragMove({
+    moveIndex,
+    selectedMoveIndexes,
+    visitedMoveIndexes,
+}: {
+    moveIndex: number | null;
+    selectedMoveIndexes: number[];
+    visitedMoveIndexes: Set<number>;
+}) {
+    if (moveIndex === null || visitedMoveIndexes.has(moveIndex)) {
+        return {
+            selectedMoveIndexes,
+            visitedMoveIndexes,
+            didToggle: false,
+        };
+    }
+
+    const nextVisitedMoveIndexes = new Set(visitedMoveIndexes);
+    nextVisitedMoveIndexes.add(moveIndex);
+
+    return {
+        selectedMoveIndexes: toggleCorrectionSelection({
+            moveIndex,
+            selectedMoveIndexes,
+        }),
+        visitedMoveIndexes: nextVisitedMoveIndexes,
+        didToggle: true,
+    };
+}
+
 export function getVertexFromBoardPointer({
     clientX,
     clientY,

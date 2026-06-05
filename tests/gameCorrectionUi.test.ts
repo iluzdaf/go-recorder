@@ -17,6 +17,7 @@ import {
     shouldShowStoneSelectionCloseButton,
     shouldStartStoneSelectionHold,
     toggleCorrectionSelection,
+    visitCorrectionSelectionDragMove,
 } from "../lib/gameCorrectionUi";
 
 const gameState: GameState = {
@@ -284,6 +285,51 @@ describe("game correction UI helpers", () => {
                 selectedMoveIndexes: [2, 0],
             })
         ).toEqual([0]);
+    });
+
+    it("toggles each stone once during a selection drag", () => {
+        const firstVisit = visitCorrectionSelectionDragMove({
+            moveIndex: 2,
+            selectedMoveIndexes: [2, 0],
+            visitedMoveIndexes: new Set(),
+        });
+
+        expect(firstVisit.didToggle).toBe(true);
+        expect(firstVisit.selectedMoveIndexes).toEqual([0]);
+        expect([...firstVisit.visitedMoveIndexes]).toEqual([2]);
+
+        const repeatedVisit = visitCorrectionSelectionDragMove({
+            moveIndex: 2,
+            selectedMoveIndexes: firstVisit.selectedMoveIndexes,
+            visitedMoveIndexes: firstVisit.visitedMoveIndexes,
+        });
+
+        expect(repeatedVisit.didToggle).toBe(false);
+        expect(repeatedVisit.selectedMoveIndexes).toEqual([0]);
+        expect([...repeatedVisit.visitedMoveIndexes]).toEqual([2]);
+
+        const nextStoneVisit = visitCorrectionSelectionDragMove({
+            moveIndex: 3,
+            selectedMoveIndexes: repeatedVisit.selectedMoveIndexes,
+            visitedMoveIndexes: repeatedVisit.visitedMoveIndexes,
+        });
+
+        expect(nextStoneVisit.didToggle).toBe(true);
+        expect(nextStoneVisit.selectedMoveIndexes).toEqual([0, 3]);
+        expect([...nextStoneVisit.visitedMoveIndexes]).toEqual([2, 3]);
+    });
+
+    it("treats empty drag visits as no-ops", () => {
+        const visitedMoveIndexes = new Set([2]);
+        const result = visitCorrectionSelectionDragMove({
+            moveIndex: null,
+            selectedMoveIndexes: [2, 0],
+            visitedMoveIndexes,
+        });
+
+        expect(result.didToggle).toBe(false);
+        expect(result.selectedMoveIndexes).toEqual([2, 0]);
+        expect(result.visitedMoveIndexes).toBe(visitedMoveIndexes);
     });
 
     it("maps pointer positions to vertices from the board grid rect", () => {
