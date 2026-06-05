@@ -16,6 +16,7 @@ import {
     isRecorderCorrectionLegal,
     isStoneSelectionDragActive,
     shouldShowCorrectionTouchGuide,
+    shouldShowPlacementPreview,
     shouldShowOriginalSelectedStones,
     shouldShowStoneSelectionCloseButton,
     shouldStartStoneSelectionHold,
@@ -281,6 +282,7 @@ describe("game correction UI helpers", () => {
                 hasTouchPreview: false,
                 isMovingSelectedStones: false,
                 hasValidDragPreview: false,
+                isDeselectingLastStone: false,
             })
         ).toBe(false);
         expect(
@@ -288,6 +290,7 @@ describe("game correction UI helpers", () => {
                 hasTouchPreview: true,
                 isMovingSelectedStones: false,
                 hasValidDragPreview: false,
+                isDeselectingLastStone: false,
             })
         ).toBe(true);
         expect(
@@ -295,6 +298,7 @@ describe("game correction UI helpers", () => {
                 hasTouchPreview: true,
                 isMovingSelectedStones: true,
                 hasValidDragPreview: true,
+                isDeselectingLastStone: false,
             })
         ).toBe(true);
         expect(
@@ -302,6 +306,15 @@ describe("game correction UI helpers", () => {
                 hasTouchPreview: true,
                 isMovingSelectedStones: true,
                 hasValidDragPreview: false,
+                isDeselectingLastStone: false,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowCorrectionTouchGuide({
+                hasTouchPreview: true,
+                isMovingSelectedStones: false,
+                hasValidDragPreview: false,
+                isDeselectingLastStone: true,
             })
         ).toBe(false);
     });
@@ -325,6 +338,37 @@ describe("game correction UI helpers", () => {
                 hasValidDragPreview: false,
             })
         ).toBe(true);
+    });
+
+    it("hides placement previews while a correction drag has deselected the last stone", () => {
+        expect(
+            shouldShowPlacementPreview({
+                hasTouchPreview: false,
+                hasSelectedStone: false,
+                didStartStoneSelectionDrag: false,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowPlacementPreview({
+                hasTouchPreview: true,
+                hasSelectedStone: false,
+                didStartStoneSelectionDrag: false,
+            })
+        ).toBe(true);
+        expect(
+            shouldShowPlacementPreview({
+                hasTouchPreview: true,
+                hasSelectedStone: true,
+                didStartStoneSelectionDrag: false,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowPlacementPreview({
+                hasTouchPreview: true,
+                hasSelectedStone: false,
+                didStartStoneSelectionDrag: true,
+            })
+        ).toBe(false);
     });
 
     it("toggles stone correction selections", () => {
@@ -682,6 +726,7 @@ describe("game correction UI helpers", () => {
                 hasTouchPreview: true,
                 isMovingSelectedStones: true,
                 hasValidDragPreview: false,
+                isDeselectingLastStone: false,
             })
         ).toBe(false);
     });

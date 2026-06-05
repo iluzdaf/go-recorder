@@ -168,12 +168,18 @@ export function shouldShowCorrectionTouchGuide({
     hasTouchPreview,
     isMovingSelectedStones,
     hasValidDragPreview,
+    isDeselectingLastStone,
 }: {
     hasTouchPreview: boolean;
     isMovingSelectedStones: boolean;
     hasValidDragPreview: boolean;
+    isDeselectingLastStone: boolean;
 }) {
-    return hasTouchPreview && (!isMovingSelectedStones || hasValidDragPreview);
+    return (
+        hasTouchPreview &&
+        !isDeselectingLastStone &&
+        (!isMovingSelectedStones || hasValidDragPreview)
+    );
 }
 
 export function shouldShowOriginalSelectedStones({
@@ -184,6 +190,18 @@ export function shouldShowOriginalSelectedStones({
     hasValidDragPreview: boolean;
 }) {
     return !isMovingSelectedStones || !hasValidDragPreview;
+}
+
+export function shouldShowPlacementPreview({
+    hasTouchPreview,
+    hasSelectedStone,
+    didStartStoneSelectionDrag,
+}: {
+    hasTouchPreview: boolean;
+    hasSelectedStone: boolean;
+    didStartStoneSelectionDrag: boolean;
+}) {
+    return hasTouchPreview && !hasSelectedStone && !didStartStoneSelectionDrag;
 }
 
 export function toggleCorrectionSelection({

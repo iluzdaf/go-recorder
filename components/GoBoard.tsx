@@ -52,6 +52,7 @@ import {
     isStoneSelectionDragActive,
     shouldShowCorrectionTouchGuide,
     shouldShowOriginalSelectedStones,
+    shouldShowPlacementPreview,
     shouldStartStoneSelectionHold,
     toggleCorrectionSelection,
     visitCorrectionSelectionDragMove,
@@ -483,6 +484,8 @@ export default function GoBoard({ id }: GoBoardProps) {
         didStartStoneSelectionDrag,
     });
     const hasValidDragPreview = Boolean(dragPreview);
+    const isDeselectingLastStone =
+        didStartStoneSelectionDrag && selectedMoveIndexes.length === 0;
     const renderSelectedVertices = shouldShowOriginalSelectedStones({
         isMovingSelectedStones,
         hasValidDragPreview,
@@ -494,9 +497,14 @@ export default function GoBoard({ id }: GoBoardProps) {
         hasTouchPreview: Boolean(touchPreview),
         isMovingSelectedStones,
         hasValidDragPreview,
+        isDeselectingLastStone,
     });
     const placementPreviewSignMap =
-        touchPreview && selectedMoveIndexes.length === 0
+        shouldShowPlacementPreview({
+        hasTouchPreview: Boolean(touchPreview),
+        hasSelectedStone: selectedMoveIndexes.length > 0,
+        didStartStoneSelectionDrag,
+    }) && touchPreview
             ? (() => {
                   if (signMap[touchPreview.y]?.[touchPreview.x] !== 0) return null;
 
