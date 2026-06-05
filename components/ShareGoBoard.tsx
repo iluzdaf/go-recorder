@@ -1,12 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType, PointerEvent as ReactPointerEvent } from "react";
 import {
-    Copy,
-    Download,
     ChevronLeft,
     ChevronRight,
     SkipBack,
@@ -21,6 +18,7 @@ import { exportSgf, createSgfFilename } from "./sgf";
 import { t } from "../lib/i18n";
 import { useHeaderStatus, useTheme } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
+import ShareMenu from "./ShareMenu";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -230,6 +228,11 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         share.handicap,
         share.whitePlayerName,
     ]);
+
+    const handleDownloadSgfFromShareMenu = useCallback(() => {
+        handleDownloadSgf();
+        closeShareMenu();
+    }, [closeShareMenu, handleDownloadSgf]);
 
     const handleCopyLink = useCallback(async () => {
         try {
@@ -467,58 +470,19 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                 className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
             >
                 {shareMenuOpen ? (
-                    <div
-                        id="share-menu"
-                        ref={shareMenuRef}
-                        className="fixed right-4 top-16 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
-                    >
-                        <div className="mb-3">
-                            <p className="text-sm font-semibold text-zinc-950 dark:text-white">
-                                {t("share")}
-                            </p>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <button
-                                type="button"
-                                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                onClick={() => {
-                                    handleDownloadSgf();
-                                    closeShareMenu();
-                                }}
-                                aria-label={t("downloadSgf")}
-                                title={t("downloadSgf")}
-                            >
-                                <Download size={16} />
-                                <span>{t("downloadSgf")}</span>
-                            </button>
-                            <div className="flex items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-neutral-700 dark:bg-neutral-950">
-                                {shareQrCodeDataUrl ? (
-                                    <Image
-                                        src={shareQrCodeDataUrl}
-                                        alt={t("shareLink")}
-                                        width={240}
-                                        height={240}
-                                        unoptimized
-                                        className="h-48 w-48"
-                                    />
-                                ) : (
-                                    <div className="flex h-48 w-48 items-center justify-center text-sm text-zinc-500 dark:text-zinc-400">
-                                        {t("creatingQrCode")}
-                                    </div>
-                                )}
-                            </div>
-                            <button
-                                type="button"
-                                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                onClick={handleCopyLink}
-                                aria-label={t("copyLink")}
-                                title={t("copyLink")}
-                            >
-                                <Copy size={16} />
-                                <span>{t("copyLink")}</span>
-                            </button>
-                        </div>
-                    </div>
+                    <ShareMenu
+                        canShareGame
+                        isCreating={false}
+                        menuRef={shareMenuRef}
+                        message={null}
+                        mode="created"
+                        onCreateShare={() => {}}
+                        onDownloadSgf={handleDownloadSgfFromShareMenu}
+                        onCopyLink={handleCopyLink}
+                        qrCodeDataUrl={shareQrCodeDataUrl}
+                        showSharePageLink={false}
+                        sharePath={sharePath}
+                    />
                 ) : null}
                 <div
                     ref={actionBarRailRef}
