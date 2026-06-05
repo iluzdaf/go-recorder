@@ -110,8 +110,6 @@ const BOARD_PADDING_PX = 16;
 const STONE_SELECT_HOLD_MS = 450;
 const STONE_CORRECTION_PILL_HEIGHT_PX = 52;
 const STONE_CORRECTION_PILL_GAP_PX = 8;
-const PLACEMENT_ZOOM_CLOSE_BUTTON_SIZE_PX = 44;
-const PLACEMENT_ZOOM_CLOSE_BUTTON_INSET_PX = 8;
 const ACTION_BAR_STORAGE_KEY_PREFIX = "go-recorder:game-action-bar-anchor:";
 
 function getActionBarStorageKey(id: string) {
@@ -614,19 +612,6 @@ export default function GoBoard({ id }: GoBoardProps) {
               .filter(Boolean)
               .join(" ")
         : "";
-    const placementZoomCloseLeft = Math.max(
-        PLACEMENT_ZOOM_CLOSE_BUTTON_INSET_PX,
-        gridMetrics.left +
-            gridMetrics.boardSizePx -
-            PLACEMENT_ZOOM_CLOSE_BUTTON_SIZE_PX -
-            PLACEMENT_ZOOM_CLOSE_BUTTON_INSET_PX
-    );
-    const placementZoomCloseTop = Math.max(
-        PLACEMENT_ZOOM_CLOSE_BUTTON_INSET_PX,
-        gridMetrics.top -
-            placementZoomVertexSize +
-            (placementZoomVertexSize - PLACEMENT_ZOOM_CLOSE_BUTTON_SIZE_PX) / 2
-    );
     const touchGuideMetrics =
         touchPreview && placementZoomWindow
             ? {
@@ -1534,6 +1519,20 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     >
                                         <CircleDot size={18} />
                                     </div>
+                                    {placementZoomWindow ? (
+                                        <button
+                                            type="button"
+                                            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                            onClick={() => {
+                                                clearPlacementZoom();
+                                                setTouchPreview(null);
+                                            }}
+                                            aria-label={t("closeBoardZoom")}
+                                            title={t("closeBoardZoom")}
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    ) : null}
                                     <button
                                         type="button"
                                         className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
@@ -1899,36 +1898,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     showCoordinates
                                 />
                             </div>
-                        ) : null}
-                        {placementZoomWindow ? (
-                            <button
-                                type="button"
-                                className={
-                                    isDarkMode
-                                        ? "absolute z-30 inline-flex items-center justify-center rounded-full border border-neutral-600/60 bg-neutral-950/35 text-white shadow-lg hover:bg-neutral-950/60"
-                                        : "absolute z-30 inline-flex items-center justify-center rounded-full border border-zinc-300/60 bg-white/35 text-zinc-950 shadow-lg hover:bg-white/60"
-                                }
-                                style={{
-                                    left: placementZoomCloseLeft,
-                                    top: placementZoomCloseTop,
-                                    width: PLACEMENT_ZOOM_CLOSE_BUTTON_SIZE_PX,
-                                    height: PLACEMENT_ZOOM_CLOSE_BUTTON_SIZE_PX,
-                                }}
-                                onPointerDown={(event) => {
-                                    event.stopPropagation();
-                                }}
-                                onPointerUp={(event) => {
-                                    event.stopPropagation();
-                                }}
-                                onClick={() => {
-                                    clearPlacementZoom();
-                                    setTouchPreview(null);
-                                }}
-                                aria-label={t("closeBoardZoom")}
-                                title={t("closeBoardZoom")}
-                            >
-                                <X size={16} />
-                            </button>
                         ) : null}
                         {hasStoneCorrectionSelection ? (
                             <div
