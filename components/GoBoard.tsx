@@ -1532,20 +1532,36 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     : undefined
                             }
                         >
-                                {placementZoomWindow ? (
-                                    <button
-                                        type="button"
-                                        className="absolute bottom-full left-1/2 mb-2 inline-flex h-11 -translate-x-1/2 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-950 shadow-lg hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                        onClick={() => {
-                                            clearPlacementZoom();
-                                            setTouchPreview(null);
-                                        }}
-                                        aria-label={t("closeBoardZoom")}
-                                        title={t("closeBoardZoom")}
-                                    >
-                                        <X size={18} />
-                                        <span>{t("closeBoardZoom")}</span>
-                                    </button>
+                                {placementZoomWindow || hasStoneCorrectionSelection ? (
+                                    <div className="absolute bottom-full left-1/2 mb-2 flex -translate-x-1/2 items-center gap-2">
+                                        {placementZoomWindow ? (
+                                            <button
+                                                type="button"
+                                                className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-950 shadow-lg hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                                onClick={() => {
+                                                    clearPlacementZoom();
+                                                    setTouchPreview(null);
+                                                }}
+                                                aria-label={t("closeBoardZoom")}
+                                                title={t("closeBoardZoom")}
+                                            >
+                                                <X size={18} />
+                                                <span>{t("closeBoardZoom")}</span>
+                                            </button>
+                                        ) : null}
+                                        {hasStoneCorrectionSelection ? (
+                                            <button
+                                                type="button"
+                                                className="inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-950 shadow-lg hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                                onClick={handleExitStoneEditMode}
+                                                aria-label={t("exitStoneCorrectionMode")}
+                                                title={t("exitStoneCorrectionMode")}
+                                            >
+                                                <X size={18} />
+                                                <span>{t("exitStoneCorrectionMode")}</span>
+                                            </button>
+                                        ) : null}
+                                    </div>
                                 ) : null}
                                 <div className="flex items-center gap-1 rounded-full border border-zinc-200 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
                                     <div
@@ -1933,25 +1949,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     transform: "translateX(-50%)",
                                 }}
                             >
-                                <button
-                                    type="button"
-                                    className={
-                                        isDarkMode
-                                            ? "inline-flex h-11 w-11 items-center justify-center rounded-full border border-neutral-700 bg-neutral-950 text-white hover:bg-neutral-900"
-                                            : "inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100"
-                                    }
-                                    onPointerDown={(event) => {
-                                        event.stopPropagation();
-                                    }}
-                                    onPointerUp={(event) => {
-                                        event.stopPropagation();
-                                    }}
-                                    onClick={handleExitStoneEditMode}
-                                    aria-label={t("exitStoneCorrectionMode")}
-                                    title={t("exitStoneCorrectionMode")}
-                                >
-                                    <X size={16} />
-                                </button>
                                 <button
                                     type="button"
                                     className="inline-flex h-11 w-10 cursor-grab items-center justify-center active:cursor-grabbing"
