@@ -11,7 +11,6 @@ import {
     Download,
     Link2,
     X,
-    GripVertical,
     SquareArrowUpRight,
     SquareArrowOutUpRight,
     Hand,
@@ -47,7 +46,6 @@ import {
     getSelectedMoveVertices,
     getStoneCorrectionOrigin,
     isStoneSelectionDragActive,
-    shouldShowStoneSelectionCloseButton,
     shouldStartStoneSelectionHold,
     type Vertex,
 } from "../lib/gameCorrectionUi";
@@ -95,6 +93,8 @@ function cloneSignMap(signMap: number[][]) {
 
 const BOARD_PADDING_PX = 16;
 const STONE_SELECT_HOLD_MS = 450;
+const STONE_CORRECTION_PILL_HEIGHT_PX = 52;
+const STONE_CORRECTION_PILL_GAP_PX = 8;
 const ACTION_BAR_STORAGE_KEY_PREFIX = "go-recorder:game-action-bar-anchor:";
 
 function getActionBarStorageKey(id: string) {
@@ -484,37 +484,20 @@ export default function GoBoard({ id }: GoBoardProps) {
                   return nextMarkerMap;
             })()
             : markerMap;
-    const showExitStoneEditModeButton = shouldShowStoneSelectionCloseButton({
-        hasSelectedStone: Boolean(selectedMoveVertices[0]),
-        isDraggingSelectedStones: isMovingSelectedStones,
-    });
-    const stoneCorrectionButtonCenterX = selectedMoveVertices[0]
-        ? Math.min(
-              Math.max(
-                  gridMetrics.left +
-                      selectedMoveVertices[0].x * gridMetrics.cellSize +
-                      gridMetrics.cellSize / 2,
-                  18
-              ),
-              gridMetrics.left + gridMetrics.boardSizePx - 18
-          )
+    const hasStoneCorrectionSelection = Boolean(selectedMoveVertices[0]);
+    const stoneCorrectionPillLeft = selectedMoveVertices[0]
+        ? gridMetrics.left +
+          selectedMoveVertices[0].x * gridMetrics.cellSize +
+          gridMetrics.cellSize / 2
         : 0;
-    const stoneCorrectionButtonTop = selectedMoveVertices[0]
+    const stoneCorrectionPillTop = selectedMoveVertices[0]
         ? Math.max(
-              18,
+              8,
               gridMetrics.top +
-                  selectedMoveVertices[0].y * gridMetrics.cellSize +
-                  gridMetrics.cellSize / 2 -
-                  gridMetrics.cellSize * 1.15
+                  selectedMoveVertices[0].y * gridMetrics.cellSize -
+                  STONE_CORRECTION_PILL_GAP_PX -
+                  STONE_CORRECTION_PILL_HEIGHT_PX
           )
-        : 0;
-    const stoneCorrectionHandleCenterX = selectedMoveVertices[0]
-        ? stoneCorrectionButtonCenterX - 44 >= 18
-            ? stoneCorrectionButtonCenterX - 44
-            : Math.min(
-                  gridMetrics.left + gridMetrics.boardSizePx - 18,
-                  stoneCorrectionButtonCenterX + 44
-              )
         : 0;
 
     const getGridMetrics = () => {
@@ -1588,70 +1571,62 @@ export default function GoBoard({ id }: GoBoardProps) {
                         dimmedVertices={renderDimmedVertices}
                         showCoordinates
                     />
-                        {selectedMoveVertices[0] ? (
-                            <button
-                                type="button"
+                        {hasStoneCorrectionSelection ? (
+                            <div
                                 className={
                                     isDarkMode
-                                        ? "absolute z-30 inline-flex h-9 w-9 items-center justify-center rounded-full border border-neutral-700 bg-neutral-950 text-white shadow-lg hover:bg-neutral-900 active:cursor-grabbing"
-                                        : "absolute z-30 inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 shadow-lg hover:bg-zinc-100 active:cursor-grabbing"
+                                        ? "absolute z-30 inline-flex items-center gap-1 rounded-full border border-neutral-700 bg-neutral-950 p-1 shadow-lg"
+                                        : "absolute z-30 inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white p-1 shadow-lg"
                                 }
                                 style={{
-                                    left: stoneCorrectionHandleCenterX,
-                                    top: stoneCorrectionButtonTop,
-                                    transform: "translate(-50%, -50%)",
+                                    left: stoneCorrectionPillLeft,
+                                    top: stoneCorrectionPillTop,
+                                    transform: "translateX(-50%)",
                                 }}
-                                onPointerDown={startStoneSelectionHandleDrag}
-                                onPointerMove={updateStoneSelectionHandleDrag}
-                                onPointerUp={finishStoneSelectionHandleDrag}
-                                onPointerCancel={cancelStoneSelectionHandleDrag}
-                                onLostPointerCapture={cancelStoneSelectionHandleDrag}
-                                aria-label={t("moveSelectedStones")}
-                                title={t("moveSelectedStones")}
                             >
-                                <GripVertical size={16} />
-                            </button>
-                        ) : null}
-                        {showExitStoneEditModeButton ? (
-                            <button
-                                type="button"
-                                className={
-                                    isDarkMode
-                                        ? "absolute z-30 inline-flex h-9 w-9 items-center justify-center rounded-full border border-neutral-700 bg-neutral-950 text-white shadow-lg hover:bg-neutral-900"
-                                        : "absolute z-30 inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 shadow-lg hover:bg-zinc-100"
-                                }
-                                style={{
-                                    left: Math.min(
-                                        Math.max(
-                                            gridMetrics.left +
-                                                selectedMoveVertices[0].x *
-                                                    gridMetrics.cellSize +
-                                                gridMetrics.cellSize / 2,
-                                            18
-                                        ),
-                                        gridMetrics.left + gridMetrics.boardSizePx - 18
-                                    ),
-                                    top: Math.max(
-                                        18,
-                                        gridMetrics.top +
-                                            selectedMoveVertices[0].y * gridMetrics.cellSize +
-                                            gridMetrics.cellSize / 2 -
-                                            gridMetrics.cellSize * 1.15
-                                    ),
-                                    transform: "translate(-50%, -50%)",
-                                }}
-                                onPointerDown={(event) => {
-                                    event.stopPropagation();
-                                }}
-                                onPointerUp={(event) => {
-                                    event.stopPropagation();
-                                }}
-                                onClick={handleExitStoneEditMode}
-                                aria-label={t("exitStoneCorrectionMode")}
-                                title={t("exitStoneCorrectionMode")}
-                            >
-                                <X size={16} />
-                            </button>
+                                <button
+                                    type="button"
+                                    className={
+                                        isDarkMode
+                                            ? "inline-flex h-11 w-11 items-center justify-center rounded-full border border-neutral-700 bg-neutral-950 text-white hover:bg-neutral-900"
+                                            : "inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100"
+                                    }
+                                    onPointerDown={(event) => {
+                                        event.stopPropagation();
+                                    }}
+                                    onPointerUp={(event) => {
+                                        event.stopPropagation();
+                                    }}
+                                    onClick={handleExitStoneEditMode}
+                                    aria-label={t("exitStoneCorrectionMode")}
+                                    title={t("exitStoneCorrectionMode")}
+                                >
+                                    <X size={16} />
+                                </button>
+                                <button
+                                    type="button"
+                                    className="inline-flex h-11 w-10 cursor-grab items-center justify-center active:cursor-grabbing"
+                                    onPointerDown={startStoneSelectionHandleDrag}
+                                    onPointerMove={updateStoneSelectionHandleDrag}
+                                    onPointerUp={finishStoneSelectionHandleDrag}
+                                    onPointerCancel={cancelStoneSelectionHandleDrag}
+                                    onLostPointerCapture={cancelStoneSelectionHandleDrag}
+                                    aria-label={t("moveSelectedStones")}
+                                    title={t("moveSelectedStones")}
+                                >
+                                    <span
+                                        aria-hidden="true"
+                                        className="grid h-6 w-4 grid-cols-2 gap-x-1 gap-y-1 text-zinc-700 dark:text-zinc-200"
+                                    >
+                                        <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
+                                        <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
+                                        <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
+                                        <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
+                                        <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
+                                        <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
+                                    </span>
+                                </button>
+                            </div>
                         ) : null}
                         {touchPreview && (
                             <svg
