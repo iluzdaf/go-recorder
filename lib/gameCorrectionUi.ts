@@ -195,13 +195,13 @@ export function shouldShowOriginalSelectedStones({
 export function shouldShowPlacementPreview({
     hasTouchPreview,
     hasSelectedStone,
-    didStartStoneSelectionDrag,
+    isCorrectionDragActive,
 }: {
     hasTouchPreview: boolean;
     hasSelectedStone: boolean;
-    didStartStoneSelectionDrag: boolean;
+    isCorrectionDragActive: boolean;
 }) {
-    return hasTouchPreview && !hasSelectedStone && !didStartStoneSelectionDrag;
+    return hasTouchPreview && !hasSelectedStone && !isCorrectionDragActive;
 }
 
 export function toggleCorrectionSelection({

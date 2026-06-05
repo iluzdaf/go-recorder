@@ -345,28 +345,35 @@ describe("game correction UI helpers", () => {
             shouldShowPlacementPreview({
                 hasTouchPreview: false,
                 hasSelectedStone: false,
-                didStartStoneSelectionDrag: false,
+                isCorrectionDragActive: false,
             })
         ).toBe(false);
         expect(
             shouldShowPlacementPreview({
                 hasTouchPreview: true,
                 hasSelectedStone: false,
-                didStartStoneSelectionDrag: false,
+                isCorrectionDragActive: false,
             })
         ).toBe(true);
         expect(
             shouldShowPlacementPreview({
                 hasTouchPreview: true,
                 hasSelectedStone: true,
-                didStartStoneSelectionDrag: false,
+                isCorrectionDragActive: false,
             })
         ).toBe(false);
         expect(
             shouldShowPlacementPreview({
                 hasTouchPreview: true,
                 hasSelectedStone: false,
-                didStartStoneSelectionDrag: true,
+                isCorrectionDragActive: true,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowPlacementPreview({
+                hasTouchPreview: true,
+                hasSelectedStone: false,
+                isCorrectionDragActive: true,
             })
         ).toBe(false);
     });
@@ -727,6 +734,14 @@ describe("game correction UI helpers", () => {
                 isMovingSelectedStones: true,
                 hasValidDragPreview: false,
                 isDeselectingLastStone: false,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowCorrectionTouchGuide({
+                hasTouchPreview: true,
+                isMovingSelectedStones: false,
+                hasValidDragPreview: false,
+                isDeselectingLastStone: true,
             })
         ).toBe(false);
     });

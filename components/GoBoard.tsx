@@ -153,6 +153,8 @@ export default function GoBoard({ id }: GoBoardProps) {
     const didDragStoneSelectionRef = useRef(false);
     const [didStartStoneSelectionDrag, setDidStartStoneSelectionDrag] =
         useState(false);
+    const [isCorrectionDragActive, setIsCorrectionDragActive] =
+        useState(false);
     const lastSavedSnapshotRef = useRef("");
     const localGameRecordRef = useRef<LocalGameRecord | null>(null);
     const latestSaveStateRef = useRef<{
@@ -485,7 +487,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     });
     const hasValidDragPreview = Boolean(dragPreview);
     const isDeselectingLastStone =
-        didStartStoneSelectionDrag && selectedMoveIndexes.length === 0;
+        isCorrectionDragActive && selectedMoveIndexes.length === 0;
     const renderSelectedVertices = shouldShowOriginalSelectedStones({
         isMovingSelectedStones,
         hasValidDragPreview,
@@ -501,10 +503,10 @@ export default function GoBoard({ id }: GoBoardProps) {
     });
     const placementPreviewSignMap =
         shouldShowPlacementPreview({
-        hasTouchPreview: Boolean(touchPreview),
-        hasSelectedStone: selectedMoveIndexes.length > 0,
-        didStartStoneSelectionDrag,
-    }) && touchPreview
+            hasTouchPreview: Boolean(touchPreview),
+            hasSelectedStone: selectedMoveIndexes.length > 0,
+            isCorrectionDragActive,
+        }) && touchPreview
             ? (() => {
                   if (signMap[touchPreview.y]?.[touchPreview.x] !== 0) return null;
 
@@ -605,6 +607,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     const clearStoneSelectionDragState = () => {
         didSelectStoneByHoldRef.current = false;
         setDidStartStoneSelectionDrag(false);
+        setIsCorrectionDragActive(false);
         didDragStoneSelectionRef.current = false;
         stoneSelectOriginRef.current = null;
         selectedGroupDragOriginRef.current = null;
@@ -696,6 +699,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         selectedGroupDragOriginRef.current = origin;
         setSelectedGroupDragOriginState(origin);
         setDidStartStoneSelectionDrag(true);
+        setIsCorrectionDragActive(true);
         touchPreviewVertexRef.current = origin;
         setTouchPreview({
             ...origin,
@@ -1556,6 +1560,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     !didDragStoneSelectionRef.current
                                 ) {
                                     didDragStoneSelectionRef.current = true;
+                                    setIsCorrectionDragActive(true);
 
                                     const startMoveIndex =
                                         stoneSelectionDragStartMoveIndexRef.current;
