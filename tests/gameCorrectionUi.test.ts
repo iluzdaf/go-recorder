@@ -16,6 +16,7 @@ import {
     isStoneSelectionDragActive,
     shouldShowStoneSelectionCloseButton,
     shouldStartStoneSelectionHold,
+    toggleCorrectionSelection,
 } from "../lib/gameCorrectionUi";
 
 const gameState: GameState = {
@@ -268,6 +269,21 @@ describe("game correction UI helpers", () => {
                 isDraggingSelectedStones: false,
             })
         ).toBe(false);
+    });
+
+    it("toggles stone correction selections", () => {
+        expect(
+            toggleCorrectionSelection({
+                moveIndex: 0,
+                selectedMoveIndexes: [2],
+            })
+        ).toEqual([2, 0]);
+        expect(
+            toggleCorrectionSelection({
+                moveIndex: 2,
+                selectedMoveIndexes: [2, 0],
+            })
+        ).toEqual([0]);
     });
 
     it("maps pointer positions to vertices from the board grid rect", () => {

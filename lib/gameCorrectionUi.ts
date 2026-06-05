@@ -164,6 +164,18 @@ export function shouldShowStoneSelectionCloseButton({
     return hasSelectedStone && !isDraggingSelectedStones;
 }
 
+export function toggleCorrectionSelection({
+    moveIndex,
+    selectedMoveIndexes,
+}: {
+    moveIndex: number;
+    selectedMoveIndexes: number[];
+}) {
+    return selectedMoveIndexes.includes(moveIndex)
+        ? selectedMoveIndexes.filter((selectedMoveIndex) => selectedMoveIndex !== moveIndex)
+        : [...selectedMoveIndexes, moveIndex];
+}
+
 export function getVertexFromBoardPointer({
     clientX,
     clientY,

@@ -50,6 +50,7 @@ import {
     getVertexFromBoardPointer,
     isStoneSelectionDragActive,
     shouldStartStoneSelectionHold,
+    toggleCorrectionSelection,
     type BoardGridGeometry,
     type StoneSelectionDragState,
     type Vertex,
@@ -138,6 +139,10 @@ export default function GoBoard({ id }: GoBoardProps) {
     const selectedGroupDragOriginRef = useRef<Vertex | null>(null);
     const stoneSelectionDragStateRef = useRef<StoneSelectionDragState | null>(
         null
+    );
+    const stoneSelectionDragStartMoveIndexRef = useRef<number | null>(null);
+    const stoneSelectionDragVisitedMoveIndexesRef = useRef<Set<number>>(
+        new Set()
     );
     const didSelectStoneByHoldRef = useRef(false);
     const didDragStoneSelectionRef = useRef(false);
@@ -569,7 +574,24 @@ export default function GoBoard({ id }: GoBoardProps) {
         selectedGroupDragOriginRef.current = null;
         setSelectedGroupDragOriginState(null);
         stoneSelectionDragStateRef.current = null;
+        stoneSelectionDragStartMoveIndexRef.current = null;
+        stoneSelectionDragVisitedMoveIndexesRef.current.clear();
         touchPreviewVertexRef.current = null;
+    };
+
+    const toggleSelectedMoveIndex = (moveIndex: number) => {
+        setSelectedMoveIndexes((current) => {
+            const nextSelection = toggleCorrectionSelection({
+                moveIndex,
+                selectedMoveIndexes: current,
+            });
+            selectedMoveIndexesRef.current = nextSelection;
+            if (nextSelection.length === 0) {
+                setSelectedGroupDragOrigin(null);
+            }
+            return nextSelection;
+        });
+        setShareStatus(null);
     };
 
     const getDragPreviewFromPointer = ({
@@ -1431,6 +1453,9 @@ export default function GoBoard({ id }: GoBoardProps) {
                             if (selectedMoveIndexes.length > 0) {
                                 stoneSelectOriginRef.current = vertex;
                                 didDragStoneSelectionRef.current = false;
+                                stoneSelectionDragStartMoveIndexRef.current =
+                                    editableMoveIndex;
+                                stoneSelectionDragVisitedMoveIndexesRef.current.clear();
                                 touchPreviewVertexRef.current = vertex;
                                 return;
                             }
@@ -1468,11 +1493,23 @@ export default function GoBoard({ id }: GoBoardProps) {
                             );
                             if (selectedMoveIndexesRef.current.length > 0) {
                                 const origin = stoneSelectOriginRef.current;
-                                if (
+                                const didLeaveOrigin =
                                     origin !== null &&
-                                    didPointerLeaveHoldVertex({ origin, vertex })
+                                    didPointerLeaveHoldVertex({ origin, vertex });
+                                if (
+                                    didLeaveOrigin &&
+                                    !didDragStoneSelectionRef.current
                                 ) {
                                     didDragStoneSelectionRef.current = true;
+
+                                    const startMoveIndex =
+                                        stoneSelectionDragStartMoveIndexRef.current;
+                                    if (startMoveIndex !== null) {
+                                        stoneSelectionDragVisitedMoveIndexesRef.current.add(
+                                            startMoveIndex
+                                        );
+                                        toggleSelectedMoveIndex(startMoveIndex);
+                                    }
                                 }
 
                                 const editableMoveIndex = vertex
@@ -1484,25 +1521,16 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     : null;
 
                                 if (
+                                    didLeaveOrigin &&
                                     editableMoveIndex !== null &&
-                                    !selectedMoveIndexesRef.current.includes(
+                                    !stoneSelectionDragVisitedMoveIndexesRef.current.has(
                                         editableMoveIndex
                                     )
                                 ) {
-                                    setSelectedMoveIndexes((current) => {
-                                        if (current.includes(editableMoveIndex)) {
-                                            return current;
-                                        }
-
-                                        const nextSelection = [
-                                            ...current,
-                                            editableMoveIndex,
-                                        ];
-                                        selectedMoveIndexesRef.current = nextSelection;
-                                        return nextSelection;
-                                    });
-                                    setShareStatus(null);
-                                    didDragStoneSelectionRef.current = true;
+                                    stoneSelectionDragVisitedMoveIndexesRef.current.add(
+                                        editableMoveIndex
+                                    );
+                                    toggleSelectedMoveIndex(editableMoveIndex);
                                 }
 
                                 return;
@@ -1561,6 +1589,11 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 return;
                             }
 
+                            if (didDragStoneSelectionRef.current) {
+                                releaseTouchPreview();
+                                return;
+                            }
+
                             if (selectedMoveIndexesRef.current.length === 0) {
                                 if (editableMoveIndex !== null) {
                                     releaseTouchPreview();
@@ -1572,42 +1605,17 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 return;
                             }
 
-                            if (didDragStoneSelectionRef.current) {
-                                releaseTouchPreview();
-                                return;
-                            }
-
                             if (editableMoveIndex !== null) {
                                 const correctionTapAction = getCorrectionTapAction({
                                     editableMoveIndexAtVertex: editableMoveIndex,
                                     selectedMoveIndexes: selectedMoveIndexesRef.current,
                                 });
 
-                                if (correctionTapAction === "deselect") {
-                                    setSelectedMoveIndexes((current) => {
-                                        const nextSelection = current.filter(
-                                            (moveIndex) => moveIndex !== editableMoveIndex
-                                        );
-                                        selectedMoveIndexesRef.current = nextSelection;
-                                        if (nextSelection.length === 0) {
-                                            setSelectedGroupDragOrigin(null);
-                                        }
-                                        return nextSelection;
-                                    });
-                                } else if (correctionTapAction === "select") {
-                                    setSelectedMoveIndexes((current) => {
-                                        if (current.includes(editableMoveIndex)) {
-                                            return current;
-                                        }
-
-                                        const nextSelection = [
-                                            ...current,
-                                            editableMoveIndex,
-                                        ];
-                                        selectedMoveIndexesRef.current = nextSelection;
-                                        return nextSelection;
-                                    });
-                                    setShareStatus(null);
+                                if (
+                                    correctionTapAction === "deselect" ||
+                                    correctionTapAction === "select"
+                                ) {
+                                    toggleSelectedMoveIndex(editableMoveIndex);
                                 }
 
                                 releaseTouchPreview();
