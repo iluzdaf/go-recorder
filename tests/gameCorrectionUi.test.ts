@@ -13,6 +13,7 @@ import {
     getStoneCorrectionOrigin,
     getStoneSelectionDragVertexFromPointer,
     getVertexFromBoardPointer,
+    isRecorderCorrectionLegal,
     isStoneSelectionDragActive,
     shouldShowCorrectionTouchGuide,
     shouldShowOriginalSelectedStones,
@@ -655,6 +656,34 @@ describe("game correction UI helpers", () => {
             status: null,
             hasUnsavedChanges: true,
         });
+    });
+
+    it("checks recorder correction legality for preview visibility", () => {
+        expect(
+            isRecorderCorrectionLegal({
+                boardSize: 19,
+                from: { x: 3, y: 3 },
+                gameState,
+                selectedMoveIndexes: [0],
+                vertex: { x: 5, y: 5 },
+            })
+        ).toBe(true);
+        expect(
+            isRecorderCorrectionLegal({
+                boardSize: 19,
+                from: { x: 3, y: 3 },
+                gameState,
+                selectedMoveIndexes: [0],
+                vertex: { x: 4, y: 4 },
+            })
+        ).toBe(false);
+        expect(
+            shouldShowCorrectionTouchGuide({
+                hasTouchPreview: true,
+                isMovingSelectedStones: true,
+                hasValidDragPreview: false,
+            })
+        ).toBe(false);
     });
 
     it("previews all selected stones for a multi-stone tap correction from the first selected stone", () => {

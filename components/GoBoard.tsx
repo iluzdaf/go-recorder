@@ -48,6 +48,7 @@ import {
     getStoneCorrectionOrigin,
     getStoneSelectionDragVertexFromPointer,
     getVertexFromBoardPointer,
+    isRecorderCorrectionLegal,
     isStoneSelectionDragActive,
     shouldShowCorrectionTouchGuide,
     shouldShowOriginalSelectedStones,
@@ -440,6 +441,18 @@ export default function GoBoard({ id }: GoBoardProps) {
               const previewVertices: [number, number][] = [];
               const dx = touchPreview.x - dragOrigin.x;
               const dy = touchPreview.y - dragOrigin.y;
+
+              if (
+                  !isRecorderCorrectionLegal({
+                      boardSize: size,
+                      from: dragOrigin,
+                      gameState,
+                      selectedMoveIndexes,
+                      vertex: touchPreview,
+                  })
+              ) {
+                  return null;
+              }
 
               for (const moveIndex of selectedMoveIndexes) {
                   const move = gameState.moves[moveIndex];

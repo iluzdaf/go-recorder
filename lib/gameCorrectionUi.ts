@@ -423,6 +423,31 @@ export function getCorrectionPreviewStones({
     });
 }
 
+export function isRecorderCorrectionLegal({
+    boardSize,
+    from,
+    gameState,
+    selectedMoveIndexes,
+    vertex,
+}: {
+    boardSize: BoardSize;
+    from: Vertex;
+    gameState: GameState;
+    selectedMoveIndexes: number[];
+    vertex: Vertex;
+}) {
+    return validateMoveEdits({
+        boardSize,
+        originalGameState: gameState,
+        edits: createMoveEdits({
+            from,
+            gameState,
+            selectedMoveIndexes,
+            to: vertex,
+        }),
+    }).ok;
+}
+
 export function applyRecorderCorrection({
     boardSize,
     from,
