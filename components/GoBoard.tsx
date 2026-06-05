@@ -44,6 +44,8 @@ import {
     didPointerLeaveHoldVertex,
     getCorrectionTapAction,
     getEditableMoveIndexAtVertex,
+    getPlacementZoomWindow,
+    getVertexFromPlacementZoomPointer,
     getSelectedMoveVertices,
     getStoneCorrectionOrigin,
     getStoneSelectionDragVertexFromPointer,
@@ -56,6 +58,7 @@ import {
     shouldStartStoneSelectionHold,
     toggleCorrectionSelection,
     visitCorrectionSelectionDragMove,
+    type BoardAreaZoomWindow,
     type BoardGridGeometry,
     type StoneSelectionDragState,
     type Vertex,
@@ -66,6 +69,8 @@ type ShudanGobanProps = {
     signMap: number[][];
     markerMap: (null | { type: "circle" })[][];
     showCoordinates: boolean;
+    rangeX?: [number, number];
+    rangeY?: [number, number];
     selectedVertices?: [number, number][];
     dimmedVertices?: [number, number][];
     fuzzyStonePlacement?: boolean;
@@ -173,6 +178,8 @@ export default function GoBoard({ id }: GoBoardProps) {
     });
     const [vertexSize, setVertexSize] = useState(24);
     const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
+    const [placementZoomWindow, setPlacementZoomWindow] =
+        useState<BoardAreaZoomWindow | null>(null);
     const [selectedGroupDragOrigin, setSelectedGroupDragOriginState] =
         useState<Vertex | null>(null);
     const [selectedMoveIndexes, setSelectedMoveIndexes] = useState<number[]>([]);
@@ -199,6 +206,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
     const isStonePlacementActiveRef = useRef(false);
     const stonePlacementCanCommitRef = useRef(false);
+    const isPendingPlacementZoomRef = useRef(false);
     const actionBarDragRef = useRef<ActionBarDragState | null>(null);
     const actionBarRailRef = useRef<HTMLDivElement | null>(null);
     const [actionBarAnchor, setActionBarAnchor] = useState<ActionBarAnchor>(() => {
@@ -385,17 +393,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         const gobanWrapper = gobanWrapperRef.current;
         if (!boardArea || !gobanWrapper) return;
 
-        const updateBoardGeometry = () => {
-            const { width, height } = boardArea.getBoundingClientRect();
-            const availableSize = Math.max(0, Math.min(width, height) - BOARD_PADDING_PX);
-            const coordinateGutterVertices = 1;
-            const nextVertexSize = Math.max(
-                16,
-                Math.floor(availableSize / (size + coordinateGutterVertices))
-            );
-
-            setVertexSize(nextVertexSize);
-
+        const updateGridMetrics = () => {
             const grid = gobanWrapper.querySelector(".shudan-grid");
             if (!(grid instanceof SVGElement)) return;
 
@@ -408,15 +406,58 @@ export default function GoBoard({ id }: GoBoardProps) {
                 boardSizePx: gridRect.width,
             };
 
-            setGridMetrics(nextGridMetrics);
+            setGridMetrics((currentGridMetrics) =>
+                currentGridMetrics.left === nextGridMetrics.left &&
+                currentGridMetrics.top === nextGridMetrics.top &&
+                currentGridMetrics.cellSize === nextGridMetrics.cellSize &&
+                currentGridMetrics.boardSizePx === nextGridMetrics.boardSizePx
+                    ? currentGridMetrics
+                    : nextGridMetrics
+            );
+        };
+
+        let animationFrameId: number | null = null;
+        const updateBoardGeometry = () => {
+            const { width, height } = boardArea.getBoundingClientRect();
+            const availableSize = Math.max(0, Math.min(width, height) - BOARD_PADDING_PX);
+            const coordinateGutterVertices = 1;
+            const nextVertexSize = Math.max(
+                16,
+                Math.floor(availableSize / (size + coordinateGutterVertices))
+            );
+
+            setVertexSize((currentVertexSize) =>
+                currentVertexSize === nextVertexSize
+                    ? currentVertexSize
+                    : nextVertexSize
+            );
+            updateGridMetrics();
+
+            if (animationFrameId !== null) {
+                window.cancelAnimationFrame(animationFrameId);
+            }
+            animationFrameId = window.requestAnimationFrame(() => {
+                animationFrameId = null;
+                updateGridMetrics();
+            });
         };
 
         updateBoardGeometry();
 
         const resizeObserver = new ResizeObserver(updateBoardGeometry);
         resizeObserver.observe(boardArea);
+        resizeObserver.observe(gobanWrapper);
+        window.addEventListener("resize", updateBoardGeometry);
+        window.addEventListener("orientationchange", updateBoardGeometry);
 
-        return () => resizeObserver.disconnect();
+        return () => {
+            resizeObserver.disconnect();
+            window.removeEventListener("resize", updateBoardGeometry);
+            window.removeEventListener("orientationchange", updateBoardGeometry);
+            if (animationFrameId !== null) {
+                window.cancelAnimationFrame(animationFrameId);
+            }
+        };
     }, [size]);
 
     const replay = replayGame({
@@ -571,6 +612,60 @@ export default function GoBoard({ id }: GoBoardProps) {
                   STONE_CORRECTION_PILL_HEIGHT_PX
           )
         : 0;
+    const placementZoomVertexSize = placementZoomWindow
+        ? gridMetrics.boardSizePx / placementZoomWindow.size
+        : vertexSize;
+    const placementZoomRangeX: [number, number] | undefined = placementZoomWindow
+        ? [
+              placementZoomWindow.startX,
+              placementZoomWindow.startX + placementZoomWindow.size - 1,
+          ]
+        : undefined;
+    const placementZoomRangeY: [number, number] | undefined = placementZoomWindow
+        ? [
+              placementZoomWindow.startY,
+              placementZoomWindow.startY + placementZoomWindow.size - 1,
+          ]
+        : undefined;
+    const placementZoomClassName = placementZoomWindow
+        ? [
+              "goban-placement-zoom pointer-events-none absolute z-10",
+              placementZoomWindow.startY > 0
+                  ? "goban-placement-zoom-hide-top"
+                  : "",
+              placementZoomWindow.startX + placementZoomWindow.size < size
+                  ? "goban-placement-zoom-hide-right"
+                  : "",
+              placementZoomWindow.startY + placementZoomWindow.size < size
+                  ? "goban-placement-zoom-hide-bottom"
+                  : "",
+              placementZoomWindow.startX > 0
+                  ? "goban-placement-zoom-hide-left"
+                  : "",
+          ]
+              .filter(Boolean)
+              .join(" ")
+        : "";
+    const touchGuideMetrics =
+        touchPreview && placementZoomWindow
+            ? {
+                  left: gridMetrics.left,
+                  top: gridMetrics.top,
+                  cellSize: placementZoomVertexSize,
+                  boardSizePx: gridMetrics.boardSizePx,
+                  x: touchPreview.x - placementZoomWindow.startX,
+                  y: touchPreview.y - placementZoomWindow.startY,
+              }
+            : touchPreview
+              ? {
+                    left: gridMetrics.left,
+                    top: gridMetrics.top,
+                    cellSize: gridMetrics.cellSize,
+                    boardSizePx: gridMetrics.boardSizePx,
+                    x: touchPreview.x,
+                    y: touchPreview.y,
+                }
+              : null;
 
     const getGridMetrics = () => {
         const gobanWrapper = gobanWrapperRef.current;
@@ -596,10 +691,10 @@ export default function GoBoard({ id }: GoBoardProps) {
             boardSize: size,
         };
 
-        return { gridGeometry, gridRect, nextGridMetrics };
+        return { gridGeometry };
     };
 
-    const getVertexFromPointer = (clientX: number, clientY: number) => {
+    const getFullBoardVertexFromPointer = (clientX: number, clientY: number) => {
         const metrics = getGridMetrics();
         if (!metrics) return null;
 
@@ -610,12 +705,42 @@ export default function GoBoard({ id }: GoBoardProps) {
         });
     };
 
+    const getZoomedPlacementVertexFromPointer = (
+        clientX: number,
+        clientY: number
+    ) => {
+        if (!placementZoomWindow) return null;
+
+        const metrics = getGridMetrics();
+        if (!metrics) return null;
+
+        return getVertexFromPlacementZoomPointer({
+            clientX,
+            clientY,
+            grid: metrics.gridGeometry,
+            zoomWindow: placementZoomWindow,
+        });
+    };
+
+    const getPlacementVertexFromPointer = (clientX: number, clientY: number) => {
+        if (placementZoomWindow) {
+            return getZoomedPlacementVertexFromPointer(clientX, clientY);
+        }
+
+        return getFullBoardVertexFromPointer(clientX, clientY);
+    };
+
     const clearStoneSelectTimeout = () => {
         if (stoneSelectTimeoutRef.current !== null) {
             window.clearTimeout(stoneSelectTimeoutRef.current);
         }
         stoneSelectTimeoutRef.current = null;
         stoneSelectOriginRef.current = null;
+    };
+
+    const clearPlacementZoom = () => {
+        isPendingPlacementZoomRef.current = false;
+        setPlacementZoomWindow(null);
     };
 
     const clearStoneSelectionDragState = () => {
@@ -870,12 +995,12 @@ export default function GoBoard({ id }: GoBoardProps) {
     };
 
     const updateTouchPreview = (clientX: number, clientY: number) => {
-        const vertex = getVertexFromPointer(clientX, clientY);
+        const vertex = getPlacementVertexFromPointer(clientX, clientY);
         if (!vertex) {
             stonePlacementCanCommitRef.current = false;
             touchPreviewVertexRef.current = null;
             setTouchPreview(null);
-            return;
+            return null;
         }
 
         touchPreviewVertexRef.current = vertex;
@@ -884,6 +1009,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             screenX: clientX,
             screenY: clientY,
         });
+        return vertex;
     };
 
     const canShareGame = gameState.moves.some((move) => move.type === "play");
@@ -1406,6 +1532,21 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     : undefined
                             }
                         >
+                                {placementZoomWindow ? (
+                                    <button
+                                        type="button"
+                                        className="absolute bottom-full left-1/2 mb-2 inline-flex h-11 -translate-x-1/2 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-950 shadow-lg hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                        onClick={() => {
+                                            clearPlacementZoom();
+                                            setTouchPreview(null);
+                                        }}
+                                        aria-label={t("closeBoardZoom")}
+                                        title={t("closeBoardZoom")}
+                                    >
+                                        <X size={18} />
+                                        <span>{t("closeBoardZoom")}</span>
+                                    </button>
+                                ) : null}
                                 <div className="flex items-center gap-1 rounded-full border border-zinc-200 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
                                     <div
                                         className="inline-flex h-11 w-11 items-center justify-center text-zinc-700 dark:text-zinc-200"
@@ -1490,14 +1631,20 @@ export default function GoBoard({ id }: GoBoardProps) {
 
                             event.preventDefault();
                             event.currentTarget.setPointerCapture(event.pointerId);
-                            const vertex = getVertexFromPointer(
-                                event.clientX,
-                                event.clientY
-                            );
+                            const vertex = placementZoomWindow
+                                ? getPlacementVertexFromPointer(
+                                      event.clientX,
+                                      event.clientY
+                                  )
+                                : getFullBoardVertexFromPointer(
+                                      event.clientX,
+                                      event.clientY
+                                  );
 
                             didSelectStoneByHoldRef.current = false;
                             setDidStartStoneSelectionDrag(false);
                             clearStoneSelectTimeout();
+                            isPendingPlacementZoomRef.current = false;
                             isStonePlacementActiveRef.current = Boolean(vertex);
                             stonePlacementCanCommitRef.current = Boolean(vertex);
                             if (!vertex) {
@@ -1506,18 +1653,34 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 return;
                             }
 
-                            touchPreviewVertexRef.current = vertex;
-                            setTouchPreview({
-                                ...vertex,
-                                screenX: event.clientX,
-                                screenY: event.clientY,
-                            });
-
                             const editableMoveIndex = getEditableMoveIndexAtVertex({
                                 moves: gameState.moves,
                                 vertex,
                                 visibleStoneOwners: replay.visibleStoneOwners,
                             });
+
+                            isPendingPlacementZoomRef.current = Boolean(
+                                !placementZoomWindow &&
+                                    selectedMoveIndexes.length === 0 &&
+                                    editableMoveIndex === null &&
+                                    getPlacementZoomWindow({
+                                        boardSize: size,
+                                        vertex,
+                                    })
+                            );
+
+                            if (!isPendingPlacementZoomRef.current) {
+                                touchPreviewVertexRef.current = vertex;
+                                setTouchPreview({
+                                    ...vertex,
+                                    screenX: event.clientX,
+                                    screenY: event.clientY,
+                                });
+                            }
+
+                            if (placementZoomWindow && editableMoveIndex !== null) {
+                                return;
+                            }
 
                             if (selectedMoveIndexes.length > 0) {
                                 stoneSelectOriginRef.current = vertex;
@@ -1554,13 +1717,14 @@ export default function GoBoard({ id }: GoBoardProps) {
                         onPointerMove={(event) => {
                             if (!isStonePlacementActiveRef.current) return;
                             event.preventDefault();
-                            updateTouchPreview(event.clientX, event.clientY);
+                            if (isPendingPlacementZoomRef.current) return;
 
-                            const vertex = getVertexFromPointer(
+                            const vertex = updateTouchPreview(
                                 event.clientX,
                                 event.clientY
                             );
                             if (selectedMoveIndexesRef.current.length > 0) {
+                                setPlacementZoomWindow(null);
                                 const origin = stoneSelectOriginRef.current;
                                 const didLeaveOrigin =
                                     origin !== null &&
@@ -1617,10 +1781,15 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 return;
                             }
 
-                            const vertex = getVertexFromPointer(
-                                event.clientX,
-                                event.clientY
-                            );
+                            const vertex = placementZoomWindow
+                                ? getPlacementVertexFromPointer(
+                                      event.clientX,
+                                      event.clientY
+                                  )
+                                : getFullBoardVertexFromPointer(
+                                      event.clientX,
+                                      event.clientY
+                                  );
                             const editableMoveIndex = vertex
                                 ? getEditableMoveIndexAtVertex({
                                       moves: gameState.moves,
@@ -1636,6 +1805,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                             const releaseTouchPreview = () => {
                                 isStonePlacementActiveRef.current = false;
                                 stonePlacementCanCommitRef.current = false;
+                                isPendingPlacementZoomRef.current = false;
                                 setTouchPreview(null);
                                 event.currentTarget.releasePointerCapture(
                                     event.pointerId
@@ -1662,6 +1832,19 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 if (editableMoveIndex !== null) {
                                     releaseTouchPreview();
                                     return;
+                                }
+
+                                if (!placementZoomWindow) {
+                                    const zoomWindow = getPlacementZoomWindow({
+                                        boardSize: size,
+                                        vertex,
+                                    });
+
+                                    if (zoomWindow) {
+                                        setPlacementZoomWindow(zoomWindow);
+                                        releaseTouchPreview();
+                                        return;
+                                    }
                                 }
 
                                 playMove(vertex.x, vertex.y);
@@ -1701,6 +1884,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                             clearStoneSelectionDragState();
                             isStonePlacementActiveRef.current = false;
                             stonePlacementCanCommitRef.current = false;
+                            clearPlacementZoom();
                             setTouchPreview(null);
                             if (event.currentTarget.hasPointerCapture(event.pointerId)) {
                                 event.currentTarget.releasePointerCapture(event.pointerId);
@@ -1715,6 +1899,27 @@ export default function GoBoard({ id }: GoBoardProps) {
                         dimmedVertices={renderDimmedVertices}
                         showCoordinates
                     />
+                        {placementZoomWindow ? (
+                            <div
+                                aria-hidden="true"
+                                className={placementZoomClassName}
+                                style={{
+                                    left: gridMetrics.left - placementZoomVertexSize,
+                                    top: gridMetrics.top - placementZoomVertexSize,
+                                }}
+                            >
+                                <BoardView
+                                    vertexSize={placementZoomVertexSize}
+                                    signMap={boardSignMap}
+                                    markerMap={boardMarkerMap}
+                                    selectedVertices={renderSelectedVertices}
+                                    dimmedVertices={renderDimmedVertices}
+                                    rangeX={placementZoomRangeX}
+                                    rangeY={placementZoomRangeY}
+                                    showCoordinates
+                                />
+                            </div>
+                        ) : null}
                         {hasStoneCorrectionSelection ? (
                             <div
                                 className={
@@ -1772,31 +1977,47 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 </button>
                             </div>
                         ) : null}
-                        {shouldShowTouchGuide && touchPreview && (
+                        {shouldShowTouchGuide && touchGuideMetrics && (
                             <svg
                                 className="pointer-events-none absolute z-20"
                                 style={{
-                                    left: gridMetrics.left,
-                                    top: gridMetrics.top,
+                                    left: touchGuideMetrics.left,
+                                    top: touchGuideMetrics.top,
                                 }}
-                                width={gridMetrics.boardSizePx}
-                                height={gridMetrics.boardSizePx}
-                                viewBox={`0 0 ${gridMetrics.boardSizePx} ${gridMetrics.boardSizePx}`}
+                                width={touchGuideMetrics.boardSizePx}
+                                height={touchGuideMetrics.boardSizePx}
+                                viewBox={`0 0 ${touchGuideMetrics.boardSizePx} ${touchGuideMetrics.boardSizePx}`}
                             >
                                 <line
                                     x1={0}
-                                    y1={touchPreview.y * gridMetrics.cellSize + gridMetrics.cellSize / 2}
-                                    x2={gridMetrics.boardSizePx}
-                                    y2={touchPreview.y * gridMetrics.cellSize + gridMetrics.cellSize / 2}
+                                    y1={
+                                        touchGuideMetrics.y *
+                                            touchGuideMetrics.cellSize +
+                                        touchGuideMetrics.cellSize / 2
+                                    }
+                                    x2={touchGuideMetrics.boardSizePx}
+                                    y2={
+                                        touchGuideMetrics.y *
+                                            touchGuideMetrics.cellSize +
+                                        touchGuideMetrics.cellSize / 2
+                                    }
                                     stroke="rgb(56 189 248 / 0.8)"
                                     strokeWidth="1"
                                     vectorEffect="non-scaling-stroke"
                                 />
                                 <line
-                                    x1={touchPreview.x * gridMetrics.cellSize + gridMetrics.cellSize / 2}
+                                    x1={
+                                        touchGuideMetrics.x *
+                                            touchGuideMetrics.cellSize +
+                                        touchGuideMetrics.cellSize / 2
+                                    }
                                     y1={0}
-                                    x2={touchPreview.x * gridMetrics.cellSize + gridMetrics.cellSize / 2}
-                                    y2={gridMetrics.boardSizePx}
+                                    x2={
+                                        touchGuideMetrics.x *
+                                            touchGuideMetrics.cellSize +
+                                        touchGuideMetrics.cellSize / 2
+                                    }
+                                    y2={touchGuideMetrics.boardSizePx}
                                     stroke="rgb(56 189 248 / 0.8)"
                                     strokeWidth="1"
                                     vectorEffect="non-scaling-stroke"

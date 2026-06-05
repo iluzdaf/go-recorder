@@ -139,6 +139,13 @@
     border-radius: 9999px !important;
 }
 
+.goban-placement-zoom-hide-top > .shudan-goban > .shudan-coordx:first-child,
+.goban-placement-zoom-hide-left > .shudan-goban > .shudan-coordy:nth-child(2),
+.goban-placement-zoom-hide-right > .shudan-goban > .shudan-coordy:nth-child(4),
+.goban-placement-zoom-hide-bottom > .shudan-goban > .shudan-coordx:last-child {
+    visibility: hidden;
+}
+
 .goban-theme-dark .shudan-coordx,
 .goban-theme-dark .shudan-coordy {
     color: #a1a1aa !important;

@@ -27,6 +27,17 @@ export type BoardGridGeometry = {
     boardSize: BoardSize;
 };
 
+export type BoardAreaZoomWindow = {
+    startX: number;
+    startY: number;
+    size: number;
+};
+
+type BoardAreaZoomConfig = {
+    starts: number[];
+    windowSize: number;
+};
+
 export type ApplyRecorderCorrectionResult =
     | {
         ok: true;
@@ -204,6 +215,55 @@ export function shouldShowPlacementPreview({
     return hasTouchPreview && !hasSelectedStone && !isCorrectionDragActive;
 }
 
+const PLACEMENT_ZOOM_CONFIG: Partial<Record<BoardSize, BoardAreaZoomConfig>> = {
+    19: {
+        starts: [0, 6],
+        windowSize: 13,
+    },
+};
+
+function getPlacementZoomWindowStart({
+    boardSize,
+    coordinate,
+    starts,
+}: {
+    boardSize: BoardSize;
+    coordinate: number;
+    starts: number[];
+}) {
+    const segmentIndex = Math.min(
+        starts.length - 1,
+        Math.floor((coordinate * starts.length) / boardSize)
+    );
+
+    return starts[segmentIndex] ?? 0;
+}
+
+export function getPlacementZoomWindow({
+    boardSize,
+    vertex,
+}: {
+    boardSize: BoardSize;
+    vertex: Vertex;
+}): BoardAreaZoomWindow | null {
+    const config = PLACEMENT_ZOOM_CONFIG[boardSize];
+    if (!config) return null;
+
+    return {
+        startX: getPlacementZoomWindowStart({
+            boardSize,
+            coordinate: vertex.x,
+            starts: config.starts,
+        }),
+        startY: getPlacementZoomWindowStart({
+            boardSize,
+            coordinate: vertex.y,
+            starts: config.starts,
+        }),
+        size: config.windowSize,
+    };
+}
+
 export function toggleCorrectionSelection({
     moveIndex,
     selectedMoveIndexes,
@@ -266,6 +326,38 @@ export function getVertexFromBoardPointer({
     }
 
     return { x, y };
+}
+
+export function getVertexFromPlacementZoomPointer({
+    clientX,
+    clientY,
+    grid,
+    zoomWindow,
+}: {
+    clientX: number;
+    clientY: number;
+    grid: BoardGridGeometry;
+    zoomWindow: BoardAreaZoomWindow;
+}): Vertex | null {
+    const zoomCellSize = (grid.cellSize * grid.boardSize) / zoomWindow.size;
+    const localX = clientX - grid.left;
+    const localY = clientY - grid.top;
+    const windowX = Math.round(localX / zoomCellSize - 0.5);
+    const windowY = Math.round(localY / zoomCellSize - 0.5);
+
+    if (
+        windowX < 0 ||
+        windowX >= zoomWindow.size ||
+        windowY < 0 ||
+        windowY >= zoomWindow.size
+    ) {
+        return null;
+    }
+
+    return {
+        x: zoomWindow.startX + windowX,
+        y: zoomWindow.startY + windowY,
+    };
 }
 
 export function createStoneSelectionDragState({

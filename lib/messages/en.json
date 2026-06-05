@@ -36,6 +36,7 @@
     "creatingQrCode": "Generating QR code...",
     "failedToGenerateQrCode": "Failed to generate QR code",
     "dismissMessage": "Dismiss message",
+    "closeBoardZoom": "Zoom out",
     "exitStoneCorrectionMode": "Exit stone correction mode",
     "moveSelectedStones": "Move selected stones",
     "undo": "Undo",
