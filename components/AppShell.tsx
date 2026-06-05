@@ -27,6 +27,10 @@ type HeaderActionsContextValue = {
     setHeaderActions: (nextHeaderActions: React.ReactNode) => void;
 };
 
+type HeaderStatusContextValue = {
+    setHeaderStatus: (nextHeaderStatus: React.ReactNode) => void;
+};
+
 type HeaderVisibilityContextValue = {
     isOverlayHeader: boolean;
     isHeaderVisible: boolean;
@@ -37,6 +41,9 @@ const THEME_STORAGE_KEY = "go-recorder:theme";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 const HeaderActionsContext = createContext<HeaderActionsContextValue | null>(
+    null
+);
+const HeaderStatusContext = createContext<HeaderStatusContextValue | null>(
     null
 );
 const HeaderVisibilityContext = createContext<HeaderVisibilityContextValue | null>(
@@ -202,6 +209,16 @@ export function useHeaderActions() {
     return value;
 }
 
+export function useHeaderStatus() {
+    const value = useContext(HeaderStatusContext);
+
+    if (!value) {
+        throw new Error("useHeaderStatus must be used within AppShell");
+    }
+
+    return value;
+}
+
 export function useHeaderVisibility() {
     const value = useContext(HeaderVisibilityContext);
 
@@ -221,6 +238,7 @@ export default function AppShell({
 }>) {
     const pathname = usePathname();
     const [headerActions, setHeaderActions] = useState<React.ReactNode>(null);
+    const [headerStatus, setHeaderStatus] = useState<React.ReactNode>(null);
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
     const [isChangelogOpen, setIsChangelogOpen] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(() => getIsFullscreen());
@@ -370,7 +388,8 @@ export default function AppShell({
     const usesOverlayHeader = Boolean(
         isShortViewport && (isRecordingGame || pathname?.startsWith("/shares/"))
     );
-    const isHeaderVisible = !usesOverlayHeader || isHeaderExpanded;
+    const isHeaderVisible =
+        !usesOverlayHeader || isHeaderExpanded || Boolean(headerStatus);
 
     const contextValue = useMemo(
         () => ({
@@ -379,17 +398,26 @@ export default function AppShell({
         }),
         [isDarkMode]
     );
+    const headerActionsContextValue = useMemo(
+        () => ({ setHeaderActions }),
+        []
+    );
+    const headerStatusContextValue = useMemo(
+        () => ({ setHeaderStatus }),
+        []
+    );
 
     return (
         <ThemeContext.Provider value={contextValue}>
-            <HeaderActionsContext.Provider value={{ setHeaderActions }}>
-                <HeaderVisibilityContext.Provider
-                    value={{
-                        isOverlayHeader: usesOverlayHeader,
-                        isHeaderVisible,
-                        setIsHeaderExpanded,
-                    }}
-                >
+            <HeaderActionsContext.Provider value={headerActionsContextValue}>
+                <HeaderStatusContext.Provider value={headerStatusContextValue}>
+                    <HeaderVisibilityContext.Provider
+                        value={{
+                            isOverlayHeader: usesOverlayHeader,
+                            isHeaderVisible,
+                            setIsHeaderExpanded,
+                        }}
+                    >
                 {usesOverlayHeader && !isHeaderVisible ? (
                     <button
                         type="button"
@@ -410,7 +438,7 @@ export default function AppShell({
                                 : "flex h-14 flex-shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 text-zinc-950 dark:border-neutral-800 dark:bg-neutral-950 dark:text-white"
                         }
                     >
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex shrink-0 items-center gap-1.5">
                             <Link
                                 href="/"
                                 className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
@@ -422,11 +450,12 @@ export default function AppShell({
 
                         </div>
 
-                        <div className="flex min-w-0 flex-1 items-center justify-center px-3">
+                        <div className="relative flex min-w-0 flex-1 items-center justify-center px-3">
+                            {headerStatus}
                             {headerActions}
                         </div>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex shrink-0 items-center gap-1.5">
                             <button
                                 ref={changelogButtonRef}
                                 type="button"
@@ -519,7 +548,8 @@ export default function AppShell({
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                     {children}
                 </div>
-                </HeaderVisibilityContext.Provider>
+                    </HeaderVisibilityContext.Provider>
+                </HeaderStatusContext.Provider>
             </HeaderActionsContext.Provider>
         </ThemeContext.Provider>
     );
