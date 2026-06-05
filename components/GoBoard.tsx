@@ -1512,6 +1512,21 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     : undefined
                             }
                         >
+                                {placementZoomWindow ? (
+                                    <button
+                                        type="button"
+                                        className="absolute bottom-full left-1/2 mb-2 inline-flex h-11 -translate-x-1/2 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-950 shadow-lg hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                        onClick={() => {
+                                            clearPlacementZoom();
+                                            setTouchPreview(null);
+                                        }}
+                                        aria-label={t("closeBoardZoom")}
+                                        title={t("closeBoardZoom")}
+                                    >
+                                        <X size={18} />
+                                        <span>{t("closeBoardZoom")}</span>
+                                    </button>
+                                ) : null}
                                 <div className="flex items-center gap-1 rounded-full border border-zinc-200 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
                                     <div
                                         className="inline-flex h-11 w-11 items-center justify-center text-zinc-700 dark:text-zinc-200"
@@ -1519,20 +1534,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     >
                                         <CircleDot size={18} />
                                     </div>
-                                    {placementZoomWindow ? (
-                                        <button
-                                            type="button"
-                                            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                            onClick={() => {
-                                                clearPlacementZoom();
-                                                setTouchPreview(null);
-                                            }}
-                                            aria-label={t("closeBoardZoom")}
-                                            title={t("closeBoardZoom")}
-                                        >
-                                            <X size={18} />
-                                        </button>
-                                    ) : null}
                                     <button
                                         type="button"
                                         className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
