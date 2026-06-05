@@ -15,6 +15,7 @@ export type ActionBarAnchor = "left" | "center" | "right";
 
 type RecorderActionBarProps = {
     anchor: ActionBarAnchor;
+    canShareGame: boolean;
     canUndo: boolean;
     dragX: number | null;
     hasStoneCorrectionSelection: boolean;
@@ -49,6 +50,7 @@ function DragHandleDots({ className }: { className: string }) {
 
 export default function RecorderActionBar({
     anchor,
+    canShareGame,
     canUndo,
     dragX,
     hasStoneCorrectionSelection,
@@ -142,12 +144,17 @@ export default function RecorderActionBar({
                         <button
                             type="button"
                             ref={shareTriggerRef}
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                            disabled={!canShareGame}
                             onClick={onToggleShareMenu}
                             aria-label={t("share")}
                             aria-expanded={shareMenuOpen}
                             aria-controls="share-menu"
-                            title={t("share")}
+                            title={
+                                canShareGame
+                                    ? t("share")
+                                    : t("addMoveBeforeSharing")
+                            }
                         >
                             <SquareArrowUpRight size={18} />
                         </button>

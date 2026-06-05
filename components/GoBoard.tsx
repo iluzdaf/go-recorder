@@ -1446,6 +1446,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                     ) : null}
                     <RecorderActionBar
                         anchor={actionBarAnchor}
+                        canShareGame={canShareGame}
                         canUndo={gameState.moves.length > 0}
                         dragX={actionBarDragX}
                         hasStoneCorrectionSelection={hasStoneCorrectionSelection}
