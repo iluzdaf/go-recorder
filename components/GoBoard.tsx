@@ -70,6 +70,13 @@ type TouchPreview = {
     screenY: number;
 } | null;
 
+type StoneSelectionDragState = {
+    pointerId: number;
+    origin: Vertex;
+    offsetX: number;
+    offsetY: number;
+};
+
 type GoBoardProps = {
     id: string;
 };
@@ -131,7 +138,9 @@ export default function GoBoard({ id }: GoBoardProps) {
     const stoneSelectTimeoutRef = useRef<number | null>(null);
     const stoneSelectOriginRef = useRef<Vertex | null>(null);
     const selectedGroupDragOriginRef = useRef<Vertex | null>(null);
-    const stoneSelectionDragPointerIdRef = useRef<number | null>(null);
+    const stoneSelectionDragStateRef = useRef<StoneSelectionDragState | null>(
+        null
+    );
     const didSelectStoneByHoldRef = useRef(false);
     const didDragStoneSelectionRef = useRef(false);
     const [didStartStoneSelectionDrag, setDidStartStoneSelectionDrag] =
@@ -559,8 +568,23 @@ export default function GoBoard({ id }: GoBoardProps) {
         stoneSelectOriginRef.current = null;
         selectedGroupDragOriginRef.current = null;
         setSelectedGroupDragOriginState(null);
-        stoneSelectionDragPointerIdRef.current = null;
+        stoneSelectionDragStateRef.current = null;
         touchPreviewVertexRef.current = null;
+    };
+
+    const getDragPreviewFromPointer = ({
+        clientX,
+        clientY,
+        dragState,
+    }: {
+        clientX: number;
+        clientY: number;
+        dragState: StoneSelectionDragState;
+    }) => {
+        return getVertexFromPointer(
+            clientX - dragState.offsetX,
+            clientY - dragState.offsetY
+        );
     };
 
     const startStoneSelectionHandleDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -577,7 +601,15 @@ export default function GoBoard({ id }: GoBoardProps) {
         event.stopPropagation();
         event.currentTarget.setPointerCapture(event.pointerId);
 
-        stoneSelectionDragPointerIdRef.current = event.pointerId;
+        const gridLeft = gridMetrics.left + origin.x * gridMetrics.cellSize + gridMetrics.cellSize / 2;
+        const gridTop = gridMetrics.top + origin.y * gridMetrics.cellSize + gridMetrics.cellSize / 2;
+
+        stoneSelectionDragStateRef.current = {
+            pointerId: event.pointerId,
+            origin,
+            offsetX: event.clientX - gridLeft,
+            offsetY: event.clientY - gridTop,
+        };
         selectedGroupDragOriginRef.current = origin;
         setSelectedGroupDragOriginState(origin);
         setDidStartStoneSelectionDrag(true);
@@ -592,23 +624,48 @@ export default function GoBoard({ id }: GoBoardProps) {
     const updateStoneSelectionHandleDrag = (
         event: ReactPointerEvent<HTMLButtonElement>
     ) => {
-        if (stoneSelectionDragPointerIdRef.current !== event.pointerId) return;
+        const dragState = stoneSelectionDragStateRef.current;
+        if (!dragState || dragState.pointerId !== event.pointerId) return;
 
         event.preventDefault();
         event.stopPropagation();
-        updateTouchPreview(event.clientX, event.clientY);
+
+        const vertex = getDragPreviewFromPointer({
+            clientX: event.clientX,
+            clientY: event.clientY,
+            dragState,
+        });
+
+        if (!vertex) {
+            touchPreviewVertexRef.current = null;
+            setTouchPreview(null);
+            return;
+        }
+
+        touchPreviewVertexRef.current = vertex;
+        setTouchPreview({
+            ...vertex,
+            screenX: event.clientX,
+            screenY: event.clientY,
+        });
     };
 
     const finishStoneSelectionHandleDrag = (
         event: ReactPointerEvent<HTMLButtonElement>
     ) => {
-        if (stoneSelectionDragPointerIdRef.current !== event.pointerId) return;
+        const dragState = stoneSelectionDragStateRef.current;
+        if (!dragState || dragState.pointerId !== event.pointerId) return;
 
         event.preventDefault();
         event.stopPropagation();
 
-        const pointerVertex = touchPreviewVertexRef.current;
-        const origin = selectedGroupDragOriginRef.current;
+        const pointerVertex =
+            getDragPreviewFromPointer({
+                clientX: event.clientX,
+                clientY: event.clientY,
+                dragState,
+            }) ?? touchPreviewVertexRef.current;
+        const origin = dragState.origin;
         const shouldCommit = didStartStoneSelectionDrag && pointerVertex !== null;
 
         if (shouldCommit && origin !== null) {
@@ -630,7 +687,8 @@ export default function GoBoard({ id }: GoBoardProps) {
     const cancelStoneSelectionHandleDrag = (
         event: ReactPointerEvent<HTMLButtonElement>
     ) => {
-        if (stoneSelectionDragPointerIdRef.current !== event.pointerId) return;
+        const dragState = stoneSelectionDragStateRef.current;
+        if (!dragState || dragState.pointerId !== event.pointerId) return;
 
         event.preventDefault();
         event.stopPropagation();
