@@ -47,6 +47,8 @@ import {
     getPlacementZoomWindow,
     getVertexFromPlacementZoomPointer,
     getSelectedMoveVertices,
+    getStoneCorrectionHandleAnchor,
+    getStoneCorrectionHandlePosition,
     getStoneCorrectionOrigin,
     getStoneSelectionDragVertexFromPointer,
     getVertexFromBoardPointer,
@@ -110,7 +112,6 @@ function cloneSignMap(signMap: number[][]) {
 
 const BOARD_PADDING_PX = 16;
 const STONE_SELECT_HOLD_MS = 450;
-const STONE_CORRECTION_PILL_HEIGHT_PX = 52;
 const STONE_CORRECTION_PILL_GAP_PX = 8;
 const ACTION_BAR_STORAGE_KEY_PREFIX = "go-recorder:game-action-bar-anchor:";
 
@@ -590,29 +591,21 @@ export default function GoBoard({ id }: GoBoardProps) {
                   return nextMarkerMap;
             })()
             : markerMap;
-    const dragPreviewAnchorVertex = dragPreview?.selectedVertices[0]
-        ? {
-              x: dragPreview.selectedVertices[0][0],
-              y: dragPreview.selectedVertices[0][1],
-          }
-        : null;
-    const stoneCorrectionAnchorVertex =
-        dragPreviewAnchorVertex ?? selectedMoveVertices[0];
-    const hasStoneCorrectionSelection = Boolean(stoneCorrectionAnchorVertex);
-    const stoneCorrectionPillLeft = stoneCorrectionAnchorVertex
-        ? gridMetrics.left +
-          stoneCorrectionAnchorVertex.x * gridMetrics.cellSize +
-          gridMetrics.cellSize / 2
-        : 0;
-    const stoneCorrectionPillTop = stoneCorrectionAnchorVertex
-        ? Math.max(
-              8,
-              gridMetrics.top +
-                  stoneCorrectionAnchorVertex.y * gridMetrics.cellSize -
-                  STONE_CORRECTION_PILL_GAP_PX -
-                  STONE_CORRECTION_PILL_HEIGHT_PX
-          )
-        : 0;
+    const stoneCorrectionHandleVertices = dragPreview
+        ? dragPreview.selectedVertices.map(([x, y]) => ({ x, y }))
+        : selectedMoveVertices;
+    const isSingleStoneCorrectionSelection =
+        stoneCorrectionHandleVertices.length === 1;
+    const stoneCorrectionAnchorVertex = getStoneCorrectionHandleAnchor(
+        stoneCorrectionHandleVertices
+    );
+    const stoneCorrectionHandlePosition = getStoneCorrectionHandlePosition({
+        anchor: stoneCorrectionAnchorVertex,
+        gapPx: STONE_CORRECTION_PILL_GAP_PX,
+        grid: gridMetrics,
+        isSingleStoneSelection: isSingleStoneCorrectionSelection,
+    });
+    const hasStoneCorrectionSelection = Boolean(stoneCorrectionHandlePosition);
     const placementZoomVertexSize = placementZoomWindow
         ? gridMetrics.boardSizePx / placementZoomWindow.size
         : vertexSize;
@@ -1957,9 +1950,10 @@ export default function GoBoard({ id }: GoBoardProps) {
                                         : "absolute z-30 inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white p-1 shadow-lg"
                                 }
                                 style={{
-                                    left: stoneCorrectionPillLeft,
-                                    top: stoneCorrectionPillTop,
-                                    transform: "translateX(-50%)",
+                                    left: stoneCorrectionHandlePosition?.left ?? 0,
+                                    top: stoneCorrectionHandlePosition?.top ?? 0,
+                                    transform:
+                                        stoneCorrectionHandlePosition?.transform,
                                 }}
                             >
                                 <button

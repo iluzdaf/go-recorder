@@ -11,6 +11,8 @@ import {
     getPlacementZoomWindow,
     getPreviewStone,
     getSelectedMoveVertices,
+    getStoneCorrectionHandleAnchor,
+    getStoneCorrectionHandlePosition,
     getStoneCorrectionOrigin,
     getStoneSelectionDragVertexFromPointer,
     getVertexFromBoardPointer,
@@ -66,6 +68,69 @@ describe("game correction UI helpers", () => {
                 selectedMoveIndexes: [],
             })
         ).toEqual([]);
+    });
+
+    it("centers the stone correction handle over selected stones", () => {
+        expect(getStoneCorrectionHandleAnchor([])).toBeNull();
+        expect(getStoneCorrectionHandleAnchor([{ x: 3, y: 3 }])).toEqual({
+            x: 3,
+            y: 3,
+        });
+        expect(
+            getStoneCorrectionHandleAnchor([
+                { x: 3, y: 3 },
+                { x: 7, y: 5 },
+                { x: 4, y: 9 },
+            ])
+        ).toEqual({ x: 5, y: 6 });
+        expect(
+            getStoneCorrectionHandleAnchor([
+                { x: 3, y: 3 },
+                { x: 4, y: 4 },
+            ])
+        ).toEqual({ x: 3.5, y: 3.5 });
+    });
+
+    it("places the correction handle below one stone and centered for groups", () => {
+        const grid = {
+            left: 10,
+            top: 20,
+            cellSize: 30,
+            boardSize: 19 as const,
+        };
+
+        expect(
+            getStoneCorrectionHandlePosition({
+                anchor: null,
+                gapPx: 8,
+                grid,
+                isSingleStoneSelection: false,
+            })
+        ).toBeNull();
+        expect(
+            getStoneCorrectionHandlePosition({
+                anchor: { x: 3, y: 3 },
+                gapPx: 8,
+                grid,
+                isSingleStoneSelection: true,
+            })
+        ).toEqual({
+            left: 115,
+            top: 148,
+            transform: "translateX(-50%)",
+        });
+        expect(
+            getStoneCorrectionHandlePosition({
+                anchor: { x: 3.5, y: 3.5 },
+                gapPx: 8,
+                grid,
+                isSingleStoneSelection: false,
+            })
+        ).toEqual({
+            left: 130,
+            top: 140,
+            transform: "translate(-50%, -50%)",
+        });
     });
 
     it("uses current player for placement previews and selected move color for correction previews", () => {
