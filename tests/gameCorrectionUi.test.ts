@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { GameState } from "../components/types";
 import {
     applyRecorderCorrection,
+    createStoneSelectionDragState,
     didPointerLeaveHoldVertex,
     getCorrectionPreviewStones,
     getCorrectionTapAction,
@@ -10,10 +11,17 @@ import {
     getPreviewStone,
     getSelectedMoveVertices,
     getStoneCorrectionOrigin,
+    getStoneSelectionDragVertexFromPointer,
+    getVertexFromBoardPointer,
+    isRecorderCorrectionLegal,
     isStoneSelectionDragActive,
-    shouldApplyHoldDragCorrection,
+    shouldShowCorrectionTouchGuide,
+    shouldShowPlacementPreview,
+    shouldShowOriginalSelectedStones,
     shouldShowStoneSelectionCloseButton,
     shouldStartStoneSelectionHold,
+    toggleCorrectionSelection,
+    visitCorrectionSelectionDragMove,
 } from "../lib/gameCorrectionUi";
 
 const gameState: GameState = {
@@ -153,13 +161,13 @@ describe("game correction UI helpers", () => {
                 editableMoveIndexAtVertex: null,
                 selectedMoveIndexes: [2],
             })
-        ).toBe("correct");
+        ).toBe("select");
         expect(
             getCorrectionTapAction({
                 editableMoveIndexAtVertex: 0,
                 selectedMoveIndexes: [2],
             })
-        ).toBe("correct");
+        ).toBe("select");
     });
 
     it("starts a stone selection hold for editable stones", () => {
@@ -216,33 +224,6 @@ describe("game correction UI helpers", () => {
         ).toBe(false);
     });
 
-    it("applies hold-drag correction only after moving away from the held vertex", () => {
-        expect(
-            shouldApplyHoldDragCorrection({
-                origin: { x: 3, y: 3 },
-                vertex: { x: 4, y: 3 },
-            })
-        ).toBe(true);
-        expect(
-            shouldApplyHoldDragCorrection({
-                origin: { x: 3, y: 3 },
-                vertex: { x: 3, y: 3 },
-            })
-        ).toBe(false);
-        expect(
-            shouldApplyHoldDragCorrection({
-                origin: { x: 3, y: 3 },
-                vertex: null,
-            })
-        ).toBe(false);
-        expect(
-            shouldApplyHoldDragCorrection({
-                origin: null,
-                vertex: { x: 4, y: 3 },
-            })
-        ).toBe(false);
-    });
-
     it("keeps stone selection in highlight mode until dragging starts", () => {
         expect(
             isStoneSelectionDragActive({
@@ -295,6 +276,236 @@ describe("game correction UI helpers", () => {
         ).toBe(false);
     });
 
+    it("hides touch guides for invalid selected-stone drags", () => {
+        expect(
+            shouldShowCorrectionTouchGuide({
+                hasTouchPreview: false,
+                isMovingSelectedStones: false,
+                hasValidDragPreview: false,
+                isDeselectingLastStone: false,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowCorrectionTouchGuide({
+                hasTouchPreview: true,
+                isMovingSelectedStones: false,
+                hasValidDragPreview: false,
+                isDeselectingLastStone: false,
+            })
+        ).toBe(true);
+        expect(
+            shouldShowCorrectionTouchGuide({
+                hasTouchPreview: true,
+                isMovingSelectedStones: true,
+                hasValidDragPreview: true,
+                isDeselectingLastStone: false,
+            })
+        ).toBe(true);
+        expect(
+            shouldShowCorrectionTouchGuide({
+                hasTouchPreview: true,
+                isMovingSelectedStones: true,
+                hasValidDragPreview: false,
+                isDeselectingLastStone: false,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowCorrectionTouchGuide({
+                hasTouchPreview: true,
+                isMovingSelectedStones: false,
+                hasValidDragPreview: false,
+                isDeselectingLastStone: true,
+            })
+        ).toBe(false);
+    });
+
+    it("shows original selected stones again for invalid selected-stone drags", () => {
+        expect(
+            shouldShowOriginalSelectedStones({
+                isMovingSelectedStones: false,
+                hasValidDragPreview: false,
+            })
+        ).toBe(true);
+        expect(
+            shouldShowOriginalSelectedStones({
+                isMovingSelectedStones: true,
+                hasValidDragPreview: true,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowOriginalSelectedStones({
+                isMovingSelectedStones: true,
+                hasValidDragPreview: false,
+            })
+        ).toBe(true);
+    });
+
+    it("hides placement previews while a correction drag has deselected the last stone", () => {
+        expect(
+            shouldShowPlacementPreview({
+                hasTouchPreview: false,
+                hasSelectedStone: false,
+                isCorrectionDragActive: false,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowPlacementPreview({
+                hasTouchPreview: true,
+                hasSelectedStone: false,
+                isCorrectionDragActive: false,
+            })
+        ).toBe(true);
+        expect(
+            shouldShowPlacementPreview({
+                hasTouchPreview: true,
+                hasSelectedStone: true,
+                isCorrectionDragActive: false,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowPlacementPreview({
+                hasTouchPreview: true,
+                hasSelectedStone: false,
+                isCorrectionDragActive: true,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowPlacementPreview({
+                hasTouchPreview: true,
+                hasSelectedStone: false,
+                isCorrectionDragActive: true,
+            })
+        ).toBe(false);
+    });
+
+    it("toggles stone correction selections", () => {
+        expect(
+            toggleCorrectionSelection({
+                moveIndex: 0,
+                selectedMoveIndexes: [2],
+            })
+        ).toEqual([2, 0]);
+        expect(
+            toggleCorrectionSelection({
+                moveIndex: 2,
+                selectedMoveIndexes: [2, 0],
+            })
+        ).toEqual([0]);
+    });
+
+    it("toggles each stone once during a selection drag", () => {
+        const firstVisit = visitCorrectionSelectionDragMove({
+            moveIndex: 2,
+            selectedMoveIndexes: [2, 0],
+            visitedMoveIndexes: new Set(),
+        });
+
+        expect(firstVisit.didToggle).toBe(true);
+        expect(firstVisit.selectedMoveIndexes).toEqual([0]);
+        expect([...firstVisit.visitedMoveIndexes]).toEqual([2]);
+
+        const repeatedVisit = visitCorrectionSelectionDragMove({
+            moveIndex: 2,
+            selectedMoveIndexes: firstVisit.selectedMoveIndexes,
+            visitedMoveIndexes: firstVisit.visitedMoveIndexes,
+        });
+
+        expect(repeatedVisit.didToggle).toBe(false);
+        expect(repeatedVisit.selectedMoveIndexes).toEqual([0]);
+        expect([...repeatedVisit.visitedMoveIndexes]).toEqual([2]);
+
+        const nextStoneVisit = visitCorrectionSelectionDragMove({
+            moveIndex: 3,
+            selectedMoveIndexes: repeatedVisit.selectedMoveIndexes,
+            visitedMoveIndexes: repeatedVisit.visitedMoveIndexes,
+        });
+
+        expect(nextStoneVisit.didToggle).toBe(true);
+        expect(nextStoneVisit.selectedMoveIndexes).toEqual([0, 3]);
+        expect([...nextStoneVisit.visitedMoveIndexes]).toEqual([2, 3]);
+    });
+
+    it("treats empty drag visits as no-ops", () => {
+        const visitedMoveIndexes = new Set([2]);
+        const result = visitCorrectionSelectionDragMove({
+            moveIndex: null,
+            selectedMoveIndexes: [2, 0],
+            visitedMoveIndexes,
+        });
+
+        expect(result.didToggle).toBe(false);
+        expect(result.selectedMoveIndexes).toEqual([2, 0]);
+        expect(result.visitedMoveIndexes).toBe(visitedMoveIndexes);
+    });
+
+    it("maps pointer positions to vertices from the board grid rect", () => {
+        const grid = {
+            left: 200,
+            top: 100,
+            cellSize: 40,
+            boardSize: 19 as const,
+        };
+
+        expect(
+            getVertexFromBoardPointer({
+                clientX: 200 + 3 * 40 + 20,
+                clientY: 100 + 4 * 40 + 20,
+                grid,
+            })
+        ).toEqual({ x: 3, y: 4 });
+        expect(
+            getVertexFromBoardPointer({
+                clientX: 199,
+                clientY: 100 + 4 * 40 + 20,
+                grid,
+            })
+        ).toBeNull();
+    });
+
+    it("preserves the pill-to-stone offset when converting drag pointer movement", () => {
+        const grid = {
+            left: 200,
+            top: 100,
+            cellSize: 40,
+            boardSize: 19 as const,
+        };
+        const origin = { x: 3, y: 4 };
+        const originCenter = {
+            x: grid.left + origin.x * grid.cellSize + grid.cellSize / 2,
+            y: grid.top + origin.y * grid.cellSize + grid.cellSize / 2,
+        };
+        const dragState = createStoneSelectionDragState({
+            grid,
+            origin,
+            pointerId: 7,
+            pointerX: originCenter.x - 28,
+            pointerY: originCenter.y - 60,
+        });
+
+        expect(dragState).toEqual({
+            pointerId: 7,
+            origin,
+            offsetX: -28,
+            offsetY: -60,
+        });
+        expect(
+            getStoneSelectionDragVertexFromPointer({
+                clientX: originCenter.x - 28,
+                clientY: originCenter.y - 60,
+                dragState,
+                grid,
+            })
+        ).toEqual(origin);
+        expect(
+            getStoneSelectionDragVertexFromPointer({
+                clientX: originCenter.x - 28 + grid.cellSize,
+                clientY: originCenter.y - 60 + grid.cellSize * 2,
+                dragState,
+                grid,
+            })
+        ).toEqual({ x: 4, y: 6 });
+    });
+
     it("applies a stone correction and returns recorder UI state changes", () => {
         const result = applyRecorderCorrection({
             boardSize: 19,
@@ -325,7 +536,7 @@ describe("game correction UI helpers", () => {
         });
     });
 
-    it("moves the last selected stone to a tapped position and keeps selected stones in formation", () => {
+    it("moves selected stones to a tapped position and keeps selected stones in formation", () => {
         const result = applyRecorderCorrection({
             boardSize: 19,
             gameState,
@@ -338,9 +549,9 @@ describe("game correction UI helpers", () => {
             gameState: {
                 ...gameState,
                 moves: [
-                    { type: "play", x: 4, y: 4, color: "B" },
-                    gameState.moves[1],
                     { type: "play", x: 5, y: 5, color: "B" },
+                    gameState.moves[1],
+                    { type: "play", x: 6, y: 6, color: "B" },
                 ],
             },
             selectedMoveIndexes: [0, 2],
@@ -349,7 +560,7 @@ describe("game correction UI helpers", () => {
         });
     });
 
-    it("uses the latest selection as the tap anchor for multi-stone corrections", () => {
+    it("uses the first selection as the tap anchor for multi-stone corrections", () => {
         const result = applyRecorderCorrection({
             boardSize: 19,
             gameState,
@@ -362,9 +573,9 @@ describe("game correction UI helpers", () => {
             gameState: {
                 ...gameState,
                 moves: [
-                    { type: "play", x: 5, y: 5, color: "B" },
+                    { type: "play", x: 4, y: 4, color: "B" },
                     gameState.moves[1],
-                    { type: "play", x: 6, y: 6, color: "B" },
+                    { type: "play", x: 5, y: 5, color: "B" },
                 ],
             },
             selectedMoveIndexes: [2, 0],
@@ -498,7 +709,44 @@ describe("game correction UI helpers", () => {
         });
     });
 
-    it("previews all selected stones for a multi-stone tap correction", () => {
+    it("checks recorder correction legality for preview visibility", () => {
+        expect(
+            isRecorderCorrectionLegal({
+                boardSize: 19,
+                from: { x: 3, y: 3 },
+                gameState,
+                selectedMoveIndexes: [0],
+                vertex: { x: 5, y: 5 },
+            })
+        ).toBe(true);
+        expect(
+            isRecorderCorrectionLegal({
+                boardSize: 19,
+                from: { x: 3, y: 3 },
+                gameState,
+                selectedMoveIndexes: [0],
+                vertex: { x: 4, y: 4 },
+            })
+        ).toBe(false);
+        expect(
+            shouldShowCorrectionTouchGuide({
+                hasTouchPreview: true,
+                isMovingSelectedStones: true,
+                hasValidDragPreview: false,
+                isDeselectingLastStone: false,
+            })
+        ).toBe(false);
+        expect(
+            shouldShowCorrectionTouchGuide({
+                hasTouchPreview: true,
+                isMovingSelectedStones: false,
+                hasValidDragPreview: false,
+                isDeselectingLastStone: true,
+            })
+        ).toBe(false);
+    });
+
+    it("previews all selected stones for a multi-stone tap correction from the first selected stone", () => {
         expect(
             getCorrectionPreviewStones({
                 currentPlayer: "W",
@@ -507,8 +755,8 @@ describe("game correction UI helpers", () => {
                 vertex: { x: 5, y: 5 },
             })
         ).toEqual([
-            { x: 4, y: 4, color: "B" },
             { x: 5, y: 5, color: "B" },
+            { x: 6, y: 6, color: "B" },
         ]);
     });
 
@@ -550,7 +798,7 @@ describe("game correction UI helpers", () => {
         ).toEqual([{ x: 5, y: 5, color: "B" }]);
     });
 
-    it("previews multi-stone taps from the last selected stone and preserves colors", () => {
+    it("previews multi-stone taps from the first selected stone and preserves colors", () => {
         const mixedColorGameState: GameState = {
             setupStones: [],
             moves: [
@@ -569,8 +817,8 @@ describe("game correction UI helpers", () => {
                 vertex: { x: 12, y: 11 },
             })
         ).toEqual([
-            { x: 5, y: 4, color: "B" },
-            { x: 12, y: 11, color: "W" },
+            { x: 12, y: 11, color: "B" },
+            { x: 19, y: 18, color: "W" },
         ]);
     });
 
@@ -605,7 +853,7 @@ describe("game correction UI helpers", () => {
                 gameState,
                 selectedMoveIndexes: [2, 0],
             })
-        ).toEqual({ x: 3, y: 3 });
+        ).toEqual({ x: 4, y: 4 });
     });
 
     it("rejects a stone correction that would make replay illegal", () => {

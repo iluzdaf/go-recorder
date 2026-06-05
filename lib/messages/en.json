@@ -37,6 +37,7 @@
     "failedToGenerateQrCode": "Failed to generate QR code",
     "dismissMessage": "Dismiss message",
     "exitStoneCorrectionMode": "Exit stone correction mode",
+    "moveSelectedStones": "Move selected stones",
     "undo": "Undo",
     "pass": "Pass",
     "downloadSgf": "Download SGF",

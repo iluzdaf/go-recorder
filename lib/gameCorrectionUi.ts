@@ -7,10 +7,24 @@ export type Vertex = {
     y: number;
 };
 
-export type CorrectionTapAction = "correct" | "deselect" | "play";
+export type CorrectionTapAction = "select" | "deselect" | "play";
 
 export type CorrectionPreviewStone = Vertex & {
     color: Stone;
+};
+
+export type StoneSelectionDragState = {
+    pointerId: number;
+    origin: Vertex;
+    offsetX: number;
+    offsetY: number;
+};
+
+export type BoardGridGeometry = {
+    left: number;
+    top: number;
+    cellSize: number;
+    boardSize: BoardSize;
 };
 
 export type ApplyRecorderCorrectionResult =
@@ -98,7 +112,7 @@ export function getCorrectionTapAction({
         return "deselect";
     }
 
-    return "correct";
+    return "select";
 }
 
 export function shouldStartStoneSelectionHold({
@@ -121,20 +135,6 @@ export function didPointerLeaveHoldVertex({
     return (
         origin !== null &&
         (vertex === null || vertex.x !== origin.x || vertex.y !== origin.y)
-    );
-}
-
-export function shouldApplyHoldDragCorrection({
-    origin,
-    vertex,
-}: {
-    origin: Vertex | null;
-    vertex: Vertex | null;
-}) {
-    return (
-        origin !== null &&
-        vertex !== null &&
-        (vertex.x !== origin.x || vertex.y !== origin.y)
     );
 }
 
@@ -162,6 +162,152 @@ export function shouldShowStoneSelectionCloseButton({
     isDraggingSelectedStones: boolean;
 }) {
     return hasSelectedStone && !isDraggingSelectedStones;
+}
+
+export function shouldShowCorrectionTouchGuide({
+    hasTouchPreview,
+    isMovingSelectedStones,
+    hasValidDragPreview,
+    isDeselectingLastStone,
+}: {
+    hasTouchPreview: boolean;
+    isMovingSelectedStones: boolean;
+    hasValidDragPreview: boolean;
+    isDeselectingLastStone: boolean;
+}) {
+    return (
+        hasTouchPreview &&
+        !isDeselectingLastStone &&
+        (!isMovingSelectedStones || hasValidDragPreview)
+    );
+}
+
+export function shouldShowOriginalSelectedStones({
+    isMovingSelectedStones,
+    hasValidDragPreview,
+}: {
+    isMovingSelectedStones: boolean;
+    hasValidDragPreview: boolean;
+}) {
+    return !isMovingSelectedStones || !hasValidDragPreview;
+}
+
+export function shouldShowPlacementPreview({
+    hasTouchPreview,
+    hasSelectedStone,
+    isCorrectionDragActive,
+}: {
+    hasTouchPreview: boolean;
+    hasSelectedStone: boolean;
+    isCorrectionDragActive: boolean;
+}) {
+    return hasTouchPreview && !hasSelectedStone && !isCorrectionDragActive;
+}
+
+export function toggleCorrectionSelection({
+    moveIndex,
+    selectedMoveIndexes,
+}: {
+    moveIndex: number;
+    selectedMoveIndexes: number[];
+}) {
+    return selectedMoveIndexes.includes(moveIndex)
+        ? selectedMoveIndexes.filter((selectedMoveIndex) => selectedMoveIndex !== moveIndex)
+        : [...selectedMoveIndexes, moveIndex];
+}
+
+export function visitCorrectionSelectionDragMove({
+    moveIndex,
+    selectedMoveIndexes,
+    visitedMoveIndexes,
+}: {
+    moveIndex: number | null;
+    selectedMoveIndexes: number[];
+    visitedMoveIndexes: Set<number>;
+}) {
+    if (moveIndex === null || visitedMoveIndexes.has(moveIndex)) {
+        return {
+            selectedMoveIndexes,
+            visitedMoveIndexes,
+            didToggle: false,
+        };
+    }
+
+    const nextVisitedMoveIndexes = new Set(visitedMoveIndexes);
+    nextVisitedMoveIndexes.add(moveIndex);
+
+    return {
+        selectedMoveIndexes: toggleCorrectionSelection({
+            moveIndex,
+            selectedMoveIndexes,
+        }),
+        visitedMoveIndexes: nextVisitedMoveIndexes,
+        didToggle: true,
+    };
+}
+
+export function getVertexFromBoardPointer({
+    clientX,
+    clientY,
+    grid,
+}: {
+    clientX: number;
+    clientY: number;
+    grid: BoardGridGeometry;
+}): Vertex | null {
+    const localX = clientX - grid.left;
+    const localY = clientY - grid.top;
+
+    const x = Math.round(localX / grid.cellSize - 0.5);
+    const y = Math.round(localY / grid.cellSize - 0.5);
+
+    if (x < 0 || x >= grid.boardSize || y < 0 || y >= grid.boardSize) {
+        return null;
+    }
+
+    return { x, y };
+}
+
+export function createStoneSelectionDragState({
+    grid,
+    origin,
+    pointerId,
+    pointerX,
+    pointerY,
+}: {
+    grid: BoardGridGeometry;
+    origin: Vertex;
+    pointerId: number;
+    pointerX: number;
+    pointerY: number;
+}): StoneSelectionDragState {
+    const stoneCenterX = grid.left + origin.x * grid.cellSize + grid.cellSize / 2;
+    const stoneCenterY = grid.top + origin.y * grid.cellSize + grid.cellSize / 2;
+
+    return {
+        pointerId,
+        origin,
+        offsetX: pointerX - stoneCenterX,
+        offsetY: pointerY - stoneCenterY,
+    };
+}
+
+export function getStoneSelectionDragVertexFromPointer({
+    clientX,
+    clientY,
+    dragState,
+    grid,
+}: {
+    clientX: number;
+    clientY: number;
+    dragState: StoneSelectionDragState;
+    grid: BoardGridGeometry;
+}): Vertex | null {
+    return getVertexFromBoardPointer({
+        clientX: clientX - dragState.offsetX,
+        clientY: clientY - dragState.offsetY,
+        grid,
+    });
 }
 
 export function createMoveEdits({
@@ -222,7 +368,7 @@ function getDefaultCorrectionOrigin({
     gameState: GameState;
     selectedMoveIndexes: number[];
 }): Vertex | null {
-    const anchorMoveIndex = selectedMoveIndexes.at(-1);
+    const anchorMoveIndex = selectedMoveIndexes[0];
 
     return getMoveVertex({
         gameState,
@@ -293,6 +439,31 @@ export function getCorrectionPreviewStones({
             color: move.color,
         };
     });
+}
+
+export function isRecorderCorrectionLegal({
+    boardSize,
+    from,
+    gameState,
+    selectedMoveIndexes,
+    vertex,
+}: {
+    boardSize: BoardSize;
+    from: Vertex;
+    gameState: GameState;
+    selectedMoveIndexes: number[];
+    vertex: Vertex;
+}) {
+    return validateMoveEdits({
+        boardSize,
+        originalGameState: gameState,
+        edits: createMoveEdits({
+            from,
+            gameState,
+            selectedMoveIndexes,
+            to: vertex,
+        }),
+    }).ok;
 }
 
 export function applyRecorderCorrection({
