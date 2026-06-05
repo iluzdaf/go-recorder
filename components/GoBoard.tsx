@@ -105,7 +105,7 @@ function getActionBarStorageKey(id: string) {
 }
 
 function isActionBarAnchor(value: string | null): value is ActionBarAnchor {
-    return value === "left" || value === "center" || value === "right";
+    return value === "left" || value === "right";
 }
 
 function getActionBarAnchorFromClientX({
@@ -118,9 +118,7 @@ function getActionBarAnchorFromClientX({
     const { left, width } = container.getBoundingClientRect();
     const relativeX = clientX - left;
 
-    if (relativeX < width / 3) return "left";
-    if (relativeX < (width * 2) / 3) return "center";
-    return "right";
+    return relativeX < width / 2 ? "left" : "right";
 }
 
 export default function GoBoard({ id }: GoBoardProps) {
@@ -197,13 +195,13 @@ export default function GoBoard({ id }: GoBoardProps) {
     const actionBarDragRef = useRef<ActionBarDragState | null>(null);
     const actionBarRailRef = useRef<HTMLDivElement | null>(null);
     const [actionBarAnchor, setActionBarAnchor] = useState<ActionBarAnchor>(() => {
-        if (typeof window === "undefined") return "center";
+        if (typeof window === "undefined") return "left";
 
         const storedAnchor = window.localStorage.getItem(
             getActionBarStorageKey(id)
         );
 
-        return isActionBarAnchor(storedAnchor) ? storedAnchor : "center";
+        return isActionBarAnchor(storedAnchor) ? storedAnchor : "left";
     });
     const [actionBarDragX, setActionBarDragX] = useState<number | null>(null);
     const [gameMetadata, setGameMetadata] = useState({

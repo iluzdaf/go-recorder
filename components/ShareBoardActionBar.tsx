@@ -12,7 +12,7 @@ import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 
 import { t } from "../lib/i18n";
 
-export type ShareBoardActionBarAnchor = "left" | "center" | "right";
+export type ShareBoardActionBarAnchor = "left" | "right";
 
 type ShareBoardActionBarProps = {
     anchor: ShareBoardActionBarAnchor;
@@ -84,9 +84,7 @@ export default function ShareBoardActionBar({
                             ? "absolute top-1/2 -translate-y-1/2"
                             : anchor === "left"
                               ? "absolute left-0 top-1/2 -translate-y-1/2"
-                              : anchor === "right"
-                                ? "absolute right-0 top-1/2 -translate-y-1/2"
-                                : "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+                              : "absolute right-0 top-1/2 -translate-y-1/2"
                     }
                     style={dragX !== null ? { left: `${dragX}px` } : undefined}
                 >

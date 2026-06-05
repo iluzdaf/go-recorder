@@ -77,9 +77,7 @@ function getActionBarAnchorFromClientX({
     const { left, width } = container.getBoundingClientRect();
     const relativeX = clientX - left;
 
-    if (relativeX < width / 3) return "left";
-    if (relativeX < (width * 2) / 3) return "center";
-    return "right";
+    return relativeX < width / 2 ? "left" : "right";
 }
 
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
@@ -92,7 +90,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const actionBarRailRef = useRef<HTMLDivElement | null>(null);
     const actionBarDragRef = useRef<ActionBarDragState | null>(null);
     const [actionBarAnchor, setActionBarAnchor] =
-        useState<ShareBoardActionBarAnchor>("center");
+        useState<ShareBoardActionBarAnchor>("left");
     const [actionBarDragX, setActionBarDragX] = useState<number | null>(null);
     const [shareMenuOpen, setShareMenuOpen] = useState(false);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
