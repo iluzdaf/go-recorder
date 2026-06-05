@@ -11,6 +11,7 @@ import {
     Download,
     Link2,
     X,
+    GripVertical,
     SquareArrowUpRight,
     SquareArrowOutUpRight,
     Hand,
@@ -41,11 +42,11 @@ import { replayGame } from "../lib/gameReplay";
 import {
     applyRecorderCorrection,
     didPointerLeaveHoldVertex,
+    getCorrectionTapAction,
     getEditableMoveIndexAtVertex,
     getSelectedMoveVertices,
     getStoneCorrectionOrigin,
     isStoneSelectionDragActive,
-    shouldApplyHoldDragCorrection,
     shouldShowStoneSelectionCloseButton,
     shouldStartStoneSelectionHold,
     type Vertex,
@@ -129,9 +130,10 @@ export default function GoBoard({ id }: GoBoardProps) {
     const needsSaveAfterCurrentSaveRef = useRef(false);
     const stoneSelectTimeoutRef = useRef<number | null>(null);
     const stoneSelectOriginRef = useRef<Vertex | null>(null);
-    const stoneSelectMoveIndexRef = useRef<number | null>(null);
     const selectedGroupDragOriginRef = useRef<Vertex | null>(null);
+    const stoneSelectionDragPointerIdRef = useRef<number | null>(null);
     const didSelectStoneByHoldRef = useRef(false);
+    const didDragStoneSelectionRef = useRef(false);
     const [didStartStoneSelectionDrag, setDidStartStoneSelectionDrag] =
         useState(false);
     const lastSavedSnapshotRef = useRef("");
@@ -417,15 +419,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     const dragPreview = touchPreview
         ? (() => {
               if (!dragOrigin) return null;
-              if (
-                  !didStartStoneSelectionDrag &&
-                  !shouldApplyHoldDragCorrection({
-                      origin: dragOrigin,
-                      vertex: touchPreview,
-                  })
-              ) {
-                  return null;
-              }
+              if (!didStartStoneSelectionDrag) return null;
 
               const previewSignMap = cloneSignMap(signMap);
               const previewVertices: [number, number][] = [];
@@ -494,6 +488,34 @@ export default function GoBoard({ id }: GoBoardProps) {
         hasSelectedStone: Boolean(selectedMoveVertices[0]),
         isDraggingSelectedStones: isMovingSelectedStones,
     });
+    const stoneCorrectionButtonCenterX = selectedMoveVertices[0]
+        ? Math.min(
+              Math.max(
+                  gridMetrics.left +
+                      selectedMoveVertices[0].x * gridMetrics.cellSize +
+                      gridMetrics.cellSize / 2,
+                  18
+              ),
+              gridMetrics.left + gridMetrics.boardSizePx - 18
+          )
+        : 0;
+    const stoneCorrectionButtonTop = selectedMoveVertices[0]
+        ? Math.max(
+              18,
+              gridMetrics.top +
+                  selectedMoveVertices[0].y * gridMetrics.cellSize +
+                  gridMetrics.cellSize / 2 -
+                  gridMetrics.cellSize * 1.15
+          )
+        : 0;
+    const stoneCorrectionHandleCenterX = selectedMoveVertices[0]
+        ? stoneCorrectionButtonCenterX - 44 >= 18
+            ? stoneCorrectionButtonCenterX - 44
+            : Math.min(
+                  gridMetrics.left + gridMetrics.boardSizePx - 18,
+                  stoneCorrectionButtonCenterX + 44
+              )
+        : 0;
 
     const getGridMetrics = () => {
         const gobanWrapper = gobanWrapperRef.current;
@@ -537,15 +559,97 @@ export default function GoBoard({ id }: GoBoardProps) {
         }
         stoneSelectTimeoutRef.current = null;
         stoneSelectOriginRef.current = null;
-        stoneSelectMoveIndexRef.current = null;
     };
 
     const clearStoneSelectionDragState = () => {
         didSelectStoneByHoldRef.current = false;
         setDidStartStoneSelectionDrag(false);
+        didDragStoneSelectionRef.current = false;
         stoneSelectOriginRef.current = null;
-        stoneSelectMoveIndexRef.current = null;
+        selectedGroupDragOriginRef.current = null;
+        setSelectedGroupDragOriginState(null);
+        stoneSelectionDragPointerIdRef.current = null;
         touchPreviewVertexRef.current = null;
+    };
+
+    const startStoneSelectionHandleDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+        if (selectedMoveIndexesRef.current.length === 0) return;
+
+        const origin = getStoneCorrectionOrigin({
+            gameState,
+            selectedMoveIndexes: selectedMoveIndexesRef.current,
+        });
+
+        if (!origin) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.currentTarget.setPointerCapture(event.pointerId);
+
+        stoneSelectionDragPointerIdRef.current = event.pointerId;
+        selectedGroupDragOriginRef.current = origin;
+        setSelectedGroupDragOriginState(origin);
+        setDidStartStoneSelectionDrag(true);
+        touchPreviewVertexRef.current = origin;
+        setTouchPreview({
+            ...origin,
+            screenX: event.clientX,
+            screenY: event.clientY,
+        });
+    };
+
+    const updateStoneSelectionHandleDrag = (
+        event: ReactPointerEvent<HTMLButtonElement>
+    ) => {
+        if (stoneSelectionDragPointerIdRef.current !== event.pointerId) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        updateTouchPreview(event.clientX, event.clientY);
+    };
+
+    const finishStoneSelectionHandleDrag = (
+        event: ReactPointerEvent<HTMLButtonElement>
+    ) => {
+        if (stoneSelectionDragPointerIdRef.current !== event.pointerId) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const pointerVertex = touchPreviewVertexRef.current;
+        const origin = selectedGroupDragOriginRef.current;
+        const shouldCommit = didStartStoneSelectionDrag && pointerVertex !== null;
+
+        if (shouldCommit && origin !== null) {
+            correctMoves(
+                selectedMoveIndexesRef.current,
+                pointerVertex,
+                origin
+            );
+        }
+
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+
+        clearStoneSelectionDragState();
+        setTouchPreview(null);
+    };
+
+    const cancelStoneSelectionHandleDrag = (
+        event: ReactPointerEvent<HTMLButtonElement>
+    ) => {
+        if (stoneSelectionDragPointerIdRef.current !== event.pointerId) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+
+        clearStoneSelectionDragState();
+        setTouchPreview(null);
     };
 
     const setSelectedGroupDragOrigin = (vertex: Vertex | null) => {
@@ -591,15 +695,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         setHasUnsavedChanges(true);
     };
 
-    const getSelectionWithHeldMove = (moveIndex: number | null) => {
-        if (moveIndex === null) return selectedMoveIndexesRef.current;
-        if (selectedMoveIndexesRef.current.includes(moveIndex)) {
-            return selectedMoveIndexesRef.current;
-        }
-
-        return [...selectedMoveIndexesRef.current, moveIndex];
-    };
-
     const correctMoves = (moveIndexes: number[], vertex: Vertex, from?: Vertex) => {
         const result = applyRecorderCorrection({
             boardSize: size,
@@ -622,10 +717,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         setShareStatus(result.status);
         setHasUnsavedChanges(result.hasUnsavedChanges);
         return true;
-    };
-
-    const correctSelectedMoves = (vertex: Vertex) => {
-        return correctMoves(selectedMoveIndexes, vertex);
     };
 
     const updateTouchPreview = (clientX: number, clientY: number) => {
@@ -1260,7 +1351,6 @@ export default function GoBoard({ id }: GoBoardProps) {
 
                             didSelectStoneByHoldRef.current = false;
                             setDidStartStoneSelectionDrag(false);
-                            setSelectedGroupDragOrigin(null);
                             clearStoneSelectTimeout();
                             isStonePlacementActiveRef.current = Boolean(vertex);
                             stonePlacementCanCommitRef.current = Boolean(vertex);
@@ -1283,15 +1373,11 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 visibleStoneOwners: replay.visibleStoneOwners,
                             });
 
-                            if (
-                                selectedMoveIndexes.length > 0 &&
-                                editableMoveIndex !== null
-                            ) {
+                            if (selectedMoveIndexes.length > 0) {
                                 stoneSelectOriginRef.current = vertex;
-                            }
-
-                            if (selectedMoveIndexes.length > 1) {
-                                setSelectedGroupDragOrigin(vertex);
+                                didDragStoneSelectionRef.current = false;
+                                touchPreviewVertexRef.current = vertex;
+                                return;
                             }
 
                             if (
@@ -1301,16 +1387,13 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 }) &&
                                 editableMoveIndex !== null
                             ) {
-                                const heldMoveIndex = editableMoveIndex;
-
                                 stoneSelectOriginRef.current = vertex;
-                                stoneSelectMoveIndexRef.current = heldMoveIndex;
                                 stoneSelectTimeoutRef.current = window.setTimeout(() => {
                                     didSelectStoneByHoldRef.current = true;
                                     setSelectedMoveIndexes((current) => {
-                                        const nextSelection = current.includes(heldMoveIndex)
+                                        const nextSelection = current.includes(editableMoveIndex)
                                             ? current
-                                            : [...current, heldMoveIndex];
+                                            : [...current, editableMoveIndex];
                                         selectedMoveIndexesRef.current = nextSelection;
                                         return nextSelection;
                                     });
@@ -1328,22 +1411,55 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 event.clientX,
                                 event.clientY
                             );
-                            const origin =
-                                selectedGroupDragOriginRef.current ??
-                                stoneSelectOriginRef.current;
+                            if (selectedMoveIndexesRef.current.length > 0) {
+                                const origin = stoneSelectOriginRef.current;
+                                if (
+                                    origin !== null &&
+                                    didPointerLeaveHoldVertex({ origin, vertex })
+                                ) {
+                                    didDragStoneSelectionRef.current = true;
+                                }
+
+                                const editableMoveIndex = vertex
+                                    ? getEditableMoveIndexAtVertex({
+                                          moves: gameState.moves,
+                                          vertex,
+                                          visibleStoneOwners: replay.visibleStoneOwners,
+                                      })
+                                    : null;
+
+                                if (
+                                    editableMoveIndex !== null &&
+                                    !selectedMoveIndexesRef.current.includes(
+                                        editableMoveIndex
+                                    )
+                                ) {
+                                    setSelectedMoveIndexes((current) => {
+                                        if (current.includes(editableMoveIndex)) {
+                                            return current;
+                                        }
+
+                                        const nextSelection = [
+                                            ...current,
+                                            editableMoveIndex,
+                                        ];
+                                        selectedMoveIndexesRef.current = nextSelection;
+                                        return nextSelection;
+                                    });
+                                    setShareStatus(null);
+                                    didDragStoneSelectionRef.current = true;
+                                }
+
+                                return;
+                            }
+
+                            const origin = stoneSelectOriginRef.current;
 
                             if (
                                 stoneSelectTimeoutRef.current !== null &&
                                 didPointerLeaveHoldVertex({ origin, vertex })
                             ) {
                                 clearStoneSelectTimeout();
-                            }
-
-                            if (
-                                origin !== null &&
-                                didPointerLeaveHoldVertex({ origin, vertex })
-                            ) {
-                                setDidStartStoneSelectionDrag(true);
                             }
                         }}
                         onPointerUp={(event) => {
@@ -1358,9 +1474,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 event.clientX,
                                 event.clientY
                             );
-                            const origin = stoneSelectOriginRef.current;
-                            const holdMoveIndex = stoneSelectMoveIndexRef.current;
-                            const selectedGroupDragOrigin = selectedGroupDragOriginRef.current;
                             const editableMoveIndex = vertex
                                 ? getEditableMoveIndexAtVertex({
                                       moves: gameState.moves,
@@ -1388,57 +1501,10 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 return;
                             }
 
-                            if (selectedMoveIndexesRef.current.length > 0) {
-                                if (didStartStoneSelectionDrag) {
-                                    const stoneSelectionDragOrigin =
-                                        getStoneCorrectionOrigin({
-                                            from: selectedGroupDragOrigin,
-                                            gameState,
-                                            selectedMoveIndexes:
-                                                selectedMoveIndexesRef.current,
-                                        });
-                                    const stoneSelectionDragVertex =
-                                        touchPreviewVertexRef.current ?? vertex;
-
-                                    if (
-                                        stoneSelectionDragVertex &&
-                                        shouldApplyHoldDragCorrection({
-                                            origin: stoneSelectionDragOrigin,
-                                            vertex: stoneSelectionDragVertex,
-                                        })
-                                    ) {
-                                        correctMoves(
-                                            selectedMoveIndexesRef.current,
-                                            stoneSelectionDragVertex,
-                                            stoneSelectionDragOrigin ?? undefined
-                                        );
-                                    }
-
-                                    setSelectedGroupDragOrigin(null);
-                                    releaseTouchPreview();
-                                    return;
-                                }
-                            }
-
                             if (didSelectStoneByHoldRef.current) {
-                                if (
-                                    vertex &&
-                                    shouldApplyHoldDragCorrection({
-                                        origin,
-                                        vertex,
-                                    })
-                                ) {
-                                    correctMoves(
-                                        getSelectionWithHeldMove(holdMoveIndex),
-                                        vertex,
-                                        origin ?? undefined
-                                    );
-                                }
                                 releaseTouchPreview();
                                 return;
                             }
-
-                            setSelectedGroupDragOrigin(null);
 
                             if (selectedMoveIndexesRef.current.length === 0) {
                                 if (editableMoveIndex !== null) {
@@ -1451,19 +1517,48 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 return;
                             }
 
-                            if (editableMoveIndex !== null) {
-                                setSelectedMoveIndexes((current) => {
-                                    const nextSelection = current.includes(editableMoveIndex)
-                                        ? current.filter((moveIndex) => moveIndex !== editableMoveIndex)
-                                        : [...current, editableMoveIndex];
-                                    selectedMoveIndexesRef.current = nextSelection;
-                                    return nextSelection;
-                                });
+                            if (didDragStoneSelectionRef.current) {
                                 releaseTouchPreview();
                                 return;
                             }
 
-                            correctSelectedMoves(vertex);
+                            if (editableMoveIndex !== null) {
+                                const correctionTapAction = getCorrectionTapAction({
+                                    editableMoveIndexAtVertex: editableMoveIndex,
+                                    selectedMoveIndexes: selectedMoveIndexesRef.current,
+                                });
+
+                                if (correctionTapAction === "deselect") {
+                                    setSelectedMoveIndexes((current) => {
+                                        const nextSelection = current.filter(
+                                            (moveIndex) => moveIndex !== editableMoveIndex
+                                        );
+                                        selectedMoveIndexesRef.current = nextSelection;
+                                        if (nextSelection.length === 0) {
+                                            setSelectedGroupDragOrigin(null);
+                                        }
+                                        return nextSelection;
+                                    });
+                                } else if (correctionTapAction === "select") {
+                                    setSelectedMoveIndexes((current) => {
+                                        if (current.includes(editableMoveIndex)) {
+                                            return current;
+                                        }
+
+                                        const nextSelection = [
+                                            ...current,
+                                            editableMoveIndex,
+                                        ];
+                                        selectedMoveIndexesRef.current = nextSelection;
+                                        return nextSelection;
+                                    });
+                                    setShareStatus(null);
+                                }
+
+                                releaseTouchPreview();
+                                return;
+                            }
+
                             releaseTouchPreview();
                         }}
                         onPointerCancel={(event) => {
@@ -1493,9 +1588,33 @@ export default function GoBoard({ id }: GoBoardProps) {
                         dimmedVertices={renderDimmedVertices}
                         showCoordinates
                     />
-                    {showExitStoneEditModeButton ? (
-                        <button
-                            type="button"
+                        {selectedMoveVertices[0] ? (
+                            <button
+                                type="button"
+                                className={
+                                    isDarkMode
+                                        ? "absolute z-30 inline-flex h-9 w-9 items-center justify-center rounded-full border border-neutral-700 bg-neutral-950 text-white shadow-lg hover:bg-neutral-900 active:cursor-grabbing"
+                                        : "absolute z-30 inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 shadow-lg hover:bg-zinc-100 active:cursor-grabbing"
+                                }
+                                style={{
+                                    left: stoneCorrectionHandleCenterX,
+                                    top: stoneCorrectionButtonTop,
+                                    transform: "translate(-50%, -50%)",
+                                }}
+                                onPointerDown={startStoneSelectionHandleDrag}
+                                onPointerMove={updateStoneSelectionHandleDrag}
+                                onPointerUp={finishStoneSelectionHandleDrag}
+                                onPointerCancel={cancelStoneSelectionHandleDrag}
+                                onLostPointerCapture={cancelStoneSelectionHandleDrag}
+                                aria-label={t("moveSelectedStones")}
+                                title={t("moveSelectedStones")}
+                            >
+                                <GripVertical size={16} />
+                            </button>
+                        ) : null}
+                        {showExitStoneEditModeButton ? (
+                            <button
+                                type="button"
                                 className={
                                     isDarkMode
                                         ? "absolute z-30 inline-flex h-9 w-9 items-center justify-center rounded-full border border-neutral-700 bg-neutral-950 text-white shadow-lg hover:bg-neutral-900"

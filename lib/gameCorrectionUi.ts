@@ -7,7 +7,7 @@ export type Vertex = {
     y: number;
 };
 
-export type CorrectionTapAction = "correct" | "deselect" | "play";
+export type CorrectionTapAction = "select" | "deselect" | "play";
 
 export type CorrectionPreviewStone = Vertex & {
     color: Stone;
@@ -98,7 +98,7 @@ export function getCorrectionTapAction({
         return "deselect";
     }
 
-    return "correct";
+    return "select";
 }
 
 export function shouldStartStoneSelectionHold({
@@ -121,20 +121,6 @@ export function didPointerLeaveHoldVertex({
     return (
         origin !== null &&
         (vertex === null || vertex.x !== origin.x || vertex.y !== origin.y)
-    );
-}
-
-export function shouldApplyHoldDragCorrection({
-    origin,
-    vertex,
-}: {
-    origin: Vertex | null;
-    vertex: Vertex | null;
-}) {
-    return (
-        origin !== null &&
-        vertex !== null &&
-        (vertex.x !== origin.x || vertex.y !== origin.y)
     );
 }
 
@@ -222,7 +208,7 @@ function getDefaultCorrectionOrigin({
     gameState: GameState;
     selectedMoveIndexes: number[];
 }): Vertex | null {
-    const anchorMoveIndex = selectedMoveIndexes.at(-1);
+    const anchorMoveIndex = selectedMoveIndexes[0];
 
     return getMoveVertex({
         gameState,
