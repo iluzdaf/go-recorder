@@ -392,17 +392,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         const gobanWrapper = gobanWrapperRef.current;
         if (!boardArea || !gobanWrapper) return;
 
-        const updateBoardGeometry = () => {
-            const { width, height } = boardArea.getBoundingClientRect();
-            const availableSize = Math.max(0, Math.min(width, height) - BOARD_PADDING_PX);
-            const coordinateGutterVertices = 1;
-            const nextVertexSize = Math.max(
-                16,
-                Math.floor(availableSize / (size + coordinateGutterVertices))
-            );
-
-            setVertexSize(nextVertexSize);
-
+        const updateGridMetrics = () => {
             const grid = gobanWrapper.querySelector(".shudan-grid");
             if (!(grid instanceof SVGElement)) return;
 
@@ -415,15 +405,58 @@ export default function GoBoard({ id }: GoBoardProps) {
                 boardSizePx: gridRect.width,
             };
 
-            setGridMetrics(nextGridMetrics);
+            setGridMetrics((currentGridMetrics) =>
+                currentGridMetrics.left === nextGridMetrics.left &&
+                currentGridMetrics.top === nextGridMetrics.top &&
+                currentGridMetrics.cellSize === nextGridMetrics.cellSize &&
+                currentGridMetrics.boardSizePx === nextGridMetrics.boardSizePx
+                    ? currentGridMetrics
+                    : nextGridMetrics
+            );
+        };
+
+        let animationFrameId: number | null = null;
+        const updateBoardGeometry = () => {
+            const { width, height } = boardArea.getBoundingClientRect();
+            const availableSize = Math.max(0, Math.min(width, height) - BOARD_PADDING_PX);
+            const coordinateGutterVertices = 1;
+            const nextVertexSize = Math.max(
+                16,
+                Math.floor(availableSize / (size + coordinateGutterVertices))
+            );
+
+            setVertexSize((currentVertexSize) =>
+                currentVertexSize === nextVertexSize
+                    ? currentVertexSize
+                    : nextVertexSize
+            );
+            updateGridMetrics();
+
+            if (animationFrameId !== null) {
+                window.cancelAnimationFrame(animationFrameId);
+            }
+            animationFrameId = window.requestAnimationFrame(() => {
+                animationFrameId = null;
+                updateGridMetrics();
+            });
         };
 
         updateBoardGeometry();
 
         const resizeObserver = new ResizeObserver(updateBoardGeometry);
         resizeObserver.observe(boardArea);
+        resizeObserver.observe(gobanWrapper);
+        window.addEventListener("resize", updateBoardGeometry);
+        window.addEventListener("orientationchange", updateBoardGeometry);
 
-        return () => resizeObserver.disconnect();
+        return () => {
+            resizeObserver.disconnect();
+            window.removeEventListener("resize", updateBoardGeometry);
+            window.removeEventListener("orientationchange", updateBoardGeometry);
+            if (animationFrameId !== null) {
+                window.cancelAnimationFrame(animationFrameId);
+            }
+        };
     }, [size]);
 
     const replay = replayGame({
