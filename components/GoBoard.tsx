@@ -484,17 +484,25 @@ export default function GoBoard({ id }: GoBoardProps) {
                   return nextMarkerMap;
             })()
             : markerMap;
-    const hasStoneCorrectionSelection = Boolean(selectedMoveVertices[0]);
-    const stoneCorrectionPillLeft = selectedMoveVertices[0]
+    const dragPreviewAnchorVertex = dragPreview?.selectedVertices[0]
+        ? {
+              x: dragPreview.selectedVertices[0][0],
+              y: dragPreview.selectedVertices[0][1],
+          }
+        : null;
+    const stoneCorrectionAnchorVertex =
+        dragPreviewAnchorVertex ?? selectedMoveVertices[0];
+    const hasStoneCorrectionSelection = Boolean(stoneCorrectionAnchorVertex);
+    const stoneCorrectionPillLeft = stoneCorrectionAnchorVertex
         ? gridMetrics.left +
-          selectedMoveVertices[0].x * gridMetrics.cellSize +
+          stoneCorrectionAnchorVertex.x * gridMetrics.cellSize +
           gridMetrics.cellSize / 2
         : 0;
-    const stoneCorrectionPillTop = selectedMoveVertices[0]
+    const stoneCorrectionPillTop = stoneCorrectionAnchorVertex
         ? Math.max(
               8,
               gridMetrics.top +
-                  selectedMoveVertices[0].y * gridMetrics.cellSize -
+                  stoneCorrectionAnchorVertex.y * gridMetrics.cellSize -
                   STONE_CORRECTION_PILL_GAP_PX -
                   STONE_CORRECTION_PILL_HEIGHT_PX
           )
