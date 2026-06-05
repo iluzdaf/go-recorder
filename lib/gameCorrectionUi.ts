@@ -30,7 +30,7 @@ export type BoardGridGeometry = {
 export type StoneCorrectionHandlePosition = {
     left: number;
     top: number;
-    transform: "translateX(-50%)" | "translate(-50%, -50%)";
+    transform: "translateX(-50%)";
 };
 
 type StoneCorrectionHandleGrid = Pick<
@@ -86,19 +86,17 @@ export function getStoneCorrectionHandleAnchor(vertices: Vertex[]): Vertex | nul
 
     let minX = vertices[0]?.x ?? 0;
     let maxX = minX;
-    let minY = vertices[0]?.y ?? 0;
-    let maxY = minY;
+    let maxY = vertices[0]?.y ?? 0;
 
     for (const vertex of vertices) {
         minX = Math.min(minX, vertex.x);
         maxX = Math.max(maxX, vertex.x);
-        minY = Math.min(minY, vertex.y);
         maxY = Math.max(maxY, vertex.y);
     }
 
     return {
         x: (minX + maxX) / 2,
-        y: (minY + maxY) / 2,
+        y: maxY,
     };
 }
 
@@ -106,29 +104,19 @@ export function getStoneCorrectionHandlePosition({
     anchor,
     gapPx,
     grid,
-    isSingleStoneSelection,
 }: {
     anchor: Vertex | null;
     gapPx: number;
     grid: StoneCorrectionHandleGrid;
-    isSingleStoneSelection: boolean;
 }): StoneCorrectionHandlePosition | null {
     if (!anchor) return null;
 
     const left = grid.left + anchor.x * grid.cellSize + grid.cellSize / 2;
 
-    if (isSingleStoneSelection) {
-        return {
-            left,
-            top: grid.top + (anchor.y + 1) * grid.cellSize + gapPx,
-            transform: "translateX(-50%)",
-        };
-    }
-
     return {
         left,
-        top: grid.top + anchor.y * grid.cellSize + grid.cellSize / 2,
-        transform: "translate(-50%, -50%)",
+        top: grid.top + (anchor.y + 1) * grid.cellSize + gapPx,
+        transform: "translateX(-50%)",
     };
 }
 

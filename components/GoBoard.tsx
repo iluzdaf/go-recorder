@@ -594,8 +594,6 @@ export default function GoBoard({ id }: GoBoardProps) {
     const stoneCorrectionHandleVertices = dragPreview
         ? dragPreview.selectedVertices.map(([x, y]) => ({ x, y }))
         : selectedMoveVertices;
-    const isSingleStoneCorrectionSelection =
-        stoneCorrectionHandleVertices.length === 1;
     const stoneCorrectionAnchorVertex = getStoneCorrectionHandleAnchor(
         stoneCorrectionHandleVertices
     );
@@ -603,7 +601,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         anchor: stoneCorrectionAnchorVertex,
         gapPx: STONE_CORRECTION_PILL_GAP_PX,
         grid: gridMetrics,
-        isSingleStoneSelection: isSingleStoneCorrectionSelection,
     });
     const hasStoneCorrectionSelection = Boolean(stoneCorrectionHandlePosition);
     const placementZoomVertexSize = placementZoomWindow

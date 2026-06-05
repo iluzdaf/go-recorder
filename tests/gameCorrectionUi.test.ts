@@ -70,7 +70,7 @@ describe("game correction UI helpers", () => {
         ).toEqual([]);
     });
 
-    it("centers the stone correction handle over selected stones", () => {
+    it("anchors the stone correction handle below selected stones", () => {
         expect(getStoneCorrectionHandleAnchor([])).toBeNull();
         expect(getStoneCorrectionHandleAnchor([{ x: 3, y: 3 }])).toEqual({
             x: 3,
@@ -82,16 +82,16 @@ describe("game correction UI helpers", () => {
                 { x: 7, y: 5 },
                 { x: 4, y: 9 },
             ])
-        ).toEqual({ x: 5, y: 6 });
+        ).toEqual({ x: 5, y: 9 });
         expect(
             getStoneCorrectionHandleAnchor([
                 { x: 3, y: 3 },
                 { x: 4, y: 4 },
             ])
-        ).toEqual({ x: 3.5, y: 3.5 });
+        ).toEqual({ x: 3.5, y: 4 });
     });
 
-    it("places the correction handle below one stone and centered for groups", () => {
+    it("places the correction handle below the selection", () => {
         const grid = {
             left: 10,
             top: 20,
@@ -104,7 +104,6 @@ describe("game correction UI helpers", () => {
                 anchor: null,
                 gapPx: 8,
                 grid,
-                isSingleStoneSelection: false,
             })
         ).toBeNull();
         expect(
@@ -112,7 +111,6 @@ describe("game correction UI helpers", () => {
                 anchor: { x: 3, y: 3 },
                 gapPx: 8,
                 grid,
-                isSingleStoneSelection: true,
             })
         ).toEqual({
             left: 115,
@@ -121,15 +119,14 @@ describe("game correction UI helpers", () => {
         });
         expect(
             getStoneCorrectionHandlePosition({
-                anchor: { x: 3.5, y: 3.5 },
+                anchor: { x: 3.5, y: 4 },
                 gapPx: 8,
                 grid,
-                isSingleStoneSelection: false,
             })
         ).toEqual({
             left: 130,
-            top: 140,
-            transform: "translate(-50%, -50%)",
+            top: 178,
+            transform: "translateX(-50%)",
         });
     });
 
