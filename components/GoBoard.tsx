@@ -1890,15 +1890,18 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 type="button"
                                 className={
                                     isDarkMode
-                                        ? "absolute z-30 inline-flex h-11 w-11 items-center justify-center rounded-full border border-neutral-700 bg-neutral-950 text-white shadow-lg hover:bg-neutral-900"
-                                        : "absolute z-30 inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 shadow-lg hover:bg-zinc-100"
+                                        ? "absolute z-30 inline-flex items-center justify-center rounded-full border border-neutral-600/60 bg-neutral-950/35 text-white shadow-lg hover:bg-neutral-950/60"
+                                        : "absolute z-30 inline-flex items-center justify-center rounded-full border border-zinc-300/60 bg-white/35 text-zinc-950 shadow-lg hover:bg-white/60"
                                 }
                                 style={{
                                     left:
                                         gridMetrics.left +
-                                        gridMetrics.boardSizePx -
-                                        44,
-                                    top: gridMetrics.top,
+                                        gridMetrics.boardSizePx,
+                                    top:
+                                        gridMetrics.top -
+                                        placementZoomVertexSize,
+                                    width: placementZoomVertexSize,
+                                    height: placementZoomVertexSize,
                                 }}
                                 onPointerDown={(event) => {
                                     event.stopPropagation();
