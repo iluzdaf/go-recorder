@@ -33,21 +33,10 @@ import {
 } from "../lib/gameLogic";
 import { getLocalGame, saveLocalGame } from "../lib/localGames";
 import { createLoadedLocalGame } from "../lib/localGameView";
-import { getMagnifierAnchor } from "../lib/magnifierAnchor";
-import {
-    MAGNIFIER_INSET_PERCENT,
-    MAGNIFIER_SIZE_PX,
-    getMagnifierSquareViewport,
-    getMagnifierStoneSizePx,
-    getMagnifierWindowSize,
-    getMagnifierRenderModel,
-    isMagnifierRangeEdgeVisible,
-} from "../lib/magnifier";
 import { createShareFromLocalGame } from "../lib/shareClient";
 import { formatMoveEditError, t } from "../lib/i18n";
 import { useTheme } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
-import MagnifierView from "./MagnifierView";
 import { replayGame } from "../lib/gameReplay";
 import {
     applyRecorderCorrection,
@@ -103,41 +92,9 @@ function cloneSignMap(signMap: number[][]) {
     return signMap.map((row) => [...row]);
 }
 
-function toDisplayCoord(x: number, y: number, boardSize: BoardSize) {
-    const columns = [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F",
-        "G",
-        "H",
-        "J",
-        "K",
-        "L",
-        "M",
-        "N",
-        "O",
-        "P",
-        "Q",
-        "R",
-        "S",
-        "T",
-    ];
-
-    const column = columns[x] ?? "?";
-    const row = boardSize - y;
-
-    return `${column}${row}`;
-}
-
 const BOARD_PADDING_PX = 16;
 const STONE_SELECT_HOLD_MS = 450;
 const ACTION_BAR_STORAGE_KEY_PREFIX = "go-recorder:game-action-bar-anchor:";
-const MAGNIFIER_VIEWPORT_EDGE_PX = 8;
-const MAGNIFIER_VIEWPORT_TOP_PX = 72;
-const MAGNIFIER_COORDINATE_OFFSET_PX = 8;
 
 function getActionBarStorageKey(id: string) {
     return `${ACTION_BAR_STORAGE_KEY_PREFIX}${id}`;
@@ -194,9 +151,6 @@ export default function GoBoard({ id }: GoBoardProps) {
     });
     const [vertexSize, setVertexSize] = useState(24);
     const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
-    const [magnifierStartColumn, setMagnifierStartColumn] = useState<
-        number | null
-    >(null);
     const [selectedGroupDragOrigin, setSelectedGroupDragOriginState] =
         useState<Vertex | null>(null);
     const [selectedMoveIndexes, setSelectedMoveIndexes] = useState<number[]>([]);
@@ -246,12 +200,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         cellSize: 24,
         boardSizePx: 24 * 19,
     });
-    const [gobanWrapperRect, setGobanWrapperRect] = useState<{
-        left: number;
-        top: number;
-        right: number;
-        bottom: number;
-    } | null>(null);
 
     const [gameState, setGameState] = useState<GameState>({
         setupStones: [],
@@ -412,13 +360,11 @@ export default function GoBoard({ id }: GoBoardProps) {
             );
 
             setVertexSize(nextVertexSize);
-            const nextGobanWrapperRect = gobanWrapper.getBoundingClientRect();
-            setGobanWrapperRect(nextGobanWrapperRect);
 
             const grid = gobanWrapper.querySelector(".shudan-grid");
             if (!(grid instanceof SVGElement)) return;
 
-            const wrapperRect = nextGobanWrapperRect;
+            const wrapperRect = gobanWrapper.getBoundingClientRect();
             const gridRect = grid.getBoundingClientRect();
             const nextGridMetrics = {
                 left: gridRect.left - wrapperRect.left,
@@ -542,13 +488,12 @@ export default function GoBoard({ id }: GoBoardProps) {
                   }
 
                   return nextMarkerMap;
-              })()
+            })()
             : markerMap;
     const showExitStoneEditModeButton = shouldShowStoneSelectionCloseButton({
         hasSelectedStone: Boolean(selectedMoveVertices[0]),
         isDraggingSelectedStones: isMovingSelectedStones,
     });
-    const showMagnifier = Boolean(touchPreview) && selectedMoveIndexes.length <= 1;
 
     const getGridMetrics = () => {
         const gobanWrapper = gobanWrapperRef.current;
@@ -558,7 +503,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         if (!(grid instanceof SVGElement)) return null;
 
         const wrapperRect = gobanWrapper.getBoundingClientRect();
-        setGobanWrapperRect(wrapperRect);
         const gridRect = grid.getBoundingClientRect();
         const nextGridMetrics = {
             left: gridRect.left - wrapperRect.left,
@@ -701,143 +645,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         });
     };
 
-    const magnifierWindowSize =
-        showMagnifier && touchPreview
-            ? getMagnifierWindowSize({
-                  boardX: touchPreview.x,
-                  boardY: touchPreview.y,
-                  boardSize: size,
-                  signMap,
-              })
-            : 5;
-    const magnifierViewport =
-        showMagnifier && touchPreview
-            ? getMagnifierSquareViewport({
-                  boardX: touchPreview.x,
-                  boardY: touchPreview.y,
-                  boardSize: size,
-                  windowSize: magnifierWindowSize,
-              })
-            : null;
-    const magnifierStoneSizePx = getMagnifierStoneSizePx({
-        windowSize: magnifierWindowSize,
-    });
-    const showMagnifierLeftRowCoordinates =
-        showMagnifier &&
-        touchPreview !== null &&
-        magnifierViewport !== null &&
-        isMagnifierRangeEdgeVisible({
-            boardCoord: touchPreview.x,
-            boardSize: size,
-            range: magnifierViewport.x,
-            edge: "left",
-        });
-    const showMagnifierRightRowCoordinates =
-        showMagnifier &&
-        touchPreview !== null &&
-        magnifierViewport !== null &&
-        isMagnifierRangeEdgeVisible({
-            boardCoord: touchPreview.x,
-            boardSize: size,
-            range: magnifierViewport.x,
-            edge: "right",
-        });
-    const showMagnifierTopColumnCoordinates =
-        showMagnifier &&
-        touchPreview !== null &&
-        magnifierViewport !== null &&
-        isMagnifierRangeEdgeVisible({
-            boardCoord: touchPreview.y,
-            boardSize: size,
-            range: magnifierViewport.y,
-            edge: "top",
-        });
-    const showMagnifierBottomColumnCoordinates =
-        showMagnifier &&
-        touchPreview !== null &&
-        magnifierViewport !== null &&
-        isMagnifierRangeEdgeVisible({
-            boardCoord: touchPreview.y,
-            boardSize: size,
-            range: magnifierViewport.y,
-            edge: "bottom",
-        });
-    const magnifierRenderModel = getMagnifierRenderModel({
-        boardSize: size,
-        boardSignMap,
-        touchPreview,
-        magnifierViewport,
-        showMagnifierLeftRowCoordinates,
-        showMagnifierRightRowCoordinates,
-        showMagnifierTopColumnCoordinates,
-        showMagnifierBottomColumnCoordinates,
-        magnifierXLeadingInsetPercent: showMagnifierLeftRowCoordinates
-            ? MAGNIFIER_INSET_PERCENT
-            : 0,
-        magnifierXTrailingInsetPercent: showMagnifierRightRowCoordinates
-            ? MAGNIFIER_INSET_PERCENT
-            : 0,
-        magnifierYLeadingInsetPercent: showMagnifierTopColumnCoordinates
-            ? MAGNIFIER_INSET_PERCENT
-            : 0,
-        magnifierYTrailingInsetPercent: showMagnifierBottomColumnCoordinates
-            ? MAGNIFIER_INSET_PERCENT
-            : 0,
-        magnifierCoordinateOffsetPx: MAGNIFIER_COORDINATE_OFFSET_PX,
-        formatColumnLabel: toDisplayCoord,
-    });
-
     const canShareGame = gameState.moves.some((move) => move.type === "play");
-    const magnifierTop = MAGNIFIER_VIEWPORT_TOP_PX;
-    const boardRect =
-        gobanWrapperRect && gridMetrics.boardSizePx > 0
-            ? {
-                  left: gobanWrapperRect.left + gridMetrics.left,
-                  top: gobanWrapperRect.top + gridMetrics.top,
-                  right:
-                      gobanWrapperRect.left +
-                      gridMetrics.left +
-                      gridMetrics.boardSizePx,
-                  bottom:
-                      gobanWrapperRect.top +
-                      gridMetrics.top +
-                      gridMetrics.boardSizePx,
-              }
-            : null;
-    const rightMagnifierLeft =
-        typeof window === "undefined"
-            ? MAGNIFIER_VIEWPORT_EDGE_PX
-            : Math.max(
-                  MAGNIFIER_VIEWPORT_EDGE_PX,
-                  window.innerWidth -
-                      MAGNIFIER_SIZE_PX -
-                  MAGNIFIER_VIEWPORT_EDGE_PX
-              );
-    const leftMagnifierLeft = MAGNIFIER_VIEWPORT_EDGE_PX;
-    const magnifierLeftRect = {
-        left: leftMagnifierLeft,
-        top: magnifierTop,
-        right: leftMagnifierLeft + MAGNIFIER_SIZE_PX,
-        bottom: magnifierTop + MAGNIFIER_SIZE_PX,
-    };
-    const rectsOverlap = (
-        rectA: { left: number; top: number; right: number; bottom: number },
-        rectB: { left: number; top: number; right: number; bottom: number }
-    ) =>
-        rectA.left < rectB.right &&
-        rectA.right > rectB.left &&
-        rectA.top < rectB.bottom &&
-        rectA.bottom > rectB.top;
-    const magnifierAnchor = getMagnifierAnchor({
-        startColumn: magnifierStartColumn,
-        currentColumn: touchPreview?.x ?? 0,
-        boardSize: size,
-        leftPlacementOverlapsBoard:
-            boardRect !== null && rectsOverlap(magnifierLeftRect, boardRect),
-    });
-    const magnifierLeft =
-        magnifierAnchor === "left" ? leftMagnifierLeft : rightMagnifierLeft;
-
     const resetShareMenuState = useCallback(() => {
         shareAutoCreateAttemptedRef.current = false;
         setShareMenuMessage(null);
@@ -1213,9 +1021,6 @@ export default function GoBoard({ id }: GoBoardProps) {
             clearStoneSelectTimeout();
         };
     }, []);
-    const magnifierGridLines = magnifierRenderModel.gridLines;
-    const magnifierCells = magnifierRenderModel.cells;
-    const magnifierCoordinateLabels = magnifierRenderModel.coordinateLabels;
 
     return (
         <div
@@ -1460,13 +1265,11 @@ export default function GoBoard({ id }: GoBoardProps) {
                             isStonePlacementActiveRef.current = Boolean(vertex);
                             stonePlacementCanCommitRef.current = Boolean(vertex);
                             if (!vertex) {
-                                setMagnifierStartColumn(null);
                                 touchPreviewVertexRef.current = null;
                                 setTouchPreview(null);
                                 return;
                             }
 
-                            setMagnifierStartColumn(vertex.x);
                             touchPreviewVertexRef.current = vertex;
                             setTouchPreview({
                                 ...vertex,
@@ -1573,7 +1376,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                             const releaseTouchPreview = () => {
                                 isStonePlacementActiveRef.current = false;
                                 stonePlacementCanCommitRef.current = false;
-                                setMagnifierStartColumn(null);
                                 setTouchPreview(null);
                                 event.currentTarget.releasePointerCapture(
                                     event.pointerId
@@ -1677,7 +1479,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                             clearStoneSelectionDragState();
                             isStonePlacementActiveRef.current = false;
                             stonePlacementCanCommitRef.current = false;
-                            setMagnifierStartColumn(null);
                             setTouchPreview(null);
                             if (event.currentTarget.hasPointerCapture(event.pointerId)) {
                                 event.currentTarget.releasePointerCapture(event.pointerId);
@@ -1763,18 +1564,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     vectorEffect="non-scaling-stroke"
                                 />
                             </svg>
-                        )}
-                        {showMagnifier && touchPreview && (
-                            <MagnifierView
-                                isDarkMode={isDarkMode}
-                                left={magnifierLeft}
-                                top={magnifierTop}
-                                magnifierStoneSizePx={magnifierStoneSizePx}
-                                horizontalLines={magnifierGridLines.horizontalLines}
-                                verticalLines={magnifierGridLines.verticalLines}
-                                cells={magnifierCells}
-                                coordinateLabels={magnifierCoordinateLabels}
-                            />
                         )}
                     </div>
                 </div>
