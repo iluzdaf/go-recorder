@@ -203,7 +203,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
     const isStonePlacementActiveRef = useRef(false);
     const stonePlacementCanCommitRef = useRef(false);
-    const isPlacementZoomEligibleRef = useRef(false);
+    const isPendingPlacementZoomRef = useRef(false);
     const actionBarDragRef = useRef<ActionBarDragState | null>(null);
     const actionBarRailRef = useRef<HTMLDivElement | null>(null);
     const [actionBarAnchor, setActionBarAnchor] = useState<ActionBarAnchor>(() => {
@@ -613,7 +613,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         return { gridGeometry, gridRect, nextGridMetrics };
     };
 
-    const getVertexFromPointer = (clientX: number, clientY: number) => {
+    const getFullBoardVertexFromPointer = (clientX: number, clientY: number) => {
         const metrics = getGridMetrics();
         if (!metrics) return null;
 
@@ -622,6 +622,45 @@ export default function GoBoard({ id }: GoBoardProps) {
             clientY,
             grid: metrics.gridGeometry,
         });
+    };
+
+    const getZoomedPlacementVertexFromPointer = (
+        clientX: number,
+        clientY: number
+    ) => {
+        if (!placementZoomWindow) return null;
+
+        const metrics = getGridMetrics();
+        if (!metrics) return null;
+
+        const localX = clientX - metrics.gridRect.left;
+        const localY = clientY - metrics.gridRect.top;
+        const zoomCellSize =
+            metrics.nextGridMetrics.boardSizePx / placementZoomWindow.size;
+        const windowX = Math.round(localX / zoomCellSize - 0.5);
+        const windowY = Math.round(localY / zoomCellSize - 0.5);
+
+        if (
+            windowX < 0 ||
+            windowX >= placementZoomWindow.size ||
+            windowY < 0 ||
+            windowY >= placementZoomWindow.size
+        ) {
+            return null;
+        }
+
+        return {
+            x: placementZoomWindow.startX + windowX,
+            y: placementZoomWindow.startY + windowY,
+        };
+    };
+
+    const getPlacementVertexFromPointer = (clientX: number, clientY: number) => {
+        if (placementZoomWindow) {
+            return getZoomedPlacementVertexFromPointer(clientX, clientY);
+        }
+
+        return getFullBoardVertexFromPointer(clientX, clientY);
     };
 
     const clearStoneSelectTimeout = () => {
@@ -633,7 +672,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     };
 
     const clearPlacementZoom = () => {
-        isPlacementZoomEligibleRef.current = false;
+        isPendingPlacementZoomRef.current = false;
         setPlacementZoomWindow(null);
     };
 
@@ -642,7 +681,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         setDidStartStoneSelectionDrag(false);
         setIsCorrectionDragActive(false);
         didDragStoneSelectionRef.current = false;
-        clearPlacementZoom();
         stoneSelectOriginRef.current = null;
         selectedGroupDragOriginRef.current = null;
         setSelectedGroupDragOriginState(null);
@@ -890,7 +928,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     };
 
     const updateTouchPreview = (clientX: number, clientY: number) => {
-        const vertex = getVertexFromPointer(clientX, clientY);
+        const vertex = getPlacementVertexFromPointer(clientX, clientY);
         if (!vertex) {
             stonePlacementCanCommitRef.current = false;
             touchPreviewVertexRef.current = null;
@@ -1511,15 +1549,20 @@ export default function GoBoard({ id }: GoBoardProps) {
 
                             event.preventDefault();
                             event.currentTarget.setPointerCapture(event.pointerId);
-                            const vertex = getVertexFromPointer(
-                                event.clientX,
-                                event.clientY
-                            );
+                            const vertex = placementZoomWindow
+                                ? getPlacementVertexFromPointer(
+                                      event.clientX,
+                                      event.clientY
+                                  )
+                                : getFullBoardVertexFromPointer(
+                                      event.clientX,
+                                      event.clientY
+                                  );
 
                             didSelectStoneByHoldRef.current = false;
                             setDidStartStoneSelectionDrag(false);
                             clearStoneSelectTimeout();
-                            clearPlacementZoom();
+                            isPendingPlacementZoomRef.current = false;
                             isStonePlacementActiveRef.current = Boolean(vertex);
                             stonePlacementCanCommitRef.current = Boolean(vertex);
                             if (!vertex) {
@@ -1528,21 +1571,34 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 return;
                             }
 
-                            touchPreviewVertexRef.current = vertex;
-                            setTouchPreview({
-                                ...vertex,
-                                screenX: event.clientX,
-                                screenY: event.clientY,
-                            });
-
                             const editableMoveIndex = getEditableMoveIndexAtVertex({
                                 moves: gameState.moves,
                                 vertex,
                                 visibleStoneOwners: replay.visibleStoneOwners,
                             });
-                            isPlacementZoomEligibleRef.current =
-                                selectedMoveIndexes.length === 0 &&
-                                editableMoveIndex === null;
+
+                            isPendingPlacementZoomRef.current = Boolean(
+                                !placementZoomWindow &&
+                                    selectedMoveIndexes.length === 0 &&
+                                    editableMoveIndex === null &&
+                                    getPlacementZoomWindow({
+                                        boardSize: size,
+                                        vertex,
+                                    })
+                            );
+
+                            if (!isPendingPlacementZoomRef.current) {
+                                touchPreviewVertexRef.current = vertex;
+                                setTouchPreview({
+                                    ...vertex,
+                                    screenX: event.clientX,
+                                    screenY: event.clientY,
+                                });
+                            }
+
+                            if (placementZoomWindow && editableMoveIndex !== null) {
+                                return;
+                            }
 
                             if (selectedMoveIndexes.length > 0) {
                                 stoneSelectOriginRef.current = vertex;
@@ -1579,6 +1635,8 @@ export default function GoBoard({ id }: GoBoardProps) {
                         onPointerMove={(event) => {
                             if (!isStonePlacementActiveRef.current) return;
                             event.preventDefault();
+                            if (isPendingPlacementZoomRef.current) return;
+
                             const vertex = updateTouchPreview(
                                 event.clientX,
                                 event.clientY
@@ -1632,15 +1690,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                             ) {
                                 clearStoneSelectTimeout();
                             }
-
-                            setPlacementZoomWindow(
-                                isPlacementZoomEligibleRef.current && vertex
-                                    ? getPlacementZoomWindow({
-                                          boardSize: size,
-                                          vertex,
-                                      })
-                                    : null
-                            );
                         }}
                         onPointerUp={(event) => {
                             if (
@@ -1650,10 +1699,15 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 return;
                             }
 
-                            const vertex = getVertexFromPointer(
-                                event.clientX,
-                                event.clientY
-                            );
+                            const vertex = placementZoomWindow
+                                ? getPlacementVertexFromPointer(
+                                      event.clientX,
+                                      event.clientY
+                                  )
+                                : getFullBoardVertexFromPointer(
+                                      event.clientX,
+                                      event.clientY
+                                  );
                             const editableMoveIndex = vertex
                                 ? getEditableMoveIndexAtVertex({
                                       moves: gameState.moves,
@@ -1669,7 +1723,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                             const releaseTouchPreview = () => {
                                 isStonePlacementActiveRef.current = false;
                                 stonePlacementCanCommitRef.current = false;
-                                clearPlacementZoom();
+                                isPendingPlacementZoomRef.current = false;
                                 setTouchPreview(null);
                                 event.currentTarget.releasePointerCapture(
                                     event.pointerId
@@ -1698,7 +1752,21 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     return;
                                 }
 
+                                if (!placementZoomWindow) {
+                                    const zoomWindow = getPlacementZoomWindow({
+                                        boardSize: size,
+                                        vertex,
+                                    });
+
+                                    if (zoomWindow) {
+                                        setPlacementZoomWindow(zoomWindow);
+                                        releaseTouchPreview();
+                                        return;
+                                    }
+                                }
+
                                 playMove(vertex.x, vertex.y);
+                                clearPlacementZoom();
                                 releaseTouchPreview();
                                 return;
                             }
@@ -1784,6 +1852,37 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     />
                                 </div>
                             </div>
+                        ) : null}
+                        {placementZoomWindow ? (
+                            <button
+                                type="button"
+                                className={
+                                    isDarkMode
+                                        ? "absolute z-30 inline-flex h-11 w-11 items-center justify-center rounded-full border border-neutral-700 bg-neutral-950 text-white shadow-lg hover:bg-neutral-900"
+                                        : "absolute z-30 inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 shadow-lg hover:bg-zinc-100"
+                                }
+                                style={{
+                                    left:
+                                        gridMetrics.left +
+                                        gridMetrics.boardSizePx -
+                                        44,
+                                    top: gridMetrics.top,
+                                }}
+                                onPointerDown={(event) => {
+                                    event.stopPropagation();
+                                }}
+                                onPointerUp={(event) => {
+                                    event.stopPropagation();
+                                }}
+                                onClick={() => {
+                                    clearPlacementZoom();
+                                    setTouchPreview(null);
+                                }}
+                                aria-label={t("closeBoardZoom")}
+                                title={t("closeBoardZoom")}
+                            >
+                                <X size={16} />
+                            </button>
                         ) : null}
                         {hasStoneCorrectionSelection ? (
                             <div
