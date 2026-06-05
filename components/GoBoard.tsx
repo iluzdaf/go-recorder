@@ -56,6 +56,7 @@ import {
     shouldShowOriginalSelectedStones,
     shouldShowPlacementPreview,
     shouldStartStoneSelectionHold,
+    shouldUsePlacementZoom,
     toggleCorrectionSelection,
     visitCorrectionSelectionDragMove,
     type BoardAreaZoomWindow,
@@ -728,6 +729,23 @@ export default function GoBoard({ id }: GoBoardProps) {
         }
 
         return getFullBoardVertexFromPointer(clientX, clientY);
+    };
+
+    const getEnabledPlacementZoomWindow = (vertex: Vertex) => {
+        const metrics = getGridMetrics();
+        if (!metrics) return null;
+        if (
+            !shouldUsePlacementZoom({
+                cellSize: metrics.gridGeometry.cellSize,
+            })
+        ) {
+            return null;
+        }
+
+        return getPlacementZoomWindow({
+            boardSize: size,
+            vertex,
+        });
     };
 
     const clearStoneSelectTimeout = () => {
@@ -1679,10 +1697,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 !placementZoomWindow &&
                                     selectedMoveIndexes.length === 0 &&
                                     editableMoveIndex === null &&
-                                    getPlacementZoomWindow({
-                                        boardSize: size,
-                                        vertex,
-                                    })
+                                    getEnabledPlacementZoomWindow(vertex)
                             );
 
                             if (!isPendingPlacementZoomRef.current) {
@@ -1851,10 +1866,8 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 }
 
                                 if (!placementZoomWindow) {
-                                    const zoomWindow = getPlacementZoomWindow({
-                                        boardSize: size,
-                                        vertex,
-                                    });
+                                    const zoomWindow =
+                                        getEnabledPlacementZoomWindow(vertex);
 
                                     if (zoomWindow) {
                                         setPlacementZoomWindow(zoomWindow);
