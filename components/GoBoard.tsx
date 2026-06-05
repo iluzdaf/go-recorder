@@ -1946,8 +1946,8 @@ export default function GoBoard({ id }: GoBoardProps) {
                             <div
                                 className={
                                     isDarkMode
-                                        ? "absolute z-30 inline-flex items-center gap-1 rounded-full border border-neutral-700 bg-neutral-950 p-1 shadow-lg"
-                                        : "absolute z-30 inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white p-1 shadow-lg"
+                                        ? "absolute z-30 inline-flex items-center gap-1 rounded-full border border-neutral-700 bg-neutral-950 shadow-lg"
+                                        : "absolute z-30 inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white shadow-lg"
                                 }
                                 style={{
                                     left: stoneCorrectionHandlePosition?.left ?? 0,
@@ -1958,7 +1958,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                             >
                                 <button
                                     type="button"
-                                    className="inline-flex h-11 w-10 cursor-grab items-center justify-center active:cursor-grabbing"
+                                    className="inline-flex h-11 w-11 cursor-grab items-center justify-center active:cursor-grabbing"
                                     onPointerDown={startStoneSelectionHandleDrag}
                                     onPointerMove={updateStoneSelectionHandleDrag}
                                     onPointerUp={finishStoneSelectionHandleDrag}
@@ -1969,7 +1969,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 >
                                     <span
                                         aria-hidden="true"
-                                        className="grid h-6 w-4 grid-cols-2 gap-x-1 gap-y-1 text-zinc-700 dark:text-zinc-200"
+                                        className="grid h-5 w-3.5 grid-cols-2 gap-x-1 gap-y-1 text-zinc-700 dark:text-zinc-200"
                                     >
                                         <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
                                         <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
