@@ -216,11 +216,20 @@ export function shouldShowPlacementPreview({
 }
 
 const PLACEMENT_ZOOM_CONFIG: Partial<Record<BoardSize, BoardAreaZoomConfig>> = {
+    9: {
+        starts: [0, 3],
+        windowSize: 6,
+    },
+    13: {
+        starts: [0, 4],
+        windowSize: 9,
+    },
     19: {
         starts: [0, 6],
         windowSize: 13,
     },
 };
+const PLACEMENT_ZOOM_MAX_CELL_SIZE_PX = 24;
 
 function getPlacementZoomWindowStart({
     boardSize,
@@ -262,6 +271,14 @@ export function getPlacementZoomWindow({
         }),
         size: config.windowSize,
     };
+}
+
+export function shouldUsePlacementZoom({
+    cellSize,
+}: {
+    cellSize: number;
+}) {
+    return cellSize < PLACEMENT_ZOOM_MAX_CELL_SIZE_PX;
 }
 
 export function toggleCorrectionSelection({

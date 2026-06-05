@@ -22,6 +22,7 @@ import {
     shouldShowOriginalSelectedStones,
     shouldShowStoneSelectionCloseButton,
     shouldStartStoneSelectionHold,
+    shouldUsePlacementZoom,
     toggleCorrectionSelection,
     visitCorrectionSelectionDragMove,
 } from "../lib/gameCorrectionUi";
@@ -491,19 +492,63 @@ describe("game correction UI helpers", () => {
         ).toEqual({ startX: 6, startY: 6, size: 13 });
     });
 
-    it("only enables placement zoom for 19x19 boards", () => {
+    it("maps 13x13 placement vertices to overlapping 9x9 zoom windows", () => {
         expect(
             getPlacementZoomWindow({
-                boardSize: 9,
-                vertex: { x: 4, y: 4 },
+                boardSize: 13,
+                vertex: { x: 0, y: 0 },
             })
-        ).toBeNull();
+        ).toEqual({ startX: 0, startY: 0, size: 9 });
         expect(
             getPlacementZoomWindow({
                 boardSize: 13,
                 vertex: { x: 6, y: 6 },
             })
-        ).toBeNull();
+        ).toEqual({ startX: 0, startY: 0, size: 9 });
+        expect(
+            getPlacementZoomWindow({
+                boardSize: 13,
+                vertex: { x: 7, y: 7 },
+            })
+        ).toEqual({ startX: 4, startY: 4, size: 9 });
+        expect(
+            getPlacementZoomWindow({
+                boardSize: 13,
+                vertex: { x: 12, y: 12 },
+            })
+        ).toEqual({ startX: 4, startY: 4, size: 9 });
+    });
+
+    it("maps 9x9 placement vertices to overlapping 6x6 zoom windows", () => {
+        expect(
+            getPlacementZoomWindow({
+                boardSize: 9,
+                vertex: { x: 0, y: 0 },
+            })
+        ).toEqual({ startX: 0, startY: 0, size: 6 });
+        expect(
+            getPlacementZoomWindow({
+                boardSize: 9,
+                vertex: { x: 4, y: 4 },
+            })
+        ).toEqual({ startX: 0, startY: 0, size: 6 });
+        expect(
+            getPlacementZoomWindow({
+                boardSize: 9,
+                vertex: { x: 5, y: 5 },
+            })
+        ).toEqual({ startX: 3, startY: 3, size: 6 });
+        expect(
+            getPlacementZoomWindow({
+                boardSize: 9,
+                vertex: { x: 8, y: 8 },
+            })
+        ).toEqual({ startX: 3, startY: 3, size: 6 });
+    });
+
+    it("uses placement zoom only when stones are rendered compactly", () => {
+        expect(shouldUsePlacementZoom({ cellSize: 18 })).toBe(true);
+        expect(shouldUsePlacementZoom({ cellSize: 24 })).toBe(false);
     });
 
     it("maps zoomed placement pointer positions back to full-board vertices", () => {
