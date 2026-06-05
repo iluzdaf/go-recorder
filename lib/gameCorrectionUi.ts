@@ -30,7 +30,12 @@ export type BoardGridGeometry = {
 export type BoardAreaZoomWindow = {
     startX: number;
     startY: number;
-    size: 9;
+    size: number;
+};
+
+type BoardAreaZoomConfig = {
+    starts: number[];
+    windowSize: number;
 };
 
 export type ApplyRecorderCorrectionResult =
@@ -210,10 +215,28 @@ export function shouldShowPlacementPreview({
     return hasTouchPreview && !hasSelectedStone && !isCorrectionDragActive;
 }
 
-function getPlacementZoomWindowStart(coordinate: number) {
-    if (coordinate < 7) return 0;
-    if (coordinate < 12) return 5;
-    return 10;
+const PLACEMENT_ZOOM_CONFIG: Partial<Record<BoardSize, BoardAreaZoomConfig>> = {
+    19: {
+        starts: [0, 6],
+        windowSize: 13,
+    },
+};
+
+function getPlacementZoomWindowStart({
+    boardSize,
+    coordinate,
+    starts,
+}: {
+    boardSize: BoardSize;
+    coordinate: number;
+    starts: number[];
+}) {
+    const segmentIndex = Math.min(
+        starts.length - 1,
+        Math.floor((coordinate * starts.length) / boardSize)
+    );
+
+    return starts[segmentIndex] ?? 0;
 }
 
 export function getPlacementZoomWindow({
@@ -223,12 +246,21 @@ export function getPlacementZoomWindow({
     boardSize: BoardSize;
     vertex: Vertex;
 }): BoardAreaZoomWindow | null {
-    if (boardSize !== 19) return null;
+    const config = PLACEMENT_ZOOM_CONFIG[boardSize];
+    if (!config) return null;
 
     return {
-        startX: getPlacementZoomWindowStart(vertex.x),
-        startY: getPlacementZoomWindowStart(vertex.y),
-        size: 9,
+        startX: getPlacementZoomWindowStart({
+            boardSize,
+            coordinate: vertex.x,
+            starts: config.starts,
+        }),
+        startY: getPlacementZoomWindowStart({
+            boardSize,
+            coordinate: vertex.y,
+            starts: config.starts,
+        }),
+        size: config.windowSize,
     };
 }
 

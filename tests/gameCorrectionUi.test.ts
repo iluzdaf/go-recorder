@@ -463,31 +463,31 @@ describe("game correction UI helpers", () => {
         ).toBeNull();
     });
 
-    it("maps 19x19 placement vertices to overlapping 9x9 zoom windows", () => {
+    it("maps 19x19 placement vertices to overlapping 13x13 zoom windows", () => {
         expect(
             getPlacementZoomWindow({
                 boardSize: 19,
                 vertex: { x: 0, y: 0 },
             })
-        ).toEqual({ startX: 0, startY: 0, size: 9 });
-        expect(
-            getPlacementZoomWindow({
-                boardSize: 19,
-                vertex: { x: 8, y: 8 },
-            })
-        ).toEqual({ startX: 5, startY: 5, size: 9 });
+        ).toEqual({ startX: 0, startY: 0, size: 13 });
         expect(
             getPlacementZoomWindow({
                 boardSize: 19,
                 vertex: { x: 9, y: 9 },
             })
-        ).toEqual({ startX: 5, startY: 5, size: 9 });
+        ).toEqual({ startX: 0, startY: 0, size: 13 });
+        expect(
+            getPlacementZoomWindow({
+                boardSize: 19,
+                vertex: { x: 10, y: 10 },
+            })
+        ).toEqual({ startX: 6, startY: 6, size: 13 });
         expect(
             getPlacementZoomWindow({
                 boardSize: 19,
                 vertex: { x: 18, y: 18 },
             })
-        ).toEqual({ startX: 10, startY: 10, size: 9 });
+        ).toEqual({ startX: 6, startY: 6, size: 13 });
     });
 
     it("only enables placement zoom for 19x19 boards", () => {
