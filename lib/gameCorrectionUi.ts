@@ -13,6 +13,20 @@ export type CorrectionPreviewStone = Vertex & {
     color: Stone;
 };
 
+export type StoneSelectionDragState = {
+    pointerId: number;
+    origin: Vertex;
+    offsetX: number;
+    offsetY: number;
+};
+
+export type BoardGridGeometry = {
+    left: number;
+    top: number;
+    cellSize: number;
+    boardSize: BoardSize;
+};
+
 export type ApplyRecorderCorrectionResult =
     | {
         ok: true;
@@ -148,6 +162,70 @@ export function shouldShowStoneSelectionCloseButton({
     isDraggingSelectedStones: boolean;
 }) {
     return hasSelectedStone && !isDraggingSelectedStones;
+}
+
+export function getVertexFromBoardPointer({
+    clientX,
+    clientY,
+    grid,
+}: {
+    clientX: number;
+    clientY: number;
+    grid: BoardGridGeometry;
+}): Vertex | null {
+    const localX = clientX - grid.left;
+    const localY = clientY - grid.top;
+
+    const x = Math.round(localX / grid.cellSize - 0.5);
+    const y = Math.round(localY / grid.cellSize - 0.5);
+
+    if (x < 0 || x >= grid.boardSize || y < 0 || y >= grid.boardSize) {
+        return null;
+    }
+
+    return { x, y };
+}
+
+export function createStoneSelectionDragState({
+    grid,
+    origin,
+    pointerId,
+    pointerX,
+    pointerY,
+}: {
+    grid: BoardGridGeometry;
+    origin: Vertex;
+    pointerId: number;
+    pointerX: number;
+    pointerY: number;
+}): StoneSelectionDragState {
+    const stoneCenterX = grid.left + origin.x * grid.cellSize + grid.cellSize / 2;
+    const stoneCenterY = grid.top + origin.y * grid.cellSize + grid.cellSize / 2;
+
+    return {
+        pointerId,
+        origin,
+        offsetX: pointerX - stoneCenterX,
+        offsetY: pointerY - stoneCenterY,
+    };
+}
+
+export function getStoneSelectionDragVertexFromPointer({
+    clientX,
+    clientY,
+    dragState,
+    grid,
+}: {
+    clientX: number;
+    clientY: number;
+    dragState: StoneSelectionDragState;
+    grid: BoardGridGeometry;
+}): Vertex | null {
+    return getVertexFromBoardPointer({
+        clientX: clientX - dragState.offsetX,
+        clientY: clientY - dragState.offsetY,
+        grid,
+    });
 }
 
 export function createMoveEdits({

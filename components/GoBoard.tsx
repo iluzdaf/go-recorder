@@ -40,13 +40,18 @@ import BoardStatusMessage from "./BoardStatusMessage";
 import { replayGame } from "../lib/gameReplay";
 import {
     applyRecorderCorrection,
+    createStoneSelectionDragState,
     didPointerLeaveHoldVertex,
     getCorrectionTapAction,
     getEditableMoveIndexAtVertex,
     getSelectedMoveVertices,
     getStoneCorrectionOrigin,
+    getStoneSelectionDragVertexFromPointer,
+    getVertexFromBoardPointer,
     isStoneSelectionDragActive,
     shouldStartStoneSelectionHold,
+    type BoardGridGeometry,
+    type StoneSelectionDragState,
     type Vertex,
 } from "../lib/gameCorrectionUi";
 
@@ -69,13 +74,6 @@ type TouchPreview = {
     screenX: number;
     screenY: number;
 } | null;
-
-type StoneSelectionDragState = {
-    pointerId: number;
-    origin: Vertex;
-    offsetX: number;
-    offsetY: number;
-};
 
 type GoBoardProps = {
     id: string;
@@ -534,23 +532,25 @@ export default function GoBoard({ id }: GoBoardProps) {
         };
 
         setGridMetrics(nextGridMetrics);
-        return { gridRect, nextGridMetrics };
+        const gridGeometry: BoardGridGeometry = {
+            left: gridRect.left,
+            top: gridRect.top,
+            cellSize: nextGridMetrics.cellSize,
+            boardSize: size,
+        };
+
+        return { gridGeometry, gridRect, nextGridMetrics };
     };
 
     const getVertexFromPointer = (clientX: number, clientY: number) => {
         const metrics = getGridMetrics();
         if (!metrics) return null;
 
-        const { gridRect, nextGridMetrics } = metrics;
-        const localX = clientX - gridRect.left;
-        const localY = clientY - gridRect.top;
-
-        const x = Math.round(localX / nextGridMetrics.cellSize - 0.5);
-        const y = Math.round(localY / nextGridMetrics.cellSize - 0.5);
-
-        if (x < 0 || x >= size || y < 0 || y >= size) return null;
-
-        return { x, y };
+        return getVertexFromBoardPointer({
+            clientX,
+            clientY,
+            grid: metrics.gridGeometry,
+        });
     };
 
     const clearStoneSelectTimeout = () => {
@@ -581,10 +581,15 @@ export default function GoBoard({ id }: GoBoardProps) {
         clientY: number;
         dragState: StoneSelectionDragState;
     }) => {
-        return getVertexFromPointer(
-            clientX - dragState.offsetX,
-            clientY - dragState.offsetY
-        );
+        const metrics = getGridMetrics();
+        if (!metrics) return null;
+
+        return getStoneSelectionDragVertexFromPointer({
+            clientX,
+            clientY,
+            dragState,
+            grid: metrics.gridGeometry,
+        });
     };
 
     const startStoneSelectionHandleDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -604,22 +609,13 @@ export default function GoBoard({ id }: GoBoardProps) {
         const metrics = getGridMetrics();
         if (!metrics) return;
 
-        const { gridRect, nextGridMetrics } = metrics;
-        const stoneCenterX =
-            gridRect.left +
-            origin.x * nextGridMetrics.cellSize +
-            nextGridMetrics.cellSize / 2;
-        const stoneCenterY =
-            gridRect.top +
-            origin.y * nextGridMetrics.cellSize +
-            nextGridMetrics.cellSize / 2;
-
-        stoneSelectionDragStateRef.current = {
+        stoneSelectionDragStateRef.current = createStoneSelectionDragState({
+            grid: metrics.gridGeometry,
             pointerId: event.pointerId,
             origin,
-            offsetX: event.clientX - stoneCenterX,
-            offsetY: event.clientY - stoneCenterY,
-        };
+            pointerX: event.clientX,
+            pointerY: event.clientY,
+        });
         selectedGroupDragOriginRef.current = origin;
         setSelectedGroupDragOriginState(origin);
         setDidStartStoneSelectionDrag(true);

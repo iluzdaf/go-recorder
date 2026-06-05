@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { GameState } from "../components/types";
 import {
     applyRecorderCorrection,
+    createStoneSelectionDragState,
     didPointerLeaveHoldVertex,
     getCorrectionPreviewStones,
     getCorrectionTapAction,
@@ -10,6 +11,8 @@ import {
     getPreviewStone,
     getSelectedMoveVertices,
     getStoneCorrectionOrigin,
+    getStoneSelectionDragVertexFromPointer,
+    getVertexFromBoardPointer,
     isStoneSelectionDragActive,
     shouldShowStoneSelectionCloseButton,
     shouldStartStoneSelectionHold,
@@ -265,6 +268,74 @@ describe("game correction UI helpers", () => {
                 isDraggingSelectedStones: false,
             })
         ).toBe(false);
+    });
+
+    it("maps pointer positions to vertices from the board grid rect", () => {
+        const grid = {
+            left: 200,
+            top: 100,
+            cellSize: 40,
+            boardSize: 19 as const,
+        };
+
+        expect(
+            getVertexFromBoardPointer({
+                clientX: 200 + 3 * 40 + 20,
+                clientY: 100 + 4 * 40 + 20,
+                grid,
+            })
+        ).toEqual({ x: 3, y: 4 });
+        expect(
+            getVertexFromBoardPointer({
+                clientX: 199,
+                clientY: 100 + 4 * 40 + 20,
+                grid,
+            })
+        ).toBeNull();
+    });
+
+    it("preserves the pill-to-stone offset when converting drag pointer movement", () => {
+        const grid = {
+            left: 200,
+            top: 100,
+            cellSize: 40,
+            boardSize: 19 as const,
+        };
+        const origin = { x: 3, y: 4 };
+        const originCenter = {
+            x: grid.left + origin.x * grid.cellSize + grid.cellSize / 2,
+            y: grid.top + origin.y * grid.cellSize + grid.cellSize / 2,
+        };
+        const dragState = createStoneSelectionDragState({
+            grid,
+            origin,
+            pointerId: 7,
+            pointerX: originCenter.x - 28,
+            pointerY: originCenter.y - 60,
+        });
+
+        expect(dragState).toEqual({
+            pointerId: 7,
+            origin,
+            offsetX: -28,
+            offsetY: -60,
+        });
+        expect(
+            getStoneSelectionDragVertexFromPointer({
+                clientX: originCenter.x - 28,
+                clientY: originCenter.y - 60,
+                dragState,
+                grid,
+            })
+        ).toEqual(origin);
+        expect(
+            getStoneSelectionDragVertexFromPointer({
+                clientX: originCenter.x - 28 + grid.cellSize,
+                clientY: originCenter.y - 60 + grid.cellSize * 2,
+                dragState,
+                grid,
+            })
+        ).toEqual({ x: 4, y: 6 });
     });
 
     it("applies a stone correction and returns recorder UI state changes", () => {
