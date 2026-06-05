@@ -484,7 +484,14 @@ export default function GoBoard({ id }: GoBoardProps) {
                   return nextMarkerMap;
             })()
             : markerMap;
-    const stoneCorrectionAnchorVertex = selectedMoveVertices[0];
+    const dragPreviewAnchorVertex = dragPreview?.selectedVertices[0]
+        ? {
+              x: dragPreview.selectedVertices[0][0],
+              y: dragPreview.selectedVertices[0][1],
+          }
+        : null;
+    const stoneCorrectionAnchorVertex =
+        dragPreviewAnchorVertex ?? selectedMoveVertices[0];
     const hasStoneCorrectionSelection = Boolean(stoneCorrectionAnchorVertex);
     const stoneCorrectionPillLeft = stoneCorrectionAnchorVertex
         ? gridMetrics.left +
