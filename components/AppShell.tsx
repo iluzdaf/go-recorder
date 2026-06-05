@@ -434,8 +434,8 @@ export default function AppShell({
                     <header
                         className={
                             usesOverlayHeader
-                                ? "fixed left-0 right-0 top-0 z-50 flex min-h-14 items-center justify-between border-b border-zinc-200 bg-white/95 px-4 py-1 text-zinc-950 shadow-lg backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95 dark:text-white"
-                                : "flex min-h-14 flex-shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 py-1 text-zinc-950 dark:border-neutral-800 dark:bg-neutral-950 dark:text-white"
+                                ? "fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-zinc-200 bg-white/95 px-4 text-zinc-950 shadow-lg backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95 dark:text-white"
+                                : "flex h-14 flex-shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 text-zinc-950 dark:border-neutral-800 dark:bg-neutral-950 dark:text-white"
                         }
                     >
                         <div className="flex shrink-0 items-center gap-1.5">
@@ -450,7 +450,7 @@ export default function AppShell({
 
                         </div>
 
-                        <div className="flex min-w-0 flex-1 items-center justify-center px-3">
+                        <div className="relative flex min-w-0 flex-1 items-center justify-center px-3">
                             {headerStatus}
                             {headerActions}
                         </div>

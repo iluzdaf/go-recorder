@@ -28,7 +28,7 @@ export default function BoardStatusMessage({
     if (!message) return null;
 
     return (
-        <div className="pointer-events-none min-w-0 max-w-xl flex-1">
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 w-full max-w-xl -translate-x-1/2 -translate-y-1/2">
             <div
                 className="flex min-w-0 items-start gap-3 rounded-lg border border-zinc-200 bg-white/95 px-3 py-1.5 text-sm text-zinc-800 shadow-lg dark:border-neutral-700 dark:bg-neutral-900/95 dark:text-neutral-100"
                 role="status"
