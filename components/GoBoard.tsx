@@ -45,6 +45,7 @@ import {
     getCorrectionTapAction,
     getEditableMoveIndexAtVertex,
     getPlacementZoomWindow,
+    getVertexFromPlacementZoomPointer,
     getSelectedMoveVertices,
     getStoneCorrectionOrigin,
     getStoneSelectionDragVertexFromPointer,
@@ -690,7 +691,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             boardSize: size,
         };
 
-        return { gridGeometry, gridRect, nextGridMetrics };
+        return { gridGeometry };
     };
 
     const getFullBoardVertexFromPointer = (clientX: number, clientY: number) => {
@@ -713,26 +714,12 @@ export default function GoBoard({ id }: GoBoardProps) {
         const metrics = getGridMetrics();
         if (!metrics) return null;
 
-        const localX = clientX - metrics.gridRect.left;
-        const localY = clientY - metrics.gridRect.top;
-        const zoomCellSize =
-            metrics.nextGridMetrics.boardSizePx / placementZoomWindow.size;
-        const windowX = Math.round(localX / zoomCellSize - 0.5);
-        const windowY = Math.round(localY / zoomCellSize - 0.5);
-
-        if (
-            windowX < 0 ||
-            windowX >= placementZoomWindow.size ||
-            windowY < 0 ||
-            windowY >= placementZoomWindow.size
-        ) {
-            return null;
-        }
-
-        return {
-            x: placementZoomWindow.startX + windowX,
-            y: placementZoomWindow.startY + windowY,
-        };
+        return getVertexFromPlacementZoomPointer({
+            clientX,
+            clientY,
+            grid: metrics.gridGeometry,
+            zoomWindow: placementZoomWindow,
+        });
     };
 
     const getPlacementVertexFromPointer = (clientX: number, clientY: number) => {

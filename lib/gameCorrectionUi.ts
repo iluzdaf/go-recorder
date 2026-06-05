@@ -328,6 +328,38 @@ export function getVertexFromBoardPointer({
     return { x, y };
 }
 
+export function getVertexFromPlacementZoomPointer({
+    clientX,
+    clientY,
+    grid,
+    zoomWindow,
+}: {
+    clientX: number;
+    clientY: number;
+    grid: BoardGridGeometry;
+    zoomWindow: BoardAreaZoomWindow;
+}): Vertex | null {
+    const zoomCellSize = (grid.cellSize * grid.boardSize) / zoomWindow.size;
+    const localX = clientX - grid.left;
+    const localY = clientY - grid.top;
+    const windowX = Math.round(localX / zoomCellSize - 0.5);
+    const windowY = Math.round(localY / zoomCellSize - 0.5);
+
+    if (
+        windowX < 0 ||
+        windowX >= zoomWindow.size ||
+        windowY < 0 ||
+        windowY >= zoomWindow.size
+    ) {
+        return null;
+    }
+
+    return {
+        x: zoomWindow.startX + windowX,
+        y: zoomWindow.startY + windowY,
+    };
+}
+
 export function createStoneSelectionDragState({
     grid,
     origin,

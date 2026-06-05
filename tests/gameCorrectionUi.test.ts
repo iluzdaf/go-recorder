@@ -14,6 +14,7 @@ import {
     getStoneCorrectionOrigin,
     getStoneSelectionDragVertexFromPointer,
     getVertexFromBoardPointer,
+    getVertexFromPlacementZoomPointer,
     isRecorderCorrectionLegal,
     isStoneSelectionDragActive,
     shouldShowCorrectionTouchGuide,
@@ -501,6 +502,34 @@ describe("game correction UI helpers", () => {
             getPlacementZoomWindow({
                 boardSize: 13,
                 vertex: { x: 6, y: 6 },
+            })
+        ).toBeNull();
+    });
+
+    it("maps zoomed placement pointer positions back to full-board vertices", () => {
+        const grid = {
+            left: 200,
+            top: 100,
+            cellSize: 20,
+            boardSize: 19 as const,
+        };
+        const zoomWindow = { startX: 6, startY: 6, size: 13 };
+        const zoomCellSize = (grid.cellSize * grid.boardSize) / zoomWindow.size;
+
+        expect(
+            getVertexFromPlacementZoomPointer({
+                clientX: grid.left + (4 + 0.5) * zoomCellSize,
+                clientY: grid.top + (6 + 0.5) * zoomCellSize,
+                grid,
+                zoomWindow,
+            })
+        ).toEqual({ x: 10, y: 12 });
+        expect(
+            getVertexFromPlacementZoomPointer({
+                clientX: grid.left - 1,
+                clientY: grid.top + (6 + 0.5) * zoomCellSize,
+                grid,
+                zoomWindow,
             })
         ).toBeNull();
     });
