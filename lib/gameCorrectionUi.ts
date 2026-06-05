@@ -27,6 +27,17 @@ export type BoardGridGeometry = {
     boardSize: BoardSize;
 };
 
+export type StoneCorrectionHandlePosition = {
+    left: number;
+    top: number;
+    transform: "translateX(-50%)";
+};
+
+type StoneCorrectionHandleGrid = Pick<
+    BoardGridGeometry,
+    "left" | "top" | "cellSize"
+>;
+
 export type BoardAreaZoomWindow = {
     startX: number;
     startY: number;
@@ -68,6 +79,45 @@ export function getSelectedMoveVertices({
             y: selectedMove.y,
         };
     });
+}
+
+export function getStoneCorrectionHandleAnchor(vertices: Vertex[]): Vertex | null {
+    if (vertices.length === 0) return null;
+
+    let minX = vertices[0]?.x ?? 0;
+    let maxX = minX;
+    let maxY = vertices[0]?.y ?? 0;
+
+    for (const vertex of vertices) {
+        minX = Math.min(minX, vertex.x);
+        maxX = Math.max(maxX, vertex.x);
+        maxY = Math.max(maxY, vertex.y);
+    }
+
+    return {
+        x: (minX + maxX) / 2,
+        y: maxY,
+    };
+}
+
+export function getStoneCorrectionHandlePosition({
+    anchor,
+    gapPx,
+    grid,
+}: {
+    anchor: Vertex | null;
+    gapPx: number;
+    grid: StoneCorrectionHandleGrid;
+}): StoneCorrectionHandlePosition | null {
+    if (!anchor) return null;
+
+    const left = grid.left + anchor.x * grid.cellSize + grid.cellSize / 2;
+
+    return {
+        left,
+        top: grid.top + (anchor.y + 1) * grid.cellSize + gapPx,
+        transform: "translateX(-50%)",
+    };
 }
 
 export function getPreviewStone({

@@ -47,6 +47,8 @@ import {
     getPlacementZoomWindow,
     getVertexFromPlacementZoomPointer,
     getSelectedMoveVertices,
+    getStoneCorrectionHandleAnchor,
+    getStoneCorrectionHandlePosition,
     getStoneCorrectionOrigin,
     getStoneSelectionDragVertexFromPointer,
     getVertexFromBoardPointer,
@@ -110,7 +112,6 @@ function cloneSignMap(signMap: number[][]) {
 
 const BOARD_PADDING_PX = 16;
 const STONE_SELECT_HOLD_MS = 450;
-const STONE_CORRECTION_PILL_HEIGHT_PX = 52;
 const STONE_CORRECTION_PILL_GAP_PX = 8;
 const ACTION_BAR_STORAGE_KEY_PREFIX = "go-recorder:game-action-bar-anchor:";
 
@@ -590,29 +591,18 @@ export default function GoBoard({ id }: GoBoardProps) {
                   return nextMarkerMap;
             })()
             : markerMap;
-    const dragPreviewAnchorVertex = dragPreview?.selectedVertices[0]
-        ? {
-              x: dragPreview.selectedVertices[0][0],
-              y: dragPreview.selectedVertices[0][1],
-          }
-        : null;
-    const stoneCorrectionAnchorVertex =
-        dragPreviewAnchorVertex ?? selectedMoveVertices[0];
-    const hasStoneCorrectionSelection = Boolean(stoneCorrectionAnchorVertex);
-    const stoneCorrectionPillLeft = stoneCorrectionAnchorVertex
-        ? gridMetrics.left +
-          stoneCorrectionAnchorVertex.x * gridMetrics.cellSize +
-          gridMetrics.cellSize / 2
-        : 0;
-    const stoneCorrectionPillTop = stoneCorrectionAnchorVertex
-        ? Math.max(
-              8,
-              gridMetrics.top +
-                  stoneCorrectionAnchorVertex.y * gridMetrics.cellSize -
-                  STONE_CORRECTION_PILL_GAP_PX -
-                  STONE_CORRECTION_PILL_HEIGHT_PX
-          )
-        : 0;
+    const stoneCorrectionHandleVertices = dragPreview
+        ? dragPreview.selectedVertices.map(([x, y]) => ({ x, y }))
+        : selectedMoveVertices;
+    const stoneCorrectionAnchorVertex = getStoneCorrectionHandleAnchor(
+        stoneCorrectionHandleVertices
+    );
+    const stoneCorrectionHandlePosition = getStoneCorrectionHandlePosition({
+        anchor: stoneCorrectionAnchorVertex,
+        gapPx: STONE_CORRECTION_PILL_GAP_PX,
+        grid: gridMetrics,
+    });
+    const hasStoneCorrectionSelection = Boolean(stoneCorrectionHandlePosition);
     const placementZoomVertexSize = placementZoomWindow
         ? gridMetrics.boardSizePx / placementZoomWindow.size
         : vertexSize;
@@ -1953,18 +1943,19 @@ export default function GoBoard({ id }: GoBoardProps) {
                             <div
                                 className={
                                     isDarkMode
-                                        ? "absolute z-30 inline-flex items-center gap-1 rounded-full border border-neutral-700 bg-neutral-950 p-1 shadow-lg"
-                                        : "absolute z-30 inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white p-1 shadow-lg"
+                                        ? "absolute z-30 inline-flex items-center gap-1 rounded-full border border-neutral-700 bg-neutral-950 shadow-lg"
+                                        : "absolute z-30 inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white shadow-lg"
                                 }
                                 style={{
-                                    left: stoneCorrectionPillLeft,
-                                    top: stoneCorrectionPillTop,
-                                    transform: "translateX(-50%)",
+                                    left: stoneCorrectionHandlePosition?.left ?? 0,
+                                    top: stoneCorrectionHandlePosition?.top ?? 0,
+                                    transform:
+                                        stoneCorrectionHandlePosition?.transform,
                                 }}
                             >
                                 <button
                                     type="button"
-                                    className="inline-flex h-11 w-10 cursor-grab items-center justify-center active:cursor-grabbing"
+                                    className="inline-flex h-11 w-11 cursor-grab items-center justify-center active:cursor-grabbing"
                                     onPointerDown={startStoneSelectionHandleDrag}
                                     onPointerMove={updateStoneSelectionHandleDrag}
                                     onPointerUp={finishStoneSelectionHandleDrag}
@@ -1975,7 +1966,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 >
                                     <span
                                         aria-hidden="true"
-                                        className="grid h-6 w-4 grid-cols-2 gap-x-1 gap-y-1 text-zinc-700 dark:text-zinc-200"
+                                        className="grid h-5 w-3.5 grid-cols-2 gap-x-1 gap-y-1 text-zinc-700 dark:text-zinc-200"
                                     >
                                         <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
                                         <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
