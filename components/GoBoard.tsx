@@ -1766,7 +1766,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 }
 
                                 playMove(vertex.x, vertex.y);
-                                clearPlacementZoom();
                                 releaseTouchPreview();
                                 return;
                             }
