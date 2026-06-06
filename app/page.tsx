@@ -120,9 +120,6 @@ export default function Home() {
         <section className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
           <div>
             <h2 className="text-base font-semibold">{t("drafts")}</h2>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              {t("draftsDescription")}
-            </p>
           </div>
           <button
             type="button"
