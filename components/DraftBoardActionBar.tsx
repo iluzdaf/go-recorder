@@ -2,7 +2,7 @@
 
 import {
     Circle,
-    CircleDot,
+    FilePen,
     SquareArrowUpRight,
 } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
@@ -79,7 +79,7 @@ export default function DraftBoardActionBar({
                             className="inline-flex h-11 w-11 items-center justify-center text-zinc-700 dark:text-zinc-200"
                             aria-hidden="true"
                         >
-                            <CircleDot size={18} />
+                            <FilePen size={18} />
                         </div>
                         <button
                             type="button"
