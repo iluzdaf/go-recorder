@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
-import type { ComponentType, PointerEvent as ReactPointerEvent } from "react";
+import type { ComponentType } from "react";
 import QRCode from "qrcode";
 
 import type { Move, SetupStone, ShareRecord, Stone } from "./types";
@@ -10,10 +10,9 @@ import { exportSgf, createSgfFilename } from "./sgf";
 import { t } from "../lib/i18n";
 import { useHeaderStatus, useTheme } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
-import ShareBoardActionBar, {
-    type ShareBoardActionBarAnchor,
-} from "./ShareBoardActionBar";
+import ShareBoardActionBar from "./ShareBoardActionBar";
 import ShareMenu from "./ShareMenu";
+import useActionBarDrag from "./useActionBarDrag";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -27,11 +26,6 @@ type ShudanGobanProps = {
 };
 
 const BoardView = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
-
-type ActionBarDragState = {
-    pointerId: number;
-    grabOffsetX: number;
-};
 
 function stoneToSign(stone: Stone) {
     return stone === "B" ? 1 : -1;
@@ -67,29 +61,6 @@ function buildBoardFromGameState(
 
 const BOARD_PADDING_PX = 16;
 
-function getActionBarAnchorFromBounds({
-    bar,
-    container,
-    currentAnchor,
-}: {
-    bar: DOMRectReadOnly;
-    container: HTMLElement;
-    currentAnchor: ShareBoardActionBarAnchor;
-}): ShareBoardActionBarAnchor {
-    const containerRect = container.getBoundingClientRect();
-    const midpointX = containerRect.left + containerRect.width / 2;
-
-    if (currentAnchor === "left" && bar.right > midpointX) {
-        return "right";
-    }
-
-    if (currentAnchor === "right" && bar.left < midpointX) {
-        return "left";
-    }
-
-    return currentAnchor;
-}
-
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const [vertexSize, setVertexSize] = useState(24);
     const { isDarkMode } = useTheme();
@@ -97,11 +68,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const boardAreaRef = useRef<HTMLDivElement | null>(null);
     const shareMenuRef = useRef<HTMLDivElement | null>(null);
     const shareTriggerRef = useRef<HTMLButtonElement | null>(null);
-    const actionBarRailRef = useRef<HTMLDivElement | null>(null);
-    const actionBarDragRef = useRef<ActionBarDragState | null>(null);
-    const [actionBarAnchor, setActionBarAnchor] =
-        useState<ShareBoardActionBarAnchor>("left");
-    const [actionBarDragX, setActionBarDragX] = useState<number | null>(null);
+    const actionBar = useActionBarDrag();
     const [shareMenuOpen, setShareMenuOpen] = useState(false);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
     const [shareQrCodeDataUrl, setShareQrCodeDataUrl] = useState<string | null>(
@@ -328,143 +295,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         setVisibleMoveCount(share.gameState.moves.length);
     }, [share.gameState.moves.length]);
 
-    const handleActionBarPointerDown = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            if (
-                event.target instanceof HTMLElement &&
-                event.target.closest("button")
-            ) {
-                return;
-            }
-
-            const rail = actionBarRailRef.current;
-            if (!rail) return;
-
-            event.preventDefault();
-            event.currentTarget.setPointerCapture(event.pointerId);
-
-            const barRect = event.currentTarget.parentElement?.getBoundingClientRect();
-            if (!barRect) return;
-
-            const railRect = rail.getBoundingClientRect();
-            actionBarDragRef.current = {
-                pointerId: event.pointerId,
-                grabOffsetX: event.clientX - barRect.left,
-            };
-
-            const nextDragX = Math.max(
-                0,
-                Math.min(
-                    barRect.left - railRect.left,
-                    Math.max(0, railRect.width - barRect.width)
-                )
-            );
-
-            setActionBarDragX(nextDragX);
-        },
-        []
-    );
-
-    const handleActionBarPointerMove = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            const dragState = actionBarDragRef.current;
-
-            if (!dragState || dragState.pointerId !== event.pointerId) {
-                return;
-            }
-
-            event.preventDefault();
-
-            const rail = actionBarRailRef.current;
-            if (!rail) return;
-
-            const railRect = rail.getBoundingClientRect();
-            const barRect = event.currentTarget.parentElement?.getBoundingClientRect();
-            if (!barRect) return;
-
-            const nextDragX = Math.max(
-                0,
-                Math.min(
-                    event.clientX - railRect.left - dragState.grabOffsetX,
-                    Math.max(0, railRect.width - barRect.width)
-                )
-            );
-            setActionBarDragX(nextDragX);
-        },
-        []
-    );
-
-    const clearActionBarDragState = useCallback(
-        (container: HTMLDivElement, pointerId: number) => {
-            if (container?.hasPointerCapture(pointerId)) {
-                container.releasePointerCapture(pointerId);
-            }
-
-            if (actionBarDragRef.current?.pointerId === pointerId) {
-                actionBarDragRef.current = null;
-            }
-        },
-        []
-    );
-
-    const finishActionBarDrag = useCallback(
-        (container: HTMLDivElement, pointerId: number) => {
-            clearActionBarDragState(container, pointerId);
-            setActionBarDragX(null);
-        },
-        [clearActionBarDragState]
-    );
-
-    const handleActionBarPointerUp = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            const dragState = actionBarDragRef.current;
-
-            if (!dragState || dragState.pointerId !== event.pointerId) return;
-
-            event.preventDefault();
-
-            const rail = actionBarRailRef.current;
-            if (!rail) {
-                finishActionBarDrag(event.currentTarget, event.pointerId);
-                return;
-            }
-
-            const barRect = event.currentTarget.parentElement?.getBoundingClientRect();
-            if (!barRect) {
-                finishActionBarDrag(event.currentTarget, event.pointerId);
-                return;
-            }
-
-            const nextAnchor = getActionBarAnchorFromBounds({
-                bar: barRect,
-                container: rail,
-                currentAnchor: actionBarAnchor,
-            });
-
-            setActionBarAnchor(nextAnchor);
-            finishActionBarDrag(event.currentTarget, event.pointerId);
-        },
-        [actionBarAnchor, finishActionBarDrag]
-    );
-
-    const handleActionBarPointerCancel = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            if (actionBarDragRef.current?.pointerId !== event.pointerId) return;
-
-            finishActionBarDrag(event.currentTarget, event.pointerId);
-        },
-        [finishActionBarDrag]
-    );
-
-    const handleActionBarLostPointerCapture = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            if (actionBarDragRef.current?.pointerId !== event.pointerId) return;
-
-            finishActionBarDrag(event.currentTarget, event.pointerId);
-        },
-        [finishActionBarDrag]
-    );
-
     return (
         <div
             className={
@@ -493,19 +323,21 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                     />
                 ) : null}
                 <ShareBoardActionBar
-                    anchor={actionBarAnchor}
-                    dragX={actionBarDragX}
+                    anchor={actionBar.anchor}
+                    dragX={actionBar.dragX}
                     onJumpToEnd={handleJumpToEnd}
                     onJumpToStart={handleJumpToStart}
-                    onLostPointerCapture={handleActionBarLostPointerCapture}
+                    onLostPointerCapture={
+                        actionBar.dragHandlers.onLostPointerCapture
+                    }
                     onNextMove={handleNextMove}
-                    onPointerCancel={handleActionBarPointerCancel}
-                    onPointerDown={handleActionBarPointerDown}
-                    onPointerMove={handleActionBarPointerMove}
-                    onPointerUp={handleActionBarPointerUp}
+                    onPointerCancel={actionBar.dragHandlers.onPointerCancel}
+                    onPointerDown={actionBar.dragHandlers.onPointerDown}
+                    onPointerMove={actionBar.dragHandlers.onPointerMove}
+                    onPointerUp={actionBar.dragHandlers.onPointerUp}
                     onPreviousMove={handlePreviousMove}
                     onToggleShareMenu={toggleShareMenu}
-                    railRef={actionBarRailRef}
+                    railRef={actionBar.railRef}
                     shareMenuOpen={shareMenuOpen}
                     shareTriggerRef={shareTriggerRef}
                     totalMoveCount={share.gameState.moves.length}
