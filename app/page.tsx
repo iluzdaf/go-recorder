@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { BoardSize } from "@/components/types";
 import { createLocalDraft, createLocalGame } from "@/lib/localGames";
 import {
-    createLocalBoardDraftInputFromForm,
+    createDefaultLocalBoardDraftInput,
     createLocalGameInputFromForm,
 } from "@/lib/localGameSetup";
 import { t } from "@/lib/i18n";
@@ -38,96 +38,93 @@ export default function Home() {
   function handleCreateDraft() {
     setIsCreatingDraft(true);
 
-    const draft = createLocalDraft(createLocalBoardDraftInputFromForm({
-        boardSize,
-        blackPlayerName,
-        whitePlayerName,
-        handicap,
-    }));
+    const draft = createLocalDraft(createDefaultLocalBoardDraftInput());
 
     router.push(`/drafts/${draft.id}`);
   }
 
   return (
     <main className="flex min-h-0 flex-1 items-center justify-center bg-zinc-100 p-6 text-zinc-950 dark:bg-neutral-900 dark:text-white">
-      <form
-        onSubmit={handleRecordGame}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
-      >
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">{t("boardSize")}</span>
-          <select
-            value={boardSize}
-            onChange={(event) => {
-              setBoardSize(Number(event.target.value) as BoardSize);
-            }}
-            className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-          >
-            <option value={9}>9 x 9</option>
-            <option value={13}>13 x 13</option>
-            <option value={19}>19 x 19</option>
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">{t("blackPlayer")}</span>
-          <input
-            type="text"
-            value={blackPlayerName}
-            onChange={(event) => {
-              setBlackPlayerName(event.target.value);
-            }}
-            placeholder={t("blackPlayerPlaceholder")}
-            className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">{t("whitePlayer")}</span>
-          <input
-            type="text"
-            value={whitePlayerName}
-            onChange={(event) => {
-              setWhitePlayerName(event.target.value);
-            }}
-            placeholder={t("whitePlayerPlaceholder")}
-            className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">{t("handicap")}</span>
-          <select
-            value={handicap}
-            onChange={(event) => {
-              setHandicap(Number(event.target.value));
-            }}
-            className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-          >
-            {[0, 2, 3, 4, 5, 6, 7, 8, 9].map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <button
-          type="submit"
-          disabled={isCreatingGame || isCreatingDraft}
-          className="rounded bg-sky-700 px-4 py-2 font-medium text-white hover:bg-sky-600 disabled:opacity-50"
-        >
-          {isCreatingGame ? t("recording") : t("recordGame")}
-        </button>
+      <div className="flex w-full max-w-sm flex-col gap-4">
         <button
           type="button"
           disabled={isCreatingGame || isCreatingDraft}
           onClick={handleCreateDraft}
-          className="rounded border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-950 hover:bg-zinc-100 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+          className="rounded border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-950 shadow-lg hover:bg-zinc-100 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
         >
           {isCreatingDraft ? t("creatingDraft") : t("createDraft")}
         </button>
-      </form>
+        <form
+          onSubmit={handleRecordGame}
+          className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
+        >
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">{t("boardSize")}</span>
+            <select
+              value={boardSize}
+              onChange={(event) => {
+                setBoardSize(Number(event.target.value) as BoardSize);
+              }}
+              className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+            >
+              <option value={9}>9 x 9</option>
+              <option value={13}>13 x 13</option>
+              <option value={19}>19 x 19</option>
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">{t("blackPlayer")}</span>
+            <input
+              type="text"
+              value={blackPlayerName}
+              onChange={(event) => {
+                setBlackPlayerName(event.target.value);
+              }}
+              placeholder={t("blackPlayerPlaceholder")}
+              className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">{t("whitePlayer")}</span>
+            <input
+              type="text"
+              value={whitePlayerName}
+              onChange={(event) => {
+                setWhitePlayerName(event.target.value);
+              }}
+              placeholder={t("whitePlayerPlaceholder")}
+              className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">{t("handicap")}</span>
+            <select
+              value={handicap}
+              onChange={(event) => {
+                setHandicap(Number(event.target.value));
+              }}
+              className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+            >
+              {[0, 2, 3, 4, 5, 6, 7, 8, 9].map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button
+            type="submit"
+            disabled={isCreatingGame || isCreatingDraft}
+            className="rounded bg-sky-700 px-4 py-2 font-medium text-white hover:bg-sky-600 disabled:opacity-50"
+          >
+            {isCreatingGame ? t("recording") : t("recordGame")}
+          </button>
+        </form>
+      </div>
     </main>
   );
 }

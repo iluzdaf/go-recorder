@@ -66,3 +66,14 @@ export function createLocalBoardDraftInputFromForm({
         handicap,
     };
 }
+
+export function createDefaultLocalBoardDraftInput(): CreateLocalDraftInput {
+    return {
+        draftKind: "board",
+        boardSize: 19,
+        gameState: createInitialGameState(19, 0),
+        blackPlayerName: null,
+        whitePlayerName: null,
+        handicap: 0,
+    };
+}
