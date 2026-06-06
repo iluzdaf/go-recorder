@@ -13,7 +13,12 @@ import DraftBoardActionBar from "./DraftBoardActionBar";
 import ShareMenu, { type ShareMenuMode } from "./ShareMenu";
 import { exportSgf, createSgfFilename } from "./sgf";
 import { useHeaderStatus, useTheme } from "./AppShell";
-import { clearDraftShareCache, toggleBoardDraftStone } from "../lib/boardDraft";
+import {
+    applyBoardDraftStrokeVertex,
+    clearDraftShareCache,
+    getBoardDraftStrokeMode,
+    type BoardDraftStrokeMode,
+} from "../lib/boardDraft";
 import {
     getVertexFromBoardPointer,
     type BoardGridGeometry,
@@ -39,6 +44,12 @@ type DraftGoBoardProps = {
 type Vertex = {
     x: number;
     y: number;
+};
+
+type BoardDraftStrokeState = {
+    mode: BoardDraftStrokeMode;
+    pointerId: number;
+    visitedVertices: Set<string>;
 };
 
 const BoardView = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
@@ -91,6 +102,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         null
     );
     const [shareMenuIsCreating, setShareMenuIsCreating] = useState(false);
+    const strokeStateRef = useRef<BoardDraftStrokeState | null>(null);
     const sharePath = shareSlug ? `/shares/${shareSlug}` : null;
     const actionBar = useActionBarDrag();
     const {
@@ -200,7 +212,60 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         setDraft(savedRecord);
     }, []);
 
-    const handleBoardPointerUp = useCallback(
+    const applyStrokeVertex = useCallback(
+        ({
+            mode,
+            vertex,
+        }: {
+            mode: BoardDraftStrokeMode;
+            vertex: Vertex;
+        }) => {
+            const currentDraft = draftRef.current;
+            if (!currentDraft) return;
+
+            const nextGameState = applyBoardDraftStrokeVertex({
+                gameState: currentDraft.gameState,
+                mode,
+                selectedColor,
+                vertex,
+            });
+
+            if (nextGameState === currentDraft.gameState) return;
+
+            const nextDraft = clearDraftShareCache({
+                ...currentDraft,
+                gameState: nextGameState,
+            });
+
+            clearCachedShareLink();
+            saveDraft(nextDraft);
+        },
+        [clearCachedShareLink, saveDraft, selectedColor]
+    );
+
+    const visitStrokeVertex = useCallback(
+        ({
+            mode,
+            vertex,
+            visitedVertices,
+        }: {
+            mode: BoardDraftStrokeMode;
+            vertex: Vertex;
+            visitedVertices: Set<string>;
+        }) => {
+            const vertexKey = `${vertex.x},${vertex.y}`;
+            if (visitedVertices.has(vertexKey)) return;
+
+            visitedVertices.add(vertexKey);
+            applyStrokeVertex({
+                mode,
+                vertex,
+            });
+        },
+        [applyStrokeVertex]
+    );
+
+    const handleBoardPointerDown = useCallback(
         (event: ReactPointerEvent<HTMLDivElement>) => {
             if (
                 event.target instanceof HTMLElement &&
@@ -215,20 +280,62 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             const vertex = getVertexFromPointer(event);
             if (!vertex) return;
 
-            const nextGameState = toggleBoardDraftStone({
+            event.preventDefault();
+            event.currentTarget.setPointerCapture(event.pointerId);
+
+            const mode = getBoardDraftStrokeMode({
                 gameState: currentDraft.gameState,
-                selectedColor,
                 vertex,
             });
-            const nextDraft = clearDraftShareCache({
-                ...currentDraft,
-                gameState: nextGameState,
+            const visitedVertices = new Set<string>();
+            strokeStateRef.current = {
+                mode,
+                pointerId: event.pointerId,
+                visitedVertices,
+            };
+            visitStrokeVertex({
+                mode,
+                vertex,
+                visitedVertices,
             });
-
-            clearCachedShareLink();
-            saveDraft(nextDraft);
         },
-        [clearCachedShareLink, getVertexFromPointer, saveDraft, selectedColor]
+        [getVertexFromPointer, visitStrokeVertex]
+    );
+
+    const handleBoardPointerMove = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            const strokeState = strokeStateRef.current;
+            if (!strokeState || strokeState.pointerId !== event.pointerId) {
+                return;
+            }
+
+            const vertex = getVertexFromPointer(event);
+            if (!vertex) return;
+
+            event.preventDefault();
+            visitStrokeVertex({
+                mode: strokeState.mode,
+                vertex,
+                visitedVertices: strokeState.visitedVertices,
+            });
+        },
+        [getVertexFromPointer, visitStrokeVertex]
+    );
+
+    const finishBoardStroke = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            const strokeState = strokeStateRef.current;
+            if (!strokeState || strokeState.pointerId !== event.pointerId) {
+                return;
+            }
+
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                event.currentTarget.releasePointerCapture(event.pointerId);
+            }
+
+            strokeStateRef.current = null;
+        },
+        []
     );
 
     const handleToggleColor = useCallback(() => {
@@ -386,7 +493,10 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 <div
                     ref={gobanWrapperRef}
                     className="relative"
-                    onPointerUp={handleBoardPointerUp}
+                    onPointerCancel={finishBoardStroke}
+                    onPointerDown={handleBoardPointerDown}
+                    onPointerMove={handleBoardPointerMove}
+                    onPointerUp={finishBoardStroke}
                 >
                     <BoardView
                         vertexSize={vertexSize}
