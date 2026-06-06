@@ -10,12 +10,11 @@ import {
 } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 
+import type { ActionBarAnchor } from "../lib/actionBarDrag";
 import { t } from "../lib/i18n";
 
-export type ShareBoardActionBarAnchor = "left" | "right";
-
 type ShareBoardActionBarProps = {
-    anchor: ShareBoardActionBarAnchor;
+    anchor: ActionBarAnchor;
     dragX: number | null;
     onJumpToEnd: () => void;
     onJumpToStart: () => void;

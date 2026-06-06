@@ -9,9 +9,8 @@ import {
 } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 
+import type { ActionBarAnchor } from "../lib/actionBarDrag";
 import { t } from "../lib/i18n";
-
-export type ActionBarAnchor = "left" | "right";
 
 type RecorderActionBarProps = {
     anchor: ActionBarAnchor;

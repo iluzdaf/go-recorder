@@ -24,9 +24,11 @@ import { createShareFromLocalGame } from "../lib/shareClient";
 import { formatMoveEditError, t } from "../lib/i18n";
 import { useHeaderStatus, useTheme } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
-import RecorderActionBar, { type ActionBarAnchor } from "./RecorderActionBar";
+import RecorderActionBar from "./RecorderActionBar";
 import ShareMenu, { type ShareMenuMode } from "./ShareMenu";
+import useActionBarDrag from "./useActionBarDrag";
 import { replayGame } from "../lib/gameReplay";
+import { isActionBarAnchor } from "../lib/actionBarDrag";
 import {
     applyRecorderCorrection,
     createStoneSelectionDragState,
@@ -82,11 +84,6 @@ type GoBoardProps = {
     id: string;
 };
 
-type ActionBarDragState = {
-    pointerId: number;
-    grabOffsetX: number;
-};
-
 function stoneToSign(stone: Stone) {
     return stone === "B" ? 1 : -1;
 }
@@ -102,33 +99,6 @@ const ACTION_BAR_STORAGE_KEY_PREFIX = "go-recorder:game-action-bar-anchor:";
 
 function getActionBarStorageKey(id: string) {
     return `${ACTION_BAR_STORAGE_KEY_PREFIX}${id}`;
-}
-
-function isActionBarAnchor(value: string | null): value is ActionBarAnchor {
-    return value === "left" || value === "right";
-}
-
-function getActionBarAnchorFromBounds({
-    bar,
-    container,
-    currentAnchor,
-}: {
-    bar: DOMRectReadOnly;
-    container: HTMLElement;
-    currentAnchor: ActionBarAnchor;
-}): ActionBarAnchor {
-    const containerRect = container.getBoundingClientRect();
-    const midpointX = containerRect.left + containerRect.width / 2;
-
-    if (currentAnchor === "left" && bar.right > midpointX) {
-        return "right";
-    }
-
-    if (currentAnchor === "right" && bar.left < midpointX) {
-        return "left";
-    }
-
-    return currentAnchor;
 }
 
 export default function GoBoard({ id }: GoBoardProps) {
@@ -202,18 +172,20 @@ export default function GoBoard({ id }: GoBoardProps) {
     const isStonePlacementActiveRef = useRef(false);
     const stonePlacementCanCommitRef = useRef(false);
     const isPendingPlacementZoomRef = useRef(false);
-    const actionBarDragRef = useRef<ActionBarDragState | null>(null);
-    const actionBarRailRef = useRef<HTMLDivElement | null>(null);
-    const [actionBarAnchor, setActionBarAnchor] = useState<ActionBarAnchor>(() => {
-        if (typeof window === "undefined") return "left";
+    const actionBar = useActionBarDrag({
+        initialAnchor: () => {
+            if (typeof window === "undefined") return "left";
 
-        const storedAnchor = window.localStorage.getItem(
-            getActionBarStorageKey(id)
-        );
+            const storedAnchor = window.localStorage.getItem(
+                getActionBarStorageKey(id)
+            );
 
-        return isActionBarAnchor(storedAnchor) ? storedAnchor : "left";
+            return isActionBarAnchor(storedAnchor) ? storedAnchor : "left";
+        },
+        onAnchorChange: (nextAnchor) => {
+            window.localStorage.setItem(getActionBarStorageKey(id), nextAnchor);
+        },
     });
-    const [actionBarDragX, setActionBarDragX] = useState<number | null>(null);
     const [gameMetadata, setGameMetadata] = useState({
         blackPlayerName: null as string | null,
         whitePlayerName: null as string | null,
@@ -1269,146 +1241,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         };
     }, [shareMenuMode, shareMenuOpen, sharePath]);
 
-    const handleActionBarPointerDown = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            if (
-                event.target instanceof HTMLElement &&
-                event.target.closest("button")
-            ) {
-                return;
-            }
-
-            const rail = actionBarRailRef.current;
-            if (!rail) return;
-
-            event.preventDefault();
-            event.currentTarget.setPointerCapture(event.pointerId);
-
-            const barRect = event.currentTarget.parentElement?.getBoundingClientRect();
-            if (!barRect) return;
-
-            const railRect = rail.getBoundingClientRect();
-            actionBarDragRef.current = {
-                pointerId: event.pointerId,
-                grabOffsetX: event.clientX - barRect.left,
-            };
-
-            const nextDragX = Math.max(
-                0,
-                Math.min(
-                    barRect.left - railRect.left,
-                    Math.max(0, railRect.width - barRect.width)
-                )
-            );
-
-            setActionBarDragX(nextDragX);
-        },
-        []
-    );
-
-    const handleActionBarPointerMove = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            const dragState = actionBarDragRef.current;
-
-            if (!dragState || dragState.pointerId !== event.pointerId) {
-                return;
-            }
-
-            event.preventDefault();
-
-            const rail = actionBarRailRef.current;
-            if (!rail) return;
-
-            const railRect = rail.getBoundingClientRect();
-            const barRect = event.currentTarget.parentElement?.getBoundingClientRect();
-            if (!barRect) return;
-
-            const nextDragX = Math.max(
-                0,
-                Math.min(
-                    event.clientX - railRect.left - dragState.grabOffsetX,
-                    Math.max(0, railRect.width - barRect.width)
-                )
-            );
-            setActionBarDragX(nextDragX);
-        },
-        []
-    );
-
-    const clearActionBarDragState = useCallback(
-        (container: HTMLDivElement, pointerId: number) => {
-            const dragState = actionBarDragRef.current;
-
-            if (container?.hasPointerCapture(pointerId)) {
-                container.releasePointerCapture(pointerId);
-            }
-
-            if (dragState?.pointerId === pointerId) {
-                actionBarDragRef.current = null;
-            }
-        },
-        []
-    );
-
-    const finishActionBarDrag = useCallback(
-        (container: HTMLDivElement, pointerId: number) => {
-            clearActionBarDragState(container, pointerId);
-            setActionBarDragX(null);
-        },
-        [clearActionBarDragState]
-    );
-
-    const handleActionBarPointerUp = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            const dragState = actionBarDragRef.current;
-
-            if (!dragState || dragState.pointerId !== event.pointerId) return;
-
-            event.preventDefault();
-
-            const rail = actionBarRailRef.current;
-            if (!rail) {
-                finishActionBarDrag(event.currentTarget, event.pointerId);
-                return;
-            }
-
-            const barRect = event.currentTarget.parentElement?.getBoundingClientRect();
-            if (!barRect) {
-                finishActionBarDrag(event.currentTarget, event.pointerId);
-                return;
-            }
-
-            const nextAnchor = getActionBarAnchorFromBounds({
-                bar: barRect,
-                container: rail,
-                currentAnchor: actionBarAnchor,
-            });
-
-            setActionBarAnchor(nextAnchor);
-            window.localStorage.setItem(getActionBarStorageKey(id), nextAnchor);
-            finishActionBarDrag(event.currentTarget, event.pointerId);
-        },
-        [actionBarAnchor, finishActionBarDrag, id]
-    );
-
-    const handleActionBarPointerCancel = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            if (actionBarDragRef.current?.pointerId !== event.pointerId) return;
-
-            finishActionBarDrag(event.currentTarget, event.pointerId);
-        },
-        [finishActionBarDrag]
-    );
-
-    const handleActionBarLostPointerCapture = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            if (actionBarDragRef.current?.pointerId !== event.pointerId) return;
-
-            finishActionBarDrag(event.currentTarget, event.pointerId);
-        },
-        [finishActionBarDrag]
-    );
-
     const handleClosePlacementZoom = useCallback(() => {
         clearPlacementZoom();
         setTouchPreview(null);
@@ -1460,22 +1292,24 @@ export default function GoBoard({ id }: GoBoardProps) {
                         />
                     ) : null}
                     <RecorderActionBar
-                        anchor={actionBarAnchor}
+                        anchor={actionBar.anchor}
                         canShareGame={canShareGame}
                         canUndo={gameState.moves.length > 0}
-                        dragX={actionBarDragX}
+                        dragX={actionBar.dragX}
                         hasStoneCorrectionSelection={hasStoneCorrectionSelection}
                         onClosePlacementZoom={handleClosePlacementZoom}
                         onExitStoneEditMode={handleExitStoneEditMode}
-                        onLostPointerCapture={handleActionBarLostPointerCapture}
+                        onLostPointerCapture={
+                            actionBar.dragHandlers.onLostPointerCapture
+                        }
                         onPass={handlePass}
-                        onPointerCancel={handleActionBarPointerCancel}
-                        onPointerDown={handleActionBarPointerDown}
-                        onPointerMove={handleActionBarPointerMove}
-                        onPointerUp={handleActionBarPointerUp}
+                        onPointerCancel={actionBar.dragHandlers.onPointerCancel}
+                        onPointerDown={actionBar.dragHandlers.onPointerDown}
+                        onPointerMove={actionBar.dragHandlers.onPointerMove}
+                        onPointerUp={actionBar.dragHandlers.onPointerUp}
                         onToggleShareMenu={toggleShareMenu}
                         onUndo={handleUndo}
-                        railRef={actionBarRailRef}
+                        railRef={actionBar.railRef}
                         shareMenuOpen={shareMenuOpen}
                         shareTriggerRef={shareTriggerRef}
                         showPlacementZoomControl={Boolean(placementZoomWindow)}
