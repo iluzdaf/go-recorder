@@ -369,7 +369,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 <DraftBoardActionBar
                     anchor={actionBar.anchor}
                     dragX={actionBar.dragX}
-                    onDownloadSgf={handleDownloadSgf}
                     onLostPointerCapture={
                         actionBar.dragHandlers.onLostPointerCapture
                     }

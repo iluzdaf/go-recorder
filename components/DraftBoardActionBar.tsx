@@ -3,7 +3,6 @@
 import {
     Circle,
     CircleDot,
-    Download,
     SquareArrowUpRight,
 } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
@@ -15,7 +14,6 @@ import { t } from "../lib/i18n";
 type DraftBoardActionBarProps = {
     anchor: ActionBarAnchor;
     dragX: number | null;
-    onDownloadSgf: () => void;
     onLostPointerCapture: (event: ReactPointerEvent<HTMLDivElement>) => void;
     onPointerCancel: (event: ReactPointerEvent<HTMLDivElement>) => void;
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
@@ -48,7 +46,6 @@ function DragHandleDots() {
 export default function DraftBoardActionBar({
     anchor,
     dragX,
-    onDownloadSgf,
     onLostPointerCapture,
     onPointerCancel,
     onPointerDown,
@@ -96,15 +93,6 @@ export default function DraftBoardActionBar({
                             title={t("toggleDraftStoneColor")}
                         >
                             <Circle size={18} fill="currentColor" />
-                        </button>
-                        <button
-                            type="button"
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                            onClick={onDownloadSgf}
-                            aria-label={t("downloadSgf")}
-                            title={t("downloadSgf")}
-                        >
-                            <Download size={18} />
                         </button>
                         <button
                             type="button"
