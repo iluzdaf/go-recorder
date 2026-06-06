@@ -3,16 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType } from "react";
-import QRCode from "qrcode";
 
 import type { Move, SetupStone, ShareRecord, Stone } from "./types";
 import { exportSgf, createSgfFilename } from "./sgf";
-import { t } from "../lib/i18n";
 import { useHeaderStatus, useTheme } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
 import ShareBoardActionBar from "./ShareBoardActionBar";
 import ShareMenu from "./ShareMenu";
 import useActionBarDrag from "./useActionBarDrag";
+import useShareMenu from "./useShareMenu";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -66,14 +65,21 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const { isDarkMode } = useTheme();
     const { setHeaderStatus } = useHeaderStatus();
     const boardAreaRef = useRef<HTMLDivElement | null>(null);
-    const shareMenuRef = useRef<HTMLDivElement | null>(null);
-    const shareTriggerRef = useRef<HTMLButtonElement | null>(null);
     const actionBar = useActionBarDrag();
-    const [shareMenuOpen, setShareMenuOpen] = useState(false);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
-    const [shareQrCodeDataUrl, setShareQrCodeDataUrl] = useState<string | null>(
-        null
-    );
+    const sharePath = `/shares/${share.slug}`;
+    const {
+        close: closeShareMenu,
+        copyShareLink,
+        isOpen: shareMenuOpen,
+        menuRef: shareMenuRef,
+        qrCodeDataUrl: shareQrCodeDataUrl,
+        toggle: toggleShareMenu,
+        triggerRef: shareTriggerRef,
+    } = useShareMenu({
+        onStatus: setShareStatus,
+        sharePath,
+    });
     const [visibleMoveCount, setVisibleMoveCount] = useState(
         share.gameState.moves.length
     );
@@ -126,8 +132,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         markerMap[lastMove.y][lastMove.x] = { type: "circle" };
     }
 
-    const sharePath = `/shares/${share.slug}`;
-
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
 
     useEffect(() => {
@@ -142,24 +146,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
 
         return () => setHeaderStatus(null);
     }, [dismissShareStatus, setHeaderStatus, shareStatus]);
-
-    const openShareMenu = useCallback(() => {
-        setShareMenuOpen(true);
-    }, []);
-
-    const closeShareMenu = useCallback(() => {
-        setShareMenuOpen(false);
-        setShareQrCodeDataUrl(null);
-    }, []);
-
-    const toggleShareMenu = useCallback(() => {
-        if (shareMenuOpen) {
-            closeShareMenu();
-            return;
-        }
-
-        openShareMenu();
-    }, [closeShareMenu, openShareMenu, shareMenuOpen]);
 
     const handleDownloadSgf = useCallback(() => {
         const sgfFilename = createSgfFilename(
@@ -202,81 +188,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         closeShareMenu();
     }, [closeShareMenu, handleDownloadSgf]);
 
-    const handleCopyLink = useCallback(async () => {
-        try {
-            await navigator.clipboard.writeText(
-                `${window.location.origin}${sharePath}`
-            );
-            setShareStatus(t("linkCopied"));
-        } catch {
-            setShareStatus(t("failedToCopyLink"));
-        }
-    }, [sharePath]);
-
-    useEffect(() => {
-        if (!shareMenuOpen) return;
-
-        const handlePointerDown = (event: PointerEvent) => {
-            const target = event.target;
-            if (!(target instanceof Node)) return;
-
-            const menuElement = shareMenuRef.current;
-            const triggerElement = shareTriggerRef.current;
-
-            if (
-                menuElement?.contains(target) ||
-                triggerElement?.contains(target)
-            ) {
-                return;
-            }
-
-            closeShareMenu();
-        };
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                closeShareMenu();
-            }
-        };
-
-        window.addEventListener("pointerdown", handlePointerDown);
-        window.addEventListener("keydown", handleKeyDown);
-
-        return () => {
-            window.removeEventListener("pointerdown", handlePointerDown);
-            window.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [closeShareMenu, shareMenuOpen]);
-
-    useEffect(() => {
-        if (!shareMenuOpen) {
-            return;
-        }
-
-        let cancelled = false;
-
-        void QRCode.toDataURL(`${window.location.origin}${sharePath}`, {
-            errorCorrectionLevel: "M",
-            margin: 1,
-            width: 240,
-        })
-            .then((nextQrCodeDataUrl: string) => {
-                if (!cancelled) {
-                    setShareQrCodeDataUrl(nextQrCodeDataUrl);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) {
-                    setShareQrCodeDataUrl(null);
-                    setShareStatus(t("failedToGenerateQrCode"));
-                }
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [shareMenuOpen, sharePath]);
-
     const handleJumpToStart = useCallback(() => {
         setVisibleMoveCount(0);
     }, []);
@@ -316,7 +227,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                         mode="created"
                         onCreateShare={() => {}}
                         onDownloadSgf={handleDownloadSgfFromShareMenu}
-                        onCopyLink={handleCopyLink}
+                        onCopyLink={copyShareLink}
                         qrCodeDataUrl={shareQrCodeDataUrl}
                         showSharePageLink={false}
                         sharePath={sharePath}
