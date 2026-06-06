@@ -4,6 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 
 import { t } from "../lib/i18n";
+import {
+    createAbsoluteShareUrl,
+    shouldGenerateShareQrCode,
+} from "../lib/shareMenu";
 
 type UseShareMenuOptions = {
     onClose?: () => void;
@@ -51,7 +55,10 @@ export default function useShareMenu({
 
         try {
             await navigator.clipboard.writeText(
-                `${window.location.origin}${sharePath}`
+                createAbsoluteShareUrl({
+                    origin: window.location.origin,
+                    sharePath,
+                })
             );
             onStatus(t("linkCopied"));
         } catch {
@@ -95,12 +102,23 @@ export default function useShareMenu({
     }, [close, isOpen]);
 
     useEffect(() => {
-        if (!isOpen || !shouldGenerateQrCode || !sharePath) {
+        if (
+            !shouldGenerateShareQrCode({
+                isOpen,
+                sharePath,
+                shouldGenerateQrCode,
+            })
+        ) {
             return;
         }
+        if (sharePath === null) return;
 
+        const qrSharePath = sharePath;
         let cancelled = false;
-        const shareUrl = `${window.location.origin}${sharePath}`;
+        const shareUrl = createAbsoluteShareUrl({
+            origin: window.location.origin,
+            sharePath: qrSharePath,
+        });
 
         void QRCode.toDataURL(shareUrl, {
             errorCorrectionLevel: "M",
