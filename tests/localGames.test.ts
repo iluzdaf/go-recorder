@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+    createLocalDraft,
     createLocalGame,
     getLocalGame,
+    getLocalRecord,
     saveLocalGame,
+    saveLocalRecord,
     type LocalGameRecord,
 } from "../lib/localGames";
 import type { GameState } from "../components/types";
@@ -51,6 +54,7 @@ describe("local game storage", () => {
         });
 
         expect(record).toMatchObject({
+            recordKind: "game",
             boardSize: 19,
             gameState: emptyGameState,
             blackPlayerName: null,
@@ -74,6 +78,7 @@ describe("local game storage", () => {
 
         expect(getLocalGame(record.id)).toMatchObject({
             boardSize: 9,
+            recordKind: "game",
             blackPlayerName: "Black",
             whitePlayerName: "White",
             handicap: 2,
@@ -83,6 +88,28 @@ describe("local game storage", () => {
 
     it("returns null when a local game does not exist", () => {
         expect(getLocalGame("missing")).toBeNull();
+    });
+
+    it("loads existing game records without a record kind", () => {
+        const legacyRecord = {
+            id: "legacy-game",
+            boardSize: 19,
+            gameState: emptyGameState,
+            blackPlayerName: null,
+            whitePlayerName: null,
+            handicap: 0,
+            createdAt: "2026-05-28T00:00:00.000Z",
+            updatedAt: "2026-05-28T00:00:00.000Z",
+            lastShareSlug: null,
+        };
+
+        window.localStorage.setItem(
+            "go-recorder:local-game:legacy-game",
+            JSON.stringify(legacyRecord)
+        );
+
+        expect(getLocalGame("legacy-game")).toEqual(legacyRecord);
+        expect(getLocalRecord("legacy-game")).toEqual(legacyRecord);
     });
 
     it("returns null when stored data is not valid JSON", () => {
@@ -159,6 +186,7 @@ describe("local game storage", () => {
         });
 
         expect(savedRecord).toEqual({
+            recordKind: "game",
             id: record.id,
             boardSize: 9,
             gameState: {
@@ -193,5 +221,113 @@ describe("local game storage", () => {
             lastShareSlug: "share123",
             updatedAt: "2026-05-28T00:03:00.000Z",
         });
+    });
+
+    it("creates and stores a board draft without parent metadata", () => {
+        const record = createLocalDraft({
+            draftKind: "board",
+            boardSize: 19,
+            gameState: emptyGameState,
+        });
+
+        expect(record).toMatchObject({
+            recordKind: "draft",
+            draftKind: "board",
+            boardSize: 19,
+            gameState: emptyGameState,
+            blackPlayerName: null,
+            whitePlayerName: null,
+            handicap: 0,
+            createdAt: "2026-05-28T00:00:00.000Z",
+            updatedAt: "2026-05-28T00:00:00.000Z",
+            lastShareSlug: null,
+            parentShareSlug: null,
+            baseMoveCount: null,
+        });
+        expect(record.id).toHaveLength(36);
+        expect(getLocalRecord(record.id)).toEqual(record);
+        expect(getLocalGame(record.id)).toBeNull();
+    });
+
+    it("creates and stores a variation draft with parent metadata", () => {
+        const record = createLocalDraft({
+            draftKind: "variation",
+            boardSize: 19,
+            gameState: emptyGameState,
+            parentShareSlug: "share123",
+            baseMoveCount: 12,
+        });
+
+        expect(record).toMatchObject({
+            recordKind: "draft",
+            draftKind: "variation",
+            parentShareSlug: "share123",
+            baseMoveCount: 12,
+        });
+        expect(getLocalRecord(record.id)).toEqual(record);
+    });
+
+    it("rejects variation drafts without parent metadata", () => {
+        expect(() =>
+            createLocalDraft({
+                draftKind: "variation",
+                boardSize: 19,
+                gameState: emptyGameState,
+            })
+        ).toThrow("Invalid local draft record");
+    });
+
+    it("rejects stored variation drafts with invalid base move counts", () => {
+        window.localStorage.setItem(
+            "go-recorder:local-game:invalid-variation",
+            JSON.stringify({
+                recordKind: "draft",
+                draftKind: "variation",
+                id: "invalid-variation",
+                boardSize: 19,
+                gameState: emptyGameState,
+                blackPlayerName: null,
+                whitePlayerName: null,
+                handicap: 0,
+                createdAt: "2026-05-28T00:00:00.000Z",
+                updatedAt: "2026-05-28T00:00:00.000Z",
+                lastShareSlug: null,
+                parentShareSlug: "share123",
+                baseMoveCount: -1,
+            })
+        );
+
+        expect(getLocalRecord("invalid-variation")).toBeNull();
+    });
+
+    it("saves local drafts while preserving draft metadata", () => {
+        const record = createLocalDraft({
+            draftKind: "variation",
+            boardSize: 19,
+            gameState: emptyGameState,
+            parentShareSlug: "share123",
+            baseMoveCount: 2,
+        });
+        const changedGameState: GameState = {
+            setupStones: [],
+            moves: [{ type: "play", x: 4, y: 4, color: "B" }],
+            currentPlayer: "W",
+        };
+
+        vi.setSystemTime(new Date("2026-05-28T00:04:00.000Z"));
+
+        const savedRecord = saveLocalRecord({
+            ...record,
+            gameState: changedGameState,
+            lastShareSlug: "share456",
+        });
+
+        expect(savedRecord).toEqual({
+            ...record,
+            gameState: changedGameState,
+            lastShareSlug: "share456",
+            updatedAt: "2026-05-28T00:04:00.000Z",
+        });
+        expect(getLocalRecord(record.id)).toEqual(savedRecord);
     });
 });

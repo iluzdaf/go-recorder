@@ -1,6 +1,9 @@
 import type {
     BoardSize,
+    DraftKind,
     GameState,
+    LocalDraftRecord,
+    LocalEditableRecord,
     LocalGameRecord,
 } from "../components/types";
 import { isValidBoardSize, isValidGameState } from "./gameLogic";
@@ -8,7 +11,7 @@ import { createRandomId } from "./randomId";
 
 const LOCAL_GAME_STORAGE_KEY_PREFIX = "go-recorder:local-game:";
 
-export type { LocalGameRecord };
+export type { LocalDraftRecord, LocalEditableRecord, LocalGameRecord };
 
 export type CreateLocalGameInput = {
     boardSize: BoardSize;
@@ -16,6 +19,17 @@ export type CreateLocalGameInput = {
     blackPlayerName?: string | null;
     whitePlayerName?: string | null;
     handicap?: number;
+};
+
+export type CreateLocalDraftInput = {
+    draftKind: DraftKind;
+    boardSize: BoardSize;
+    gameState: GameState;
+    blackPlayerName?: string | null;
+    whitePlayerName?: string | null;
+    handicap?: number;
+    parentShareSlug?: string | null;
+    baseMoveCount?: number | null;
 };
 
 function getLocalStorage() {
@@ -30,27 +44,77 @@ function getStorageKey(id: string) {
     return `${LOCAL_GAME_STORAGE_KEY_PREFIX}${id}`;
 }
 
+function isNullableString(value: unknown) {
+    return value === null || typeof value === "string";
+}
+
+function isOptionalNullableString(value: unknown) {
+    return value === undefined || isNullableString(value);
+}
+
+function isValidBaseMoveCount(value: unknown) {
+    return (
+        value === null ||
+        (typeof value === "number" && Number.isInteger(value) && value >= 0)
+    );
+}
+
+function hasValidLocalRecordBase(
+    record: Partial<LocalEditableRecord>
+) {
+    return (
+        typeof record.id === "string" &&
+        isValidBoardSize(record.boardSize) &&
+        isValidGameState(record.gameState) &&
+        isNullableString(record.blackPlayerName) &&
+        isNullableString(record.whitePlayerName) &&
+        typeof record.handicap === "number" &&
+        Number.isInteger(record.handicap) &&
+        typeof record.createdAt === "string" &&
+        typeof record.updatedAt === "string" &&
+        isOptionalNullableString(record.lastShareSlug)
+    );
+}
+
 function isLocalGameRecord(value: unknown): value is LocalGameRecord {
     if (typeof value !== "object" || value === null) return false;
 
     const record = value as Partial<LocalGameRecord>;
 
     return (
-        typeof record.id === "string" &&
-        isValidBoardSize(record.boardSize) &&
-        isValidGameState(record.gameState) &&
-        (typeof record.blackPlayerName === "string" ||
-            record.blackPlayerName === null) &&
-        (typeof record.whitePlayerName === "string" ||
-            record.whitePlayerName === null) &&
-        typeof record.handicap === "number" &&
-        Number.isInteger(record.handicap) &&
-        typeof record.createdAt === "string" &&
-        typeof record.updatedAt === "string" &&
-        (record.lastShareSlug === undefined ||
-            typeof record.lastShareSlug === "string" ||
-            record.lastShareSlug === null)
+        (record.recordKind === undefined || record.recordKind === "game") &&
+        hasValidLocalRecordBase(record)
     );
+}
+
+function isLocalDraftRecord(value: unknown): value is LocalDraftRecord {
+    if (typeof value !== "object" || value === null) return false;
+
+    const record = value as Partial<LocalDraftRecord>;
+
+    if (
+        record.recordKind !== "draft" ||
+        (record.draftKind !== "board" && record.draftKind !== "variation") ||
+        !hasValidLocalRecordBase(record) ||
+        !isNullableString(record.parentShareSlug) ||
+        !isValidBaseMoveCount(record.baseMoveCount)
+    ) {
+        return false;
+    }
+
+    if (record.draftKind === "variation") {
+        return (
+            typeof record.parentShareSlug === "string" &&
+            record.parentShareSlug.length > 0 &&
+            typeof record.baseMoveCount === "number"
+        );
+    }
+
+    return record.parentShareSlug === null && record.baseMoveCount === null;
+}
+
+function isLocalEditableRecord(value: unknown): value is LocalEditableRecord {
+    return isLocalGameRecord(value) || isLocalDraftRecord(value);
 }
 
 export function createLocalGame({
@@ -62,6 +126,7 @@ export function createLocalGame({
 }: CreateLocalGameInput) {
     const now = new Date().toISOString();
     const record: LocalGameRecord = {
+        recordKind: "game",
         id: createRandomId(),
         boardSize,
         gameState,
@@ -78,7 +143,49 @@ export function createLocalGame({
     return record;
 }
 
+export function createLocalDraft({
+    draftKind,
+    boardSize,
+    gameState,
+    blackPlayerName = null,
+    whitePlayerName = null,
+    handicap = 0,
+    parentShareSlug = null,
+    baseMoveCount = null,
+}: CreateLocalDraftInput) {
+    const now = new Date().toISOString();
+    const record: LocalDraftRecord = {
+        recordKind: "draft",
+        draftKind,
+        id: createRandomId(),
+        boardSize,
+        gameState,
+        blackPlayerName,
+        whitePlayerName,
+        handicap,
+        createdAt: now,
+        updatedAt: now,
+        lastShareSlug: null,
+        parentShareSlug,
+        baseMoveCount,
+    };
+
+    if (!isLocalDraftRecord(record)) {
+        throw new Error("Invalid local draft record");
+    }
+
+    getLocalStorage().setItem(getStorageKey(record.id), JSON.stringify(record));
+
+    return record;
+}
+
 export function getLocalGame(id: string) {
+    const record = getLocalRecord(id);
+
+    return record?.recordKind === "draft" ? null : record;
+}
+
+export function getLocalRecord(id: string) {
     const storedRecord = getLocalStorage().getItem(getStorageKey(id));
 
     if (storedRecord === null) return null;
@@ -86,7 +193,7 @@ export function getLocalGame(id: string) {
     try {
         const parsedRecord: unknown = JSON.parse(storedRecord);
 
-        if (!isLocalGameRecord(parsedRecord)) return null;
+        if (!isLocalEditableRecord(parsedRecord)) return null;
 
         return parsedRecord;
     } catch {
@@ -95,7 +202,17 @@ export function getLocalGame(id: string) {
 }
 
 export function saveLocalGame(record: LocalGameRecord) {
-    const updatedRecord: LocalGameRecord = {
+    const updatedRecord = saveLocalRecord(record);
+
+    if (updatedRecord.recordKind === "draft") {
+        throw new Error("Expected a local game record");
+    }
+
+    return updatedRecord;
+}
+
+export function saveLocalRecord(record: LocalEditableRecord) {
+    const updatedRecord: LocalEditableRecord = {
         ...record,
         updatedAt: new Date().toISOString(),
     };
