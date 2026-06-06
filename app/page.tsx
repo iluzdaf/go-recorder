@@ -45,7 +45,7 @@ export default function Home() {
 
   return (
     <main className="flex min-h-0 flex-1 items-start justify-center overflow-auto bg-zinc-100 p-6 text-zinc-950 dark:bg-neutral-900 dark:text-white">
-      <div className="grid w-full max-w-sm gap-4">
+      <div className="grid w-full max-w-3xl gap-4 sm:grid-cols-2 sm:items-start">
         <form
           onSubmit={handleRecordGame}
           className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
