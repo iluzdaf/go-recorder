@@ -1,19 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType, PointerEvent as ReactPointerEvent } from "react";
-import {
-    Copy,
-    Download,
-    ChevronLeft,
-    ChevronRight,
-    SkipBack,
-    SkipForward,
-    FileText,
-    SquareArrowUpRight,
-} from "lucide-react";
 import QRCode from "qrcode";
 
 import type { Move, SetupStone, ShareRecord, Stone } from "./types";
@@ -21,6 +10,10 @@ import { exportSgf, createSgfFilename } from "./sgf";
 import { t } from "../lib/i18n";
 import { useHeaderStatus, useTheme } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
+import ShareBoardActionBar, {
+    type ShareBoardActionBarAnchor,
+} from "./ShareBoardActionBar";
+import ShareMenu from "./ShareMenu";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -34,8 +27,6 @@ type ShudanGobanProps = {
 };
 
 const BoardView = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
-
-type ActionBarAnchor = "left" | "center" | "right";
 
 type ActionBarDragState = {
     pointerId: number;
@@ -82,7 +73,7 @@ function getActionBarAnchorFromClientX({
 }: {
     clientX: number;
     container: HTMLElement;
-}): ActionBarAnchor {
+}): ShareBoardActionBarAnchor {
     const { left, width } = container.getBoundingClientRect();
     const relativeX = clientX - left;
 
@@ -101,7 +92,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const actionBarRailRef = useRef<HTMLDivElement | null>(null);
     const actionBarDragRef = useRef<ActionBarDragState | null>(null);
     const [actionBarAnchor, setActionBarAnchor] =
-        useState<ActionBarAnchor>("center");
+        useState<ShareBoardActionBarAnchor>("center");
     const [actionBarDragX, setActionBarDragX] = useState<number | null>(null);
     const [shareMenuOpen, setShareMenuOpen] = useState(false);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
@@ -230,6 +221,11 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         share.handicap,
         share.whitePlayerName,
     ]);
+
+    const handleDownloadSgfFromShareMenu = useCallback(() => {
+        handleDownloadSgf();
+        closeShareMenu();
+    }, [closeShareMenu, handleDownloadSgf]);
 
     const handleCopyLink = useCallback(async () => {
         try {
@@ -467,171 +463,39 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                 className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
             >
                 {shareMenuOpen ? (
-                    <div
-                        id="share-menu"
-                        ref={shareMenuRef}
-                        className="fixed right-4 top-16 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
-                    >
-                        <div className="mb-3">
-                            <p className="text-sm font-semibold text-zinc-950 dark:text-white">
-                                {t("share")}
-                            </p>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <button
-                                type="button"
-                                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                onClick={() => {
-                                    handleDownloadSgf();
-                                    closeShareMenu();
-                                }}
-                                aria-label={t("downloadSgf")}
-                                title={t("downloadSgf")}
-                            >
-                                <Download size={16} />
-                                <span>{t("downloadSgf")}</span>
-                            </button>
-                            <div className="flex items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-neutral-700 dark:bg-neutral-950">
-                                {shareQrCodeDataUrl ? (
-                                    <Image
-                                        src={shareQrCodeDataUrl}
-                                        alt={t("shareLink")}
-                                        width={240}
-                                        height={240}
-                                        unoptimized
-                                        className="h-48 w-48"
-                                    />
-                                ) : (
-                                    <div className="flex h-48 w-48 items-center justify-center text-sm text-zinc-500 dark:text-zinc-400">
-                                        {t("creatingQrCode")}
-                                    </div>
-                                )}
-                            </div>
-                            <button
-                                type="button"
-                                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                onClick={handleCopyLink}
-                                aria-label={t("copyLink")}
-                                title={t("copyLink")}
-                            >
-                                <Copy size={16} />
-                                <span>{t("copyLink")}</span>
-                            </button>
-                        </div>
-                    </div>
+                    <ShareMenu
+                        canShareGame
+                        isCreating={false}
+                        menuRef={shareMenuRef}
+                        message={null}
+                        mode="created"
+                        onCreateShare={() => {}}
+                        onDownloadSgf={handleDownloadSgfFromShareMenu}
+                        onCopyLink={handleCopyLink}
+                        qrCodeDataUrl={shareQrCodeDataUrl}
+                        showSharePageLink={false}
+                        sharePath={sharePath}
+                    />
                 ) : null}
-                <div
-                    ref={actionBarRailRef}
-                    className="absolute inset-x-3 bottom-3 z-40 h-14 select-none sm:bottom-4"
-                >
-                    <div className="relative h-full w-full">
-                        <div
-                            className={
-                                actionBarDragX !== null
-                                    ? "absolute top-1/2 -translate-y-1/2"
-                                    : actionBarAnchor === "left"
-                                        ? "absolute left-0 top-1/2 -translate-y-1/2"
-                                        : actionBarAnchor === "right"
-                                            ? "absolute right-0 top-1/2 -translate-y-1/2"
-                                            : "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-                            }
-                            style={
-                                actionBarDragX !== null
-                                    ? { left: `${actionBarDragX}px` }
-                                    : undefined
-                            }
-                        >
-                            <div className="flex items-center gap-1 rounded-full border border-zinc-200 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
-                                <div
-                                    className="inline-flex h-11 w-11 items-center justify-center text-zinc-700 dark:text-zinc-200"
-                                    aria-hidden="true"
-                                >
-                                    <FileText size={18} />
-                                </div>
-                                <button
-                                    type="button"
-                                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                    onClick={handleJumpToStart}
-                                    aria-label="Go to start"
-                                    title="Go to start"
-                                    disabled={visibleMoveCount === 0}
-                                >
-                                    <SkipBack size={18} />
-                                </button>
-                                <button
-                                    type="button"
-                                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                    onClick={handlePreviousMove}
-                                    aria-label="Previous move"
-                                    title="Previous move"
-                                    disabled={visibleMoveCount === 0}
-                                >
-                                    <ChevronLeft size={18} />
-                                </button>
-                                <button
-                                    type="button"
-                                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                    onClick={handleNextMove}
-                                    aria-label="Next move"
-                                    title="Next move"
-                                    disabled={
-                                        visibleMoveCount ===
-                                        share.gameState.moves.length
-                                    }
-                                >
-                                    <ChevronRight size={18} />
-                                </button>
-                                <button
-                                    type="button"
-                                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                    onClick={handleJumpToEnd}
-                                    aria-label="Go to end"
-                                    title="Go to end"
-                                    disabled={
-                                        visibleMoveCount ===
-                                        share.gameState.moves.length
-                                    }
-                                    >
-                                        <SkipForward size={18} />
-                                </button>
-                                <button
-                                    type="button"
-                                    ref={shareTriggerRef}
-                                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                    onClick={toggleShareMenu}
-                                    aria-label={t("share")}
-                                    aria-expanded={shareMenuOpen}
-                                    aria-controls="share-menu"
-                                    title={t("share")}
-                                >
-                                    <SquareArrowUpRight size={18} />
-                                </button>
-                                <div
-                                    className="flex h-11 w-10 cursor-grab items-center justify-center active:cursor-grabbing"
-                                    onPointerDown={handleActionBarPointerDown}
-                                    onPointerMove={handleActionBarPointerMove}
-                                    onPointerUp={handleActionBarPointerUp}
-                                    onPointerCancel={handleActionBarPointerCancel}
-                                    onLostPointerCapture={
-                                        handleActionBarLostPointerCapture
-                                    }
-                                >
-                                    <span
-                                        aria-hidden="true"
-                                        className="grid h-6 w-4 grid-cols-2 gap-x-1 gap-y-1"
-                                    >
-                                        <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
-                                        <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
-                                        <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
-                                        <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
-                                        <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
-                                        <span className="h-1 w-1 rounded-full bg-zinc-300 dark:bg-neutral-600" />
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <ShareBoardActionBar
+                    anchor={actionBarAnchor}
+                    dragX={actionBarDragX}
+                    onJumpToEnd={handleJumpToEnd}
+                    onJumpToStart={handleJumpToStart}
+                    onLostPointerCapture={handleActionBarLostPointerCapture}
+                    onNextMove={handleNextMove}
+                    onPointerCancel={handleActionBarPointerCancel}
+                    onPointerDown={handleActionBarPointerDown}
+                    onPointerMove={handleActionBarPointerMove}
+                    onPointerUp={handleActionBarPointerUp}
+                    onPreviousMove={handlePreviousMove}
+                    onToggleShareMenu={toggleShareMenu}
+                    railRef={actionBarRailRef}
+                    shareMenuOpen={shareMenuOpen}
+                    shareTriggerRef={shareTriggerRef}
+                    totalMoveCount={share.gameState.moves.length}
+                    visibleMoveCount={visibleMoveCount}
+                />
                 <div className="relative">
                     <BoardView
                         vertexSize={vertexSize}
