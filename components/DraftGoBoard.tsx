@@ -14,6 +14,10 @@ import ShareMenu, { type ShareMenuMode } from "./ShareMenu";
 import { exportSgf, createSgfFilename } from "./sgf";
 import { useHeaderStatus, useTheme } from "./AppShell";
 import { clearDraftShareCache, toggleBoardDraftStone } from "../lib/boardDraft";
+import {
+    getVertexFromBoardPointer,
+    type BoardGridGeometry,
+} from "../lib/gameCorrectionUi";
 import { t } from "../lib/i18n";
 import { getLocalRecord, saveLocalRecord } from "../lib/localGames";
 import { createShareFromLocalRecord } from "../lib/shareClient";
@@ -92,7 +96,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     const {
         boardAreaRef,
         gobanWrapperRef,
-        gridMetrics,
+        setGridMetrics,
         vertexSize,
     } = useBoardGeometry({
         boardSize: draft?.boardSize ?? 19,
@@ -132,37 +136,48 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         return () => setHeaderStatus(null);
     }, [dismissShareStatus, setHeaderStatus, shareStatus]);
 
+    const getGridMetrics = useCallback(() => {
+        const gobanWrapper = gobanWrapperRef.current;
+        if (!gobanWrapper || !draft) return null;
+
+        const grid = gobanWrapper.querySelector(".shudan-grid");
+        if (!(grid instanceof SVGElement)) return null;
+
+        const wrapperRect = gobanWrapper.getBoundingClientRect();
+        const gridRect = grid.getBoundingClientRect();
+        const nextGridMetrics = {
+            left: gridRect.left - wrapperRect.left,
+            top: gridRect.top - wrapperRect.top,
+            cellSize: gridRect.width / draft.boardSize,
+            boardSizePx: gridRect.width,
+        };
+        const gridGeometry: BoardGridGeometry = {
+            left: gridRect.left,
+            top: gridRect.top,
+            cellSize: nextGridMetrics.cellSize,
+            boardSize: draft.boardSize,
+        };
+
+        setGridMetrics(nextGridMetrics);
+
+        return { gridGeometry };
+    }, [draft, gobanWrapperRef, setGridMetrics]);
+
     const getVertexFromPointer = useCallback(
         (event: ReactPointerEvent<HTMLDivElement>): Vertex | null => {
             const gobanWrapper = gobanWrapperRef.current;
             if (!gobanWrapper || !draft) return null;
 
-            const wrapperRect = gobanWrapper.getBoundingClientRect();
-            const localX = event.clientX - wrapperRect.left - gridMetrics.left;
-            const localY = event.clientY - wrapperRect.top - gridMetrics.top;
-            const x = Math.round(localX / gridMetrics.cellSize);
-            const y = Math.round(localY / gridMetrics.cellSize);
-            const maxGridPosition =
-                gridMetrics.cellSize * Math.max(0, draft.boardSize - 1);
-            const isNearGrid =
-                localX >= -gridMetrics.cellSize / 2 &&
-                localY >= -gridMetrics.cellSize / 2 &&
-                localX <= maxGridPosition + gridMetrics.cellSize / 2 &&
-                localY <= maxGridPosition + gridMetrics.cellSize / 2;
+            const metrics = getGridMetrics();
+            if (!metrics) return null;
 
-            if (
-                !isNearGrid ||
-                x < 0 ||
-                y < 0 ||
-                x >= draft.boardSize ||
-                y >= draft.boardSize
-            ) {
-                return null;
-            }
-
-            return { x, y };
+            return getVertexFromBoardPointer({
+                clientX: event.clientX,
+                clientY: event.clientY,
+                grid: metrics.gridGeometry,
+            });
         },
-        [draft, gobanWrapperRef, gridMetrics]
+        [draft, getGridMetrics, gobanWrapperRef]
     );
 
     const clearCachedShareLink = useCallback(() => {
