@@ -44,16 +44,8 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-0 flex-1 items-center justify-center bg-zinc-100 p-6 text-zinc-950 dark:bg-neutral-900 dark:text-white">
-      <div className="flex w-full max-w-sm flex-col gap-4">
-        <button
-          type="button"
-          disabled={isCreatingGame || isCreatingDraft}
-          onClick={handleCreateDraft}
-          className="rounded border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-950 shadow-lg hover:bg-zinc-100 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
-        >
-          {isCreatingDraft ? t("creatingDraft") : t("createDraft")}
-        </button>
+    <main className="flex min-h-0 flex-1 items-start justify-center overflow-auto bg-zinc-100 p-6 text-zinc-950 dark:bg-neutral-900 dark:text-white">
+      <div className="grid w-full max-w-sm gap-4">
         <form
           onSubmit={handleRecordGame}
           className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
@@ -124,6 +116,23 @@ export default function Home() {
             {isCreatingGame ? t("recording") : t("recordGame")}
           </button>
         </form>
+
+        <section className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
+          <div>
+            <h2 className="text-base font-semibold">{t("drafts")}</h2>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              {t("draftsDescription")}
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={isCreatingGame || isCreatingDraft}
+            onClick={handleCreateDraft}
+            className="rounded border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-950 hover:bg-zinc-100 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-700"
+          >
+            {isCreatingDraft ? t("creatingDraft") : t("createDraft")}
+          </button>
+        </section>
       </div>
     </main>
   );
