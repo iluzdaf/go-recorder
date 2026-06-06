@@ -122,7 +122,7 @@ export default function Home() {
             type="button"
             disabled={isCreatingGame || isCreatingDraft}
             onClick={handleCreateDraft}
-            className="rounded border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-950 hover:bg-zinc-100 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-700"
+            className="rounded bg-sky-700 px-4 py-2 font-medium text-white hover:bg-sky-600 disabled:opacity-50"
           >
             {isCreatingDraft ? t("creatingDraft") : t("createDraft")}
           </button>
