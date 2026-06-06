@@ -4,19 +4,16 @@ import { useCallback, useEffect, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType } from "react";
 
-import type { Move, SetupStone, ShareRecord, Stone } from "./types";
+import type { ShareRecord } from "./types";
 import { exportSgf, createSgfFilename } from "./sgf";
 import { useHeaderStatus, useTheme } from "./AppShell";
+import { buildBoardFromGameState } from "../lib/shareBoardState";
 import BoardStatusMessage from "./BoardStatusMessage";
 import ShareBoardActionBar from "./ShareBoardActionBar";
 import ShareMenu from "./ShareMenu";
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
 import useShareMenu from "./useShareMenu";
-
-// @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const Board = require("@sabaki/go-board");
 
 type ShudanGobanProps = {
     vertexSize: number;
@@ -26,38 +23,6 @@ type ShudanGobanProps = {
 };
 
 const BoardView = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
-
-function stoneToSign(stone: Stone) {
-    return stone === "B" ? 1 : -1;
-}
-
-function buildBoardFromGameState(
-    size: number,
-    setupStones: SetupStone[],
-    moves: Move[]
-) {
-    let board = Board.fromDimensions(size);
-
-    for (const setupStone of setupStones) {
-        board = board.makeMove(stoneToSign("B"), [setupStone.x, setupStone.y], {
-            preventOverwrite: true,
-            preventSuicide: true,
-            preventKo: false,
-        });
-    }
-
-    for (const move of moves) {
-        if (move.type === "pass") continue;
-
-        board = board.makeMove(stoneToSign(move.color), [move.x, move.y], {
-            preventOverwrite: true,
-            preventSuicide: true,
-            preventKo: true,
-        });
-    }
-
-    return board;
-}
 
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const { isDarkMode } = useTheme();

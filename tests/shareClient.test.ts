@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { LocalGameRecord } from "../components/types";
+import type { LocalDraftRecord, LocalGameRecord } from "../components/types";
 import { t } from "../lib/i18n";
 
 const mockFetch = vi.fn();
@@ -25,6 +25,26 @@ const localGame: LocalGameRecord = {
     handicap: 2,
     createdAt: "2026-05-29T00:00:00.000Z",
     updatedAt: "2026-05-29T00:01:00.000Z",
+};
+
+const localDraft: LocalDraftRecord = {
+    recordKind: "draft",
+    draftKind: "board",
+    id: "draft-1",
+    boardSize: 13,
+    gameState: {
+        setupStones: [{ x: 3, y: 3, color: "B" }],
+        moves: [],
+        currentPlayer: "B",
+    },
+    blackPlayerName: null,
+    whitePlayerName: "White",
+    handicap: 0,
+    createdAt: "2026-05-29T00:00:00.000Z",
+    updatedAt: "2026-05-29T00:01:00.000Z",
+    lastShareSlug: null,
+    parentShareSlug: null,
+    baseMoveCount: null,
 };
 
 beforeEach(() => {
@@ -56,6 +76,22 @@ describe("toCreateShareInput", () => {
             blackPlayerName: "Black",
             whitePlayerName: "White",
             handicap: 2,
+        });
+    });
+
+    it("maps a local draft to draft share input", () => {
+        expect(
+            toCreateShareInput({
+                localRecord: localDraft,
+                sourceKind: "draft",
+            })
+        ).toEqual({
+            sourceKind: "draft",
+            boardSize: 13,
+            gameState: localDraft.gameState,
+            blackPlayerName: null,
+            whitePlayerName: "White",
+            handicap: 0,
         });
     });
 });
