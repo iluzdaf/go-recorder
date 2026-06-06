@@ -102,6 +102,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         null
     );
     const [shareMenuIsCreating, setShareMenuIsCreating] = useState(false);
+    const shareAutoCreateAttemptedRef = useRef(false);
     const strokeStateRef = useRef<BoardDraftStrokeState | null>(null);
     const sharePath = shareSlug ? `/shares/${shareSlug}` : null;
     const actionBar = useActionBarDrag();
@@ -115,6 +116,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         measureGrid: true,
     });
     const resetShareMenuState = useCallback(() => {
+        shareAutoCreateAttemptedRef.current = false;
         setShareMenuMessage(null);
         setShareMenuIsCreating(false);
     }, []);
@@ -433,6 +435,19 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             setShareMenuIsCreating(false);
         }
     }, [clearShareQrCode, openShareMenuBase]);
+
+    useEffect(() => {
+        if (!shareMenuOpen || shareMenuMode !== "chooser" || sharePath) {
+            return;
+        }
+
+        if (shareAutoCreateAttemptedRef.current) {
+            return;
+        }
+
+        shareAutoCreateAttemptedRef.current = true;
+        void handleShare();
+    }, [handleShare, shareMenuMode, shareMenuOpen, sharePath]);
 
     if (!draft) {
         return (
