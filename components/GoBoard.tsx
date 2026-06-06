@@ -105,22 +105,30 @@ function getActionBarStorageKey(id: string) {
 }
 
 function isActionBarAnchor(value: string | null): value is ActionBarAnchor {
-    return value === "left" || value === "center" || value === "right";
+    return value === "left" || value === "right";
 }
 
-function getActionBarAnchorFromClientX({
-    clientX,
+function getActionBarAnchorFromBounds({
+    bar,
     container,
+    currentAnchor,
 }: {
-    clientX: number;
+    bar: DOMRectReadOnly;
     container: HTMLElement;
+    currentAnchor: ActionBarAnchor;
 }): ActionBarAnchor {
-    const { left, width } = container.getBoundingClientRect();
-    const relativeX = clientX - left;
+    const containerRect = container.getBoundingClientRect();
+    const midpointX = containerRect.left + containerRect.width / 2;
 
-    if (relativeX < width / 3) return "left";
-    if (relativeX < (width * 2) / 3) return "center";
-    return "right";
+    if (currentAnchor === "left" && bar.right > midpointX) {
+        return "right";
+    }
+
+    if (currentAnchor === "right" && bar.left < midpointX) {
+        return "left";
+    }
+
+    return currentAnchor;
 }
 
 export default function GoBoard({ id }: GoBoardProps) {
@@ -197,13 +205,13 @@ export default function GoBoard({ id }: GoBoardProps) {
     const actionBarDragRef = useRef<ActionBarDragState | null>(null);
     const actionBarRailRef = useRef<HTMLDivElement | null>(null);
     const [actionBarAnchor, setActionBarAnchor] = useState<ActionBarAnchor>(() => {
-        if (typeof window === "undefined") return "center";
+        if (typeof window === "undefined") return "left";
 
         const storedAnchor = window.localStorage.getItem(
             getActionBarStorageKey(id)
         );
 
-        return isActionBarAnchor(storedAnchor) ? storedAnchor : "center";
+        return isActionBarAnchor(storedAnchor) ? storedAnchor : "left";
     });
     const [actionBarDragX, setActionBarDragX] = useState<number | null>(null);
     const [gameMetadata, setGameMetadata] = useState({
@@ -1364,16 +1372,23 @@ export default function GoBoard({ id }: GoBoardProps) {
                 return;
             }
 
-            const nextAnchor = getActionBarAnchorFromClientX({
-                clientX: event.clientX,
+            const barRect = event.currentTarget.parentElement?.getBoundingClientRect();
+            if (!barRect) {
+                finishActionBarDrag(event.currentTarget, event.pointerId);
+                return;
+            }
+
+            const nextAnchor = getActionBarAnchorFromBounds({
+                bar: barRect,
                 container: rail,
+                currentAnchor: actionBarAnchor,
             });
 
             setActionBarAnchor(nextAnchor);
             window.localStorage.setItem(getActionBarStorageKey(id), nextAnchor);
             finishActionBarDrag(event.currentTarget, event.pointerId);
         },
-        [finishActionBarDrag, id]
+        [actionBarAnchor, finishActionBarDrag, id]
     );
 
     const handleActionBarPointerCancel = useCallback(

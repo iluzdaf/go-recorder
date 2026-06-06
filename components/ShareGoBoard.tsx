@@ -67,19 +67,27 @@ function buildBoardFromGameState(
 
 const BOARD_PADDING_PX = 16;
 
-function getActionBarAnchorFromClientX({
-    clientX,
+function getActionBarAnchorFromBounds({
+    bar,
     container,
+    currentAnchor,
 }: {
-    clientX: number;
+    bar: DOMRectReadOnly;
     container: HTMLElement;
+    currentAnchor: ShareBoardActionBarAnchor;
 }): ShareBoardActionBarAnchor {
-    const { left, width } = container.getBoundingClientRect();
-    const relativeX = clientX - left;
+    const containerRect = container.getBoundingClientRect();
+    const midpointX = containerRect.left + containerRect.width / 2;
 
-    if (relativeX < width / 3) return "left";
-    if (relativeX < (width * 2) / 3) return "center";
-    return "right";
+    if (currentAnchor === "left" && bar.right > midpointX) {
+        return "right";
+    }
+
+    if (currentAnchor === "right" && bar.left < midpointX) {
+        return "left";
+    }
+
+    return currentAnchor;
 }
 
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
@@ -92,7 +100,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const actionBarRailRef = useRef<HTMLDivElement | null>(null);
     const actionBarDragRef = useRef<ActionBarDragState | null>(null);
     const [actionBarAnchor, setActionBarAnchor] =
-        useState<ShareBoardActionBarAnchor>("center");
+        useState<ShareBoardActionBarAnchor>("left");
     const [actionBarDragX, setActionBarDragX] = useState<number | null>(null);
     const [shareMenuOpen, setShareMenuOpen] = useState(false);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
@@ -421,15 +429,22 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                 return;
             }
 
-            const nextAnchor = getActionBarAnchorFromClientX({
-                clientX: event.clientX,
+            const barRect = event.currentTarget.parentElement?.getBoundingClientRect();
+            if (!barRect) {
+                finishActionBarDrag(event.currentTarget, event.pointerId);
+                return;
+            }
+
+            const nextAnchor = getActionBarAnchorFromBounds({
+                bar: barRect,
                 container: rail,
+                currentAnchor: actionBarAnchor,
             });
 
             setActionBarAnchor(nextAnchor);
             finishActionBarDrag(event.currentTarget, event.pointerId);
         },
-        [finishActionBarDrag]
+        [actionBarAnchor, finishActionBarDrag]
     );
 
     const handleActionBarPointerCancel = useCallback(
