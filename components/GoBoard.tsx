@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType, PointerEvent as ReactPointerEvent } from "react";
-import QRCode from "qrcode";
 
 import type {
     BoardSize,
@@ -27,6 +26,7 @@ import BoardStatusMessage from "./BoardStatusMessage";
 import RecorderActionBar from "./RecorderActionBar";
 import ShareMenu, { type ShareMenuMode } from "./ShareMenu";
 import useActionBarDrag from "./useActionBarDrag";
+import useShareMenu from "./useShareMenu";
 import { replayGame } from "../lib/gameReplay";
 import { isActionBarAnchor } from "../lib/actionBarDrag";
 import {
@@ -154,21 +154,36 @@ export default function GoBoard({ id }: GoBoardProps) {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
-    const [shareMenuOpen, setShareMenuOpen] = useState(false);
     const [shareMenuMode, setShareMenuMode] =
         useState<ShareMenuMode>("chooser");
     const [shareSlug, setShareSlug] = useState<string | null>(null);
-    const [shareQrCodeDataUrl, setShareQrCodeDataUrl] = useState<string | null>(
-        null
-    );
     const [shareMenuMessage, setShareMenuMessage] = useState<string | null>(
         null
     );
     const [shareMenuIsCreating, setShareMenuIsCreating] = useState(false);
-    const shareMenuRef = useRef<HTMLDivElement | null>(null);
-    const shareTriggerRef = useRef<HTMLButtonElement | null>(null);
     const shareAutoCreateAttemptedRef = useRef(false);
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
+    const sharePath = shareSlug ? `/shares/${shareSlug}` : null;
+    const resetShareMenuState = useCallback(() => {
+        shareAutoCreateAttemptedRef.current = false;
+        setShareMenuMessage(null);
+        setShareMenuIsCreating(false);
+    }, []);
+    const {
+        clearQrCode: clearShareQrCode,
+        close: closeShareMenu,
+        copyShareLink,
+        isOpen: shareMenuOpen,
+        menuRef: shareMenuRef,
+        open: openShareMenuBase,
+        qrCodeDataUrl: shareQrCodeDataUrl,
+        triggerRef: shareTriggerRef,
+    } = useShareMenu({
+        onClose: resetShareMenuState,
+        onStatus: setShareStatus,
+        sharePath,
+        shouldGenerateQrCode: shareMenuMode === "created",
+    });
     const isStonePlacementActiveRef = useRef(false);
     const stonePlacementCanCommitRef = useRef(false);
     const isPendingPlacementZoomRef = useRef(false);
@@ -243,7 +258,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             localGameRecordRef.current = gameRecord;
             setShareSlug(gameRecord.lastShareSlug ?? null);
             setShareMenuMode(gameRecord.lastShareSlug ? "created" : "chooser");
-            setShareQrCodeDataUrl(null);
+            clearShareQrCode();
             setShareMenuMessage(null);
             setShareMenuIsCreating(false);
             setSize(loadedGame.size);
@@ -257,7 +272,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         };
 
         loadGame();
-    }, [id]);
+    }, [clearShareQrCode, id]);
 
     useEffect(() => {
         if (!hasLoadedGameRef.current) return;
@@ -986,21 +1001,10 @@ export default function GoBoard({ id }: GoBoardProps) {
     };
 
     const canShareGame = gameState.moves.some((move) => move.type === "play");
-    const resetShareMenuState = useCallback(() => {
-        shareAutoCreateAttemptedRef.current = false;
-        setShareMenuMessage(null);
-        setShareMenuIsCreating(false);
-    }, []);
-
     const openShareMenu = useCallback(() => {
         setShareMenuMode(shareSlug ? "created" : "chooser");
-        setShareMenuOpen(true);
-    }, [shareSlug]);
-
-    const closeShareMenu = useCallback(() => {
-        resetShareMenuState();
-        setShareMenuOpen(false);
-    }, [resetShareMenuState]);
+        openShareMenuBase();
+    }, [openShareMenuBase, shareSlug]);
 
     const toggleShareMenu = useCallback(() => {
         if (shareMenuOpen) {
@@ -1014,7 +1018,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     const clearCachedShareLink = () => {
         setShareSlug(null);
         setShareMenuMode("chooser");
-        setShareQrCodeDataUrl(null);
+        clearShareQrCode();
 
         const localGameRecord = localGameRecordRef.current;
         if (!localGameRecord) return;
@@ -1133,8 +1137,8 @@ export default function GoBoard({ id }: GoBoardProps) {
             localGameRecordRef.current = updatedLocalGame;
             setShareSlug(slug);
             setShareMenuMode("created");
-            setShareMenuOpen(true);
-            setShareQrCodeDataUrl(null);
+            openShareMenuBase();
+            clearShareQrCode();
             setShareMenuMessage(null);
             setShareMenuIsCreating(false);
         } catch (error) {
@@ -1143,60 +1147,12 @@ export default function GoBoard({ id }: GoBoardProps) {
             );
             setShareMenuIsCreating(false);
         }
-    }, [canShareGame, createCurrentLocalGameRecord]);
-
-    const sharePath = shareSlug ? `/shares/${shareSlug}` : null;
-
-    const handleCopyShareLink = useCallback(async () => {
-        if (!sharePath) return;
-
-        try {
-            await navigator.clipboard.writeText(
-                `${window.location.origin}${sharePath}`
-            );
-            setShareStatus(t("linkCopied"));
-        } catch {
-            setShareStatus(t("failedToCopyLink"));
-        }
-    }, [sharePath]);
-
-    useEffect(() => {
-        if (!shareMenuOpen) {
-            shareAutoCreateAttemptedRef.current = false;
-            return;
-        }
-
-        const handlePointerDown = (event: PointerEvent) => {
-            const target = event.target;
-            if (!(target instanceof Node)) return;
-
-            const menuElement = shareMenuRef.current;
-            const triggerElement = shareTriggerRef.current;
-
-            if (
-                menuElement?.contains(target) ||
-                triggerElement?.contains(target)
-            ) {
-                return;
-            }
-
-            closeShareMenu();
-        };
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                closeShareMenu();
-            }
-        };
-
-        window.addEventListener("pointerdown", handlePointerDown);
-        window.addEventListener("keydown", handleKeyDown);
-
-        return () => {
-            window.removeEventListener("pointerdown", handlePointerDown);
-            window.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [closeShareMenu, shareMenuOpen]);
+    }, [
+        canShareGame,
+        clearShareQrCode,
+        createCurrentLocalGameRecord,
+        openShareMenuBase,
+    ]);
 
     useEffect(() => {
         if (!shareMenuOpen || shareMenuMode !== "chooser" || sharePath) {
@@ -1210,36 +1166,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         shareAutoCreateAttemptedRef.current = true;
         void handleShare();
     }, [canShareGame, handleShare, shareMenuMode, shareMenuOpen, sharePath]);
-
-    useEffect(() => {
-        if (!shareMenuOpen || shareMenuMode !== "created" || !sharePath) {
-            return;
-        }
-
-        let cancelled = false;
-        const shareUrl = `${window.location.origin}${sharePath}`;
-
-        void QRCode.toDataURL(shareUrl, {
-            errorCorrectionLevel: "M",
-            margin: 1,
-            width: 240,
-        })
-            .then((nextQrCodeDataUrl: string) => {
-                if (!cancelled) {
-                    setShareQrCodeDataUrl(nextQrCodeDataUrl);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) {
-                    setShareQrCodeDataUrl(null);
-                    setShareStatus(t("failedToGenerateQrCode"));
-                }
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [shareMenuMode, shareMenuOpen, sharePath]);
 
     const handleClosePlacementZoom = useCallback(() => {
         clearPlacementZoom();
@@ -1285,7 +1211,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                             }}
                             onDownloadSgf={handleDownloadSgfFromShareMenu}
                             onCopyLink={() => {
-                                void handleCopyShareLink();
+                                void copyShareLink();
                             }}
                             qrCodeDataUrl={shareQrCodeDataUrl}
                             sharePath={sharePath}
