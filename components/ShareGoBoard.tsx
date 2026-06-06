@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType } from "react";
 
@@ -11,6 +11,7 @@ import BoardStatusMessage from "./BoardStatusMessage";
 import ShareBoardActionBar from "./ShareBoardActionBar";
 import ShareMenu from "./ShareMenu";
 import useActionBarDrag from "./useActionBarDrag";
+import useBoardGeometry from "./useBoardGeometry";
 import useShareMenu from "./useShareMenu";
 
 // @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
@@ -58,13 +59,12 @@ function buildBoardFromGameState(
     return board;
 }
 
-const BOARD_PADDING_PX = 16;
-
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
-    const [vertexSize, setVertexSize] = useState(24);
     const { isDarkMode } = useTheme();
     const { setHeaderStatus } = useHeaderStatus();
-    const boardAreaRef = useRef<HTMLDivElement | null>(null);
+    const { boardAreaRef, vertexSize } = useBoardGeometry({
+        boardSize: share.boardSize,
+    });
     const actionBar = useActionBarDrag();
     const [shareStatus, setShareStatus] = useState<string | null>(null);
     const sharePath = `/shares/${share.slug}`;
@@ -83,35 +83,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const [visibleMoveCount, setVisibleMoveCount] = useState(
         share.gameState.moves.length
     );
-
-    useEffect(() => {
-        const boardArea = boardAreaRef.current;
-        if (!boardArea) return;
-
-        const updateVertexSize = () => {
-            const { width, height } = boardArea.getBoundingClientRect();
-            const availableSize = Math.max(
-                0,
-                Math.min(width, height) - BOARD_PADDING_PX
-            );
-            const coordinateGutterVertices = 1;
-            const nextVertexSize = Math.max(
-                16,
-                Math.floor(
-                    availableSize / (share.boardSize + coordinateGutterVertices)
-                )
-            );
-
-            setVertexSize(nextVertexSize);
-        };
-
-        updateVertexSize();
-
-        const resizeObserver = new ResizeObserver(updateVertexSize);
-        resizeObserver.observe(boardArea);
-
-        return () => resizeObserver.disconnect();
-    }, [share.boardSize]);
 
     const visibleMoves = share.gameState.moves.slice(0, visibleMoveCount);
     const board = buildBoardFromGameState(

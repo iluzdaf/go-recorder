@@ -26,6 +26,7 @@ import BoardStatusMessage from "./BoardStatusMessage";
 import RecorderActionBar from "./RecorderActionBar";
 import ShareMenu, { type ShareMenuMode } from "./ShareMenu";
 import useActionBarDrag from "./useActionBarDrag";
+import useBoardGeometry from "./useBoardGeometry";
 import useShareMenu from "./useShareMenu";
 import { replayGame } from "../lib/gameReplay";
 import { isActionBarAnchor } from "../lib/actionBarDrag";
@@ -92,7 +93,6 @@ function cloneSignMap(signMap: number[][]) {
     return signMap.map((row) => [...row]);
 }
 
-const BOARD_PADDING_PX = 16;
 const STONE_SELECT_HOLD_MS = 450;
 const STONE_CORRECTION_PILL_GAP_PX = 8;
 const ACTION_BAR_STORAGE_KEY_PREFIX = "go-recorder:game-action-bar-anchor:";
@@ -105,8 +105,6 @@ export default function GoBoard({ id }: GoBoardProps) {
     const [size, setSize] = useState<BoardSize>(19);
     const { isDarkMode } = useTheme();
     const { setHeaderStatus } = useHeaderStatus();
-    const boardAreaRef = useRef<HTMLDivElement | null>(null);
-    const gobanWrapperRef = useRef<HTMLDivElement | null>(null);
     const hasLoadedGameRef = useRef(false);
     const isSavingRef = useRef(false);
     const needsSaveAfterCurrentSaveRef = useRef(false);
@@ -141,7 +139,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         },
         updatedAt: null,
     });
-    const [vertexSize, setVertexSize] = useState(24);
     const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
     const [placementZoomWindow, setPlacementZoomWindow] =
         useState<BoardAreaZoomWindow | null>(null);
@@ -206,17 +203,20 @@ export default function GoBoard({ id }: GoBoardProps) {
         whitePlayerName: null as string | null,
         handicap: 0,
     });
-    const [gridMetrics, setGridMetrics] = useState({
-        left: 0,
-        top: 0,
-        cellSize: 24,
-        boardSizePx: 24 * 19,
-    });
-
     const [gameState, setGameState] = useState<GameState>({
         setupStones: [],
         moves: [],
         currentPlayer: "B",
+    });
+    const {
+        boardAreaRef,
+        gobanWrapperRef,
+        gridMetrics,
+        setGridMetrics,
+        vertexSize,
+    } = useBoardGeometry({
+        boardSize: size,
+        measureGrid: true,
     });
 
     useEffect(() => {
@@ -369,78 +369,6 @@ export default function GoBoard({ id }: GoBoardProps) {
 
         return () => window.clearTimeout(timeoutId);
     }, [id, updatedAt, hasUnsavedChanges, size, gameState]);
-
-    useEffect(() => {
-        const boardArea = boardAreaRef.current;
-        const gobanWrapper = gobanWrapperRef.current;
-        if (!boardArea || !gobanWrapper) return;
-
-        const updateGridMetrics = () => {
-            const grid = gobanWrapper.querySelector(".shudan-grid");
-            if (!(grid instanceof SVGElement)) return;
-
-            const wrapperRect = gobanWrapper.getBoundingClientRect();
-            const gridRect = grid.getBoundingClientRect();
-            const nextGridMetrics = {
-                left: gridRect.left - wrapperRect.left,
-                top: gridRect.top - wrapperRect.top,
-                cellSize: gridRect.width / size,
-                boardSizePx: gridRect.width,
-            };
-
-            setGridMetrics((currentGridMetrics) =>
-                currentGridMetrics.left === nextGridMetrics.left &&
-                currentGridMetrics.top === nextGridMetrics.top &&
-                currentGridMetrics.cellSize === nextGridMetrics.cellSize &&
-                currentGridMetrics.boardSizePx === nextGridMetrics.boardSizePx
-                    ? currentGridMetrics
-                    : nextGridMetrics
-            );
-        };
-
-        let animationFrameId: number | null = null;
-        const updateBoardGeometry = () => {
-            const { width, height } = boardArea.getBoundingClientRect();
-            const availableSize = Math.max(0, Math.min(width, height) - BOARD_PADDING_PX);
-            const coordinateGutterVertices = 1;
-            const nextVertexSize = Math.max(
-                16,
-                Math.floor(availableSize / (size + coordinateGutterVertices))
-            );
-
-            setVertexSize((currentVertexSize) =>
-                currentVertexSize === nextVertexSize
-                    ? currentVertexSize
-                    : nextVertexSize
-            );
-            updateGridMetrics();
-
-            if (animationFrameId !== null) {
-                window.cancelAnimationFrame(animationFrameId);
-            }
-            animationFrameId = window.requestAnimationFrame(() => {
-                animationFrameId = null;
-                updateGridMetrics();
-            });
-        };
-
-        updateBoardGeometry();
-
-        const resizeObserver = new ResizeObserver(updateBoardGeometry);
-        resizeObserver.observe(boardArea);
-        resizeObserver.observe(gobanWrapper);
-        window.addEventListener("resize", updateBoardGeometry);
-        window.addEventListener("orientationchange", updateBoardGeometry);
-
-        return () => {
-            resizeObserver.disconnect();
-            window.removeEventListener("resize", updateBoardGeometry);
-            window.removeEventListener("orientationchange", updateBoardGeometry);
-            if (animationFrameId !== null) {
-                window.cancelAnimationFrame(animationFrameId);
-            }
-        };
-    }, [size]);
 
     const replay = replayGame({
         boardSize: size,
