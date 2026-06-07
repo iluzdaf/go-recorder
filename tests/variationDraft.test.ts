@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    createVariationMoveNumberMarkerMap,
     playVariationDraftMove,
     undoVariationDraftMove,
 } from "../lib/variationDraft";
@@ -101,5 +102,54 @@ describe("undoVariationDraftMove", () => {
                 gameState,
             })
         ).toBe(gameState);
+    });
+});
+
+describe("createVariationMoveNumberMarkerMap", () => {
+    it("labels visible play moves by move number", () => {
+        expect(
+            createVariationMoveNumberMarkerMap({
+                boardSize: 9,
+                moves: [
+                    { type: "play", x: 3, y: 3, color: "B" },
+                    { type: "pass", color: "W" },
+                    { type: "play", x: 4, y: 4, color: "B" },
+                ],
+                signMap: [
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 1, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                ],
+            })
+        ).toMatchObject({
+            3: { 3: { type: "label", label: "1" } },
+            4: { 4: { type: "label", label: "3" } },
+        });
+    });
+
+    it("does not label captured moves on empty intersections", () => {
+        const markerMap = createVariationMoveNumberMarkerMap({
+            boardSize: 9,
+            moves: [{ type: "play", x: 3, y: 3, color: "B" }],
+            signMap: [
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+        });
+
+        expect(markerMap[3][3]).toBeNull();
     });
 });

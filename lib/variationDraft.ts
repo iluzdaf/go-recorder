@@ -1,5 +1,10 @@
-import type { BoardSize, GameState } from "../components/types";
+import type { BoardSize, GameState, Move } from "../components/types";
 import { playGameMove, replayGame } from "./gameReplay";
+
+export type MoveNumberMarker = {
+    type: "label";
+    label: string;
+};
 
 export function playVariationDraftMove({
     boardSize,
@@ -65,4 +70,32 @@ export function undoVariationDraftMove({
         moves: gameState.moves.slice(0, -1),
         currentPlayer: lastMove.color,
     };
+}
+
+export function createVariationMoveNumberMarkerMap({
+    boardSize,
+    moves,
+    signMap,
+}: {
+    boardSize: BoardSize;
+    moves: Move[];
+    signMap: number[][];
+}) {
+    const markerMap: (MoveNumberMarker | null)[][] = Array.from(
+        { length: boardSize },
+        () => Array.from({ length: boardSize }, () => null)
+    );
+
+    for (let moveIndex = 0; moveIndex < moves.length; moveIndex += 1) {
+        const move = moves[moveIndex];
+        if (move.type !== "play") continue;
+        if (signMap[move.y]?.[move.x] === 0) continue;
+
+        markerMap[move.y][move.x] = {
+            type: "label",
+            label: String(moveIndex + 1),
+        };
+    }
+
+    return markerMap;
 }

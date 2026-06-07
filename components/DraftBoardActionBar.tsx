@@ -2,7 +2,6 @@
 
 import {
     Circle,
-    CircleDot,
     FilePen,
     SquareArrowUpRight,
     Undo2,
@@ -65,11 +64,7 @@ export default function DraftBoardActionBar({
                 className="inline-flex h-11 w-11 items-center justify-center text-zinc-700 dark:text-zinc-200"
                 aria-hidden="true"
             >
-                {mode === "variation" ? (
-                    <CircleDot size={18} />
-                ) : (
-                    <FilePen size={18} />
-                )}
+                <FilePen size={18} />
             </div>
             {mode === "variation" ? (
                 <button

@@ -28,6 +28,8 @@ import { getLocalRecord } from "../lib/localGames";
 import { createShareFromLocalRecord } from "../lib/shareClient";
 import { replayGame } from "../lib/gameReplay";
 import {
+    createVariationMoveNumberMarkerMap,
+    type MoveNumberMarker,
     playVariationDraftMove,
     undoVariationDraftMove,
 } from "../lib/variationDraft";
@@ -38,7 +40,7 @@ import useEditableShareMenuController from "./useEditableShareMenuController";
 type ShudanGobanProps = {
     vertexSize: number;
     signMap: number[][];
-    markerMap: (null | { type: "circle" })[][];
+    markerMap: (null | { type: "circle" } | MoveNumberMarker)[][];
     showCoordinates: boolean;
 };
 
@@ -525,14 +527,16 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         draft.draftKind === "variation" && variationReplay
             ? variationReplay.board.signMap
             : createSignMap(draft);
-    const markerMap: (null | { type: "circle" })[][] = Array.from(
-        { length: draft.boardSize },
-        () => Array.from({ length: draft.boardSize }, () => null)
-    );
-    const lastMove = draft.gameState.moves.at(-1);
-    if (draft.draftKind === "variation" && lastMove?.type === "play") {
-        markerMap[lastMove.y][lastMove.x] = { type: "circle" };
-    }
+    const markerMap =
+        draft.draftKind === "variation"
+            ? createVariationMoveNumberMarkerMap({
+                  boardSize: draft.boardSize,
+                  moves: draft.gameState.moves,
+                  signMap,
+              })
+            : Array.from({ length: draft.boardSize }, () =>
+                  Array.from<null>({ length: draft.boardSize }).fill(null)
+              );
     const canUndoVariation =
         draft.draftKind === "variation" &&
         draft.baseMoveCount !== null &&
