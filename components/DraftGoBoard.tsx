@@ -19,10 +19,8 @@ import {
     getBoardDraftStrokeMode,
     type BoardDraftStrokeMode,
 } from "../lib/boardDraft";
-import {
-    getVertexFromBoardPointer,
-    type BoardGridGeometry,
-} from "../lib/gameCorrectionUi";
+import { getLiveBoardGridMetrics } from "../lib/boardGeometry";
+import { getVertexFromBoardPointer } from "../lib/gameCorrectionUi";
 import { t } from "../lib/i18n";
 import { getLocalRecord, saveLocalRecord } from "../lib/localGames";
 import { createShareFromLocalRecord } from "../lib/shareClient";
@@ -154,27 +152,14 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         const gobanWrapper = gobanWrapperRef.current;
         if (!gobanWrapper || !draft) return null;
 
-        const grid = gobanWrapper.querySelector(".shudan-grid");
-        if (!(grid instanceof SVGElement)) return null;
-
-        const wrapperRect = gobanWrapper.getBoundingClientRect();
-        const gridRect = grid.getBoundingClientRect();
-        const nextGridMetrics = {
-            left: gridRect.left - wrapperRect.left,
-            top: gridRect.top - wrapperRect.top,
-            cellSize: gridRect.width / draft.boardSize,
-            boardSizePx: gridRect.width,
-        };
-        const gridGeometry: BoardGridGeometry = {
-            left: gridRect.left,
-            top: gridRect.top,
-            cellSize: nextGridMetrics.cellSize,
+        const metrics = getLiveBoardGridMetrics({
             boardSize: draft.boardSize,
-        };
+            gobanWrapper,
+        });
+        if (!metrics) return null;
 
-        setGridMetrics(nextGridMetrics);
-
-        return { gridGeometry };
+        setGridMetrics(metrics.gridMetrics);
+        return { gridGeometry: metrics.gridGeometry };
     }, [draft, gobanWrapperRef, setGridMetrics]);
 
     const getVertexFromPointer = useCallback(

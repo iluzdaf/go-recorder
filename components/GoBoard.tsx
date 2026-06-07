@@ -30,6 +30,7 @@ import useBoardGeometry from "./useBoardGeometry";
 import useShareMenu from "./useShareMenu";
 import { replayGame } from "../lib/gameReplay";
 import { isActionBarAnchor } from "../lib/actionBarDrag";
+import { getLiveBoardGridMetrics } from "../lib/boardGeometry";
 import {
     applyRecorderCorrection,
     createStoneSelectionDragState,
@@ -54,7 +55,6 @@ import {
     toggleCorrectionSelection,
     visitCorrectionSelectionDragMove,
     type BoardAreaZoomWindow,
-    type BoardGridGeometry,
     type StoneSelectionDragState,
     type Vertex,
 } from "../lib/gameCorrectionUi";
@@ -570,27 +570,14 @@ export default function GoBoard({ id }: GoBoardProps) {
         const gobanWrapper = gobanWrapperRef.current;
         if (!gobanWrapper) return null;
 
-        const grid = gobanWrapper.querySelector(".shudan-grid");
-        if (!(grid instanceof SVGElement)) return null;
-
-        const wrapperRect = gobanWrapper.getBoundingClientRect();
-        const gridRect = grid.getBoundingClientRect();
-        const nextGridMetrics = {
-            left: gridRect.left - wrapperRect.left,
-            top: gridRect.top - wrapperRect.top,
-            cellSize: gridRect.width / size,
-            boardSizePx: gridRect.width,
-        };
-
-        setGridMetrics(nextGridMetrics);
-        const gridGeometry: BoardGridGeometry = {
-            left: gridRect.left,
-            top: gridRect.top,
-            cellSize: nextGridMetrics.cellSize,
+        const metrics = getLiveBoardGridMetrics({
             boardSize: size,
-        };
+            gobanWrapper,
+        });
+        if (!metrics) return null;
 
-        return { gridGeometry };
+        setGridMetrics(metrics.gridMetrics);
+        return { gridGeometry: metrics.gridGeometry };
     };
 
     const getFullBoardVertexFromPointer = (clientX: number, clientY: number) => {
