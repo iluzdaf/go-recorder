@@ -17,6 +17,7 @@ import {
     createLocalDraft,
     type CreateLocalDraftInput,
 } from "../lib/localGames";
+import { replayGame } from "../lib/gameReplay";
 import { buildBoardFromGameState } from "../lib/shareBoardState";
 import { toVariationDraftInput } from "../lib/shareFork";
 import BoardStatusMessage from "./BoardStatusMessage";
@@ -74,7 +75,17 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         share.gameState.setupStones,
         visibleMoves
     );
-    const signMap = board.signMap;
+    const pendingVariationReplay = pendingVariationInput
+        ? replayGame({
+              boardSize: pendingVariationInput.boardSize,
+              setupStones: pendingVariationInput.gameState.setupStones,
+              moves: pendingVariationInput.gameState.moves,
+          })
+        : null;
+    const signMap =
+        pendingVariationReplay?.legal === true
+            ? pendingVariationReplay.board.signMap
+            : board.signMap;
 
     type Marker = null | { type: "circle" };
 
@@ -82,7 +93,8 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         Array.from({ length: share.boardSize }, () => null)
     );
 
-    const lastMove = visibleMoves.at(-1);
+    const lastMove =
+        pendingVariationInput?.gameState.moves.at(-1) ?? visibleMoves.at(-1);
     if (lastMove?.type === "play") {
         markerMap[lastMove.y][lastMove.x] = { type: "circle" };
     }
@@ -189,6 +201,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         if (!pendingVariationInput) return;
 
         const draft = createLocalDraft(pendingVariationInput);
+        setPendingVariationInput(null);
         window.open(`/drafts/${draft.id}`, "_blank", "noopener,noreferrer");
     }, [pendingVariationInput]);
 
