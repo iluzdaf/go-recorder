@@ -24,8 +24,21 @@ const baseDraft: LocalDraftRecord = {
 };
 
 describe("canShareDraft", () => {
-    it("allows board drafts", () => {
-        expect(canShareDraft(baseDraft)).toBe(true);
+    it("blocks board drafts with no setup stones", () => {
+        expect(canShareDraft(baseDraft)).toBe(false);
+    });
+
+    it("allows board drafts with setup stones", () => {
+        expect(
+            canShareDraft({
+                ...baseDraft,
+                gameState: {
+                    setupStones: [{ x: 3, y: 3, color: "B" }],
+                    moves: [],
+                    currentPlayer: "B",
+                },
+            })
+        ).toBe(true);
     });
 
     it("allows variation drafts with new moves after the shared base", () => {

@@ -8,5 +8,5 @@ export function canShareDraft(draft: LocalDraftRecord) {
         );
     }
 
-    return true;
+    return draft.gameState.setupStones.length > 0;
 }
