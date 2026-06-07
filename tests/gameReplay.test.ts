@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { replayGame } from "../lib/gameReplay";
+import { getNextMoveColor, playGameMove, replayGame } from "../lib/gameReplay";
 
 describe("replayGame", () => {
     it("replays setup stones and play moves", () => {
@@ -151,6 +151,86 @@ describe("replayGame", () => {
             moveIndex: 1,
             legal: false,
             error: "Ko prevented",
+        });
+    });
+});
+
+describe("getNextMoveColor", () => {
+    it("uses the fallback player before any moves", () => {
+        expect(
+            getNextMoveColor({
+                fallbackCurrentPlayer: "W",
+                moves: [],
+            })
+        ).toBe("W");
+    });
+
+    it("alternates after the last move, including passes", () => {
+        expect(
+            getNextMoveColor({
+                fallbackCurrentPlayer: "B",
+                moves: [
+                    { type: "play", x: 3, y: 3, color: "B" },
+                    { type: "pass", color: "W" },
+                ],
+            })
+        ).toBe("B");
+    });
+});
+
+describe("playGameMove", () => {
+    it("appends a legal play move and flips the current player", () => {
+        const gameState = {
+            setupStones: [],
+            moves: [],
+            currentPlayer: "B" as const,
+        };
+        const replay = replayGame({
+            boardSize: 9,
+            setupStones: gameState.setupStones,
+            moves: gameState.moves,
+        });
+
+        expect(
+            playGameMove({
+                board: replay.board,
+                gameState,
+                x: 4,
+                y: 4,
+            })
+        ).toEqual({
+            ok: true,
+            move: { type: "play", x: 4, y: 4, color: "B" },
+            gameState: {
+                setupStones: [],
+                moves: [{ type: "play", x: 4, y: 4, color: "B" }],
+                currentPlayer: "W",
+            },
+        });
+    });
+
+    it("rejects illegal occupied moves without changing state", () => {
+        const gameState = {
+            setupStones: [],
+            moves: [{ type: "play" as const, x: 4, y: 4, color: "B" as const }],
+            currentPlayer: "W" as const,
+        };
+        const replay = replayGame({
+            boardSize: 9,
+            setupStones: gameState.setupStones,
+            moves: gameState.moves,
+        });
+
+        expect(
+            playGameMove({
+                board: replay.board,
+                gameState,
+                x: 4,
+                y: 4,
+            })
+        ).toEqual({
+            ok: false,
+            error: "Overwrite prevented",
         });
     });
 });

@@ -2,8 +2,10 @@
 
 import {
     Circle,
+    CircleDot,
     FilePen,
     SquareArrowUpRight,
+    Undo2,
 } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 
@@ -16,23 +18,28 @@ import { t } from "../lib/i18n";
 
 type DraftBoardActionBarProps = {
     anchor: ActionBarAnchor;
+    canUndo?: boolean;
     dragX: number | null;
+    mode?: "board" | "variation";
     onLostPointerCapture: (event: ReactPointerEvent<HTMLDivElement>) => void;
     onPointerCancel: (event: ReactPointerEvent<HTMLDivElement>) => void;
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
     onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
     onPointerUp: (event: ReactPointerEvent<HTMLDivElement>) => void;
-    onToggleColor: () => void;
+    onToggleColor?: () => void;
     onToggleShareMenu: () => void;
+    onUndo?: () => void;
     railRef: RefObject<HTMLDivElement | null>;
-    selectedColor: Stone;
+    selectedColor?: Stone;
     shareMenuOpen: boolean;
     shareTriggerRef: RefObject<HTMLButtonElement | null>;
 };
 
 export default function DraftBoardActionBar({
     anchor,
+    canUndo = false,
     dragX,
+    mode = "board",
     onLostPointerCapture,
     onPointerCancel,
     onPointerDown,
@@ -40,8 +47,9 @@ export default function DraftBoardActionBar({
     onPointerUp,
     onToggleColor,
     onToggleShareMenu,
+    onUndo,
     railRef,
-    selectedColor,
+    selectedColor = "B",
     shareMenuOpen,
     shareTriggerRef,
 }: DraftBoardActionBarProps) {
@@ -55,21 +63,38 @@ export default function DraftBoardActionBar({
                 className="inline-flex h-11 w-11 items-center justify-center text-zinc-700 dark:text-zinc-200"
                 aria-hidden="true"
             >
-                <FilePen size={18} />
+                {mode === "variation" ? (
+                    <CircleDot size={18} />
+                ) : (
+                    <FilePen size={18} />
+                )}
             </div>
-            <button
-                type="button"
-                className={
-                    selectedColor === "B"
-                        ? "inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-zinc-950 text-white hover:bg-zinc-800 dark:border-neutral-700 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
-                        : "inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                }
-                onClick={onToggleColor}
-                aria-label={t("toggleDraftStoneColor")}
-                title={t("toggleDraftStoneColor")}
-            >
-                <Circle size={18} fill="currentColor" />
-            </button>
+            {mode === "variation" ? (
+                <button
+                    type="button"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                    disabled={!canUndo}
+                    onClick={onUndo}
+                    aria-label={t("undo")}
+                    title={t("undo")}
+                >
+                    <Undo2 size={18} />
+                </button>
+            ) : (
+                <button
+                    type="button"
+                    className={
+                        selectedColor === "B"
+                            ? "inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-zinc-950 text-white hover:bg-zinc-800 dark:border-neutral-700 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                            : "inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                    }
+                    onClick={onToggleColor}
+                    aria-label={t("toggleDraftStoneColor")}
+                    title={t("toggleDraftStoneColor")}
+                >
+                    <Circle size={18} fill="currentColor" />
+                </button>
+            )}
             <button
                 type="button"
                 ref={shareTriggerRef}

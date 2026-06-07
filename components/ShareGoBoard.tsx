@@ -2,12 +2,24 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
-import type { ComponentType } from "react";
+import { useRouter } from "next/navigation";
+import type {
+    ComponentType,
+    PointerEvent as ReactPointerEvent,
+} from "react";
 
 import type { ShareRecord } from "./types";
 import { downloadSgf } from "./sgf";
 import { useHeaderStatus, useTheme } from "./AppShell";
+import { getLiveBoardGridMetrics } from "../lib/boardGeometry";
+import { getVertexFromBoardPointer } from "../lib/gameCorrectionUi";
+import { t } from "../lib/i18n";
+import {
+    createLocalDraft,
+    type CreateLocalDraftInput,
+} from "../lib/localGames";
 import { buildBoardFromGameState } from "../lib/shareBoardState";
+import { toVariationDraftInput } from "../lib/shareFork";
 import BoardStatusMessage from "./BoardStatusMessage";
 import ShareBoardActionBar from "./ShareBoardActionBar";
 import ShareMenu from "./ShareMenu";
@@ -25,13 +37,22 @@ type ShudanGobanProps = {
 const BoardView = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
 
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
+    const router = useRouter();
     const { isDarkMode } = useTheme();
     const { setHeaderStatus } = useHeaderStatus();
-    const { boardAreaRef, vertexSize } = useBoardGeometry({
+    const {
+        boardAreaRef,
+        gobanWrapperRef,
+        setGridMetrics,
+        vertexSize,
+    } = useBoardGeometry({
         boardSize: share.boardSize,
+        measureGrid: true,
     });
     const actionBar = useActionBarDrag();
     const [shareStatus, setShareStatus] = useState<string | null>(null);
+    const [pendingVariationInput, setPendingVariationInput] =
+        useState<CreateLocalDraftInput | null>(null);
     const sharePath = `/shares/${share.slug}`;
     const {
         close: closeShareMenu,
@@ -70,6 +91,34 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
 
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
 
+    const getGridMetrics = useCallback(() => {
+        const gobanWrapper = gobanWrapperRef.current;
+        if (!gobanWrapper) return null;
+
+        const metrics = getLiveBoardGridMetrics({
+            boardSize: share.boardSize,
+            gobanWrapper,
+        });
+        if (!metrics) return null;
+
+        setGridMetrics(metrics.gridMetrics);
+        return { gridGeometry: metrics.gridGeometry };
+    }, [gobanWrapperRef, setGridMetrics, share.boardSize]);
+
+    const getVertexFromPointer = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            const metrics = getGridMetrics();
+            if (!metrics) return null;
+
+            return getVertexFromBoardPointer({
+                clientX: event.clientX,
+                clientY: event.clientY,
+                grid: metrics.gridGeometry,
+            });
+        },
+        [getGridMetrics]
+    );
+
     useEffect(() => {
         setHeaderStatus(
             shareStatus ? (
@@ -100,6 +149,50 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         share.handicap,
         share.whitePlayerName,
     ]);
+
+    const handleBoardPointerUp = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            if (
+                pendingVariationInput ||
+                shareMenuOpen ||
+                (event.target instanceof HTMLElement &&
+                    event.target.closest("button"))
+            ) {
+                return;
+            }
+
+            const vertex = getVertexFromPointer(event);
+            if (!vertex) return;
+
+            const variation = toVariationDraftInput({
+                share,
+                vertex,
+                visibleMoveCount,
+            });
+
+            if (!variation.ok) return;
+
+            setPendingVariationInput(variation.input);
+        },
+        [
+            getVertexFromPointer,
+            pendingVariationInput,
+            share,
+            shareMenuOpen,
+            visibleMoveCount,
+        ]
+    );
+
+    const handleCancelVariation = useCallback(() => {
+        setPendingVariationInput(null);
+    }, []);
+
+    const handleConfirmVariation = useCallback(() => {
+        if (!pendingVariationInput) return;
+
+        const draft = createLocalDraft(pendingVariationInput);
+        router.push(`/drafts/${draft.id}`);
+    }, [pendingVariationInput, router]);
 
     const handleDownloadSgfFromShareMenu = useCallback(() => {
         handleDownloadSgf();
@@ -151,6 +244,37 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                         sharePath={sharePath}
                     />
                 ) : null}
+                {pendingVariationInput ? (
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="variation-draft-title"
+                        className="absolute left-1/2 top-4 z-20 w-[min(calc(100%-2rem),20rem)] -translate-x-1/2 rounded-lg border border-zinc-200 bg-white p-3 text-zinc-950 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                    >
+                        <p
+                            id="variation-draft-title"
+                            className="text-sm font-medium"
+                        >
+                            {t("createVariationPrompt")}
+                        </p>
+                        <div className="mt-3 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-sm text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                onClick={handleCancelVariation}
+                            >
+                                {t("cancel")}
+                            </button>
+                            <button
+                                type="button"
+                                className="inline-flex h-9 items-center justify-center rounded-full bg-zinc-950 px-3 text-sm text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                                onClick={handleConfirmVariation}
+                            >
+                                {t("createVariation")}
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
                 <ShareBoardActionBar
                     anchor={actionBar.anchor}
                     dragX={actionBar.dragX}
@@ -172,7 +296,11 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                     totalMoveCount={share.gameState.moves.length}
                     visibleMoveCount={visibleMoveCount}
                 />
-                <div className="relative">
+                <div
+                    ref={gobanWrapperRef}
+                    className="relative"
+                    onPointerUp={handleBoardPointerUp}
+                >
                     <BoardView
                         vertexSize={vertexSize}
                         signMap={signMap}

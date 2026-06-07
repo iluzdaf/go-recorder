@@ -28,7 +28,7 @@ import ShareMenu from "./ShareMenu";
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
 import useEditableShareMenuController from "./useEditableShareMenuController";
-import { replayGame } from "../lib/gameReplay";
+import { playGameMove, replayGame } from "../lib/gameReplay";
 import { isActionBarAnchor } from "../lib/actionBarDrag";
 import { getLiveBoardGridMetrics } from "../lib/boardGeometry";
 import {
@@ -754,30 +754,17 @@ export default function GoBoard({ id }: GoBoardProps) {
     };
 
     const playMove = (x: number, y: number) => {
-        try {
-            board.makeMove(stoneToSign(gameState.currentPlayer), [x, y], {
-                preventOverwrite: true,
-                preventSuicide: true,
-                preventKo: true,
-            });
-        } catch {
-            return;
-        }
-
-        clearCachedShareLink();
-
-        const newMove: Move = {
-            type: "play",
+        const result = playGameMove({
+            board,
+            gameState,
             x,
             y,
-            color: gameState.currentPlayer,
-        };
-
-        setGameState({
-            ...gameState,
-            moves: [...gameState.moves, newMove],
-            currentPlayer: gameState.currentPlayer === "B" ? "W" : "B",
         });
+
+        if (!result.ok) return;
+
+        clearCachedShareLink();
+        setGameState(result.gameState);
         setHasUnsavedChanges(true);
     };
 

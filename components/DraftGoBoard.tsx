@@ -25,6 +25,11 @@ import { t } from "../lib/i18n";
 import { saveLocalEditableRecord } from "../lib/localEditableSave";
 import { getLocalRecord } from "../lib/localGames";
 import { createShareFromLocalRecord } from "../lib/shareClient";
+import { replayGame } from "../lib/gameReplay";
+import {
+    playVariationDraftMove,
+    undoVariationDraftMove,
+} from "../lib/variationDraft";
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
 import useEditableShareMenuController from "./useEditableShareMenuController";
@@ -32,7 +37,7 @@ import useEditableShareMenuController from "./useEditableShareMenuController";
 type ShudanGobanProps = {
     vertexSize: number;
     signMap: number[][];
-    markerMap: null[][];
+    markerMap: (null | { type: "circle" })[][];
     showCoordinates: boolean;
 };
 
@@ -72,11 +77,7 @@ function createSignMap(draft: LocalDraftRecord) {
 function loadLocalBoardDraft(id: string) {
     const record = getLocalRecord(id);
 
-    if (
-        !record ||
-        record.recordKind !== "draft" ||
-        record.draftKind !== "board"
-    ) {
+    if (!record || record.recordKind !== "draft") {
         return null;
     }
 
@@ -185,10 +186,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                     record: pendingDraft,
                 });
 
-                if (
-                    savedRecord.recordKind !== "draft" ||
-                    savedRecord.draftKind !== "board"
-                ) {
+                if (savedRecord.recordKind !== "draft") {
                     return;
                 }
 
@@ -212,7 +210,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             vertex: Vertex;
         }) => {
             const currentDraft = draftRef.current;
-            if (!currentDraft) return;
+            if (!currentDraft || currentDraft.draftKind !== "board") return;
 
             const nextGameState = applyBoardDraftStrokeVertex({
                 gameState: currentDraft.gameState,
@@ -333,13 +331,110 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         setSelectedColor((currentColor) => (currentColor === "B" ? "W" : "B"));
     }, []);
 
+    const handleVariationPointerDown = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            if (
+                event.target instanceof HTMLElement &&
+                event.target.closest("button")
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+            event.currentTarget.setPointerCapture(event.pointerId);
+        },
+        []
+    );
+
+    const handleVariationPointerUp = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            const releasePointerCapture = () => {
+                if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                    event.currentTarget.releasePointerCapture(event.pointerId);
+                }
+            };
+
+            if (
+                event.target instanceof HTMLElement &&
+                event.target.closest("button")
+            ) {
+                releasePointerCapture();
+                return;
+            }
+
+            const currentDraft = draftRef.current;
+            if (!currentDraft || currentDraft.draftKind !== "variation") {
+                releasePointerCapture();
+                return;
+            }
+
+            const vertex = getVertexFromPointer(event);
+            if (!vertex) {
+                releasePointerCapture();
+                return;
+            }
+
+            const result = playVariationDraftMove({
+                boardSize: currentDraft.boardSize,
+                gameState: currentDraft.gameState,
+                vertex,
+            });
+
+            if (result.ok) {
+                clearCachedShareLink();
+                updateDraft(
+                    clearDraftShareCache({
+                        ...currentDraft,
+                        gameState: result.gameState,
+                    })
+                );
+            }
+
+            releasePointerCapture();
+        },
+        [clearCachedShareLink, getVertexFromPointer, updateDraft]
+    );
+
+    const handleVariationPointerCancel = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                event.currentTarget.releasePointerCapture(event.pointerId);
+            }
+        },
+        []
+    );
+
+    const handleVariationUndo = useCallback(() => {
+        const currentDraft = draftRef.current;
+        if (!currentDraft || currentDraft.draftKind !== "variation") return;
+        if (currentDraft.baseMoveCount === null) return;
+
+        const nextGameState = undoVariationDraftMove({
+            baseMoveCount: currentDraft.baseMoveCount,
+            gameState: currentDraft.gameState,
+        });
+
+        if (nextGameState === currentDraft.gameState) return;
+
+        clearCachedShareLink();
+        updateDraft(
+            clearDraftShareCache({
+                ...currentDraft,
+                gameState: nextGameState,
+            })
+        );
+    }, [clearCachedShareLink, updateDraft]);
+
     const handleDownloadSgf = useCallback(() => {
         const currentDraft = draftRef.current;
         if (!currentDraft) return;
 
         downloadSgf({
             boardSize: currentDraft.boardSize,
-            moves: [],
+            moves:
+                currentDraft.draftKind === "variation"
+                    ? currentDraft.gameState.moves
+                    : [],
             setupStones: currentDraft.gameState.setupStones,
             handicap: currentDraft.handicap,
             blackPlayerName: currentDraft.blackPlayerName,
@@ -375,8 +470,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             });
 
             if (
-                savedRecord.recordKind !== "draft" ||
-                savedRecord.draftKind !== "board"
+                savedRecord.recordKind !== "draft"
             ) {
                 return;
             }
@@ -413,10 +507,30 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         );
     }
 
-    const signMap = createSignMap(draft);
-    const markerMap: null[][] = Array.from({ length: draft.boardSize }, () =>
-        Array.from({ length: draft.boardSize }, () => null)
+    const variationReplay =
+        draft.draftKind === "variation"
+            ? replayGame({
+                  boardSize: draft.boardSize,
+                  setupStones: draft.gameState.setupStones,
+                  moves: draft.gameState.moves,
+              })
+            : null;
+    const signMap =
+        draft.draftKind === "variation" && variationReplay
+            ? variationReplay.board.signMap
+            : createSignMap(draft);
+    const markerMap: (null | { type: "circle" })[][] = Array.from(
+        { length: draft.boardSize },
+        () => Array.from({ length: draft.boardSize }, () => null)
     );
+    const lastMove = draft.gameState.moves.at(-1);
+    if (draft.draftKind === "variation" && lastMove?.type === "play") {
+        markerMap[lastMove.y][lastMove.x] = { type: "circle" };
+    }
+    const canUndoVariation =
+        draft.draftKind === "variation" &&
+        draft.baseMoveCount !== null &&
+        draft.gameState.moves.length > draft.baseMoveCount;
 
     return (
         <div
@@ -447,6 +561,8 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 <DraftBoardActionBar
                     anchor={actionBar.anchor}
                     dragX={actionBar.dragX}
+                    canUndo={canUndoVariation}
+                    mode={draft.draftKind}
                     onLostPointerCapture={
                         actionBar.dragHandlers.onLostPointerCapture
                     }
@@ -456,6 +572,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                     onPointerUp={actionBar.dragHandlers.onPointerUp}
                     onToggleColor={handleToggleColor}
                     onToggleShareMenu={shareMenu.toggle}
+                    onUndo={handleVariationUndo}
                     railRef={actionBar.railRef}
                     selectedColor={selectedColor}
                     shareMenuOpen={shareMenu.isOpen}
@@ -464,10 +581,26 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 <div
                     ref={gobanWrapperRef}
                     className="relative"
-                    onPointerCancel={finishBoardStroke}
-                    onPointerDown={handleBoardPointerDown}
-                    onPointerMove={handleBoardPointerMove}
-                    onPointerUp={finishBoardStroke}
+                    onPointerCancel={
+                        draft.draftKind === "variation"
+                            ? handleVariationPointerCancel
+                            : finishBoardStroke
+                    }
+                    onPointerDown={
+                        draft.draftKind === "variation"
+                            ? handleVariationPointerDown
+                            : handleBoardPointerDown
+                    }
+                    onPointerMove={
+                        draft.draftKind === "variation"
+                            ? undefined
+                            : handleBoardPointerMove
+                    }
+                    onPointerUp={
+                        draft.draftKind === "variation"
+                            ? handleVariationPointerUp
+                            : finishBoardStroke
+                    }
                 >
                     <BoardView
                         vertexSize={vertexSize}
