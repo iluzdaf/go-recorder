@@ -568,6 +568,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 <DraftBoardActionBar
                     anchor={actionBar.anchor}
                     dragX={actionBar.dragX}
+                    canShareDraft={canShareCurrentDraft}
                     canUndo={canUndoVariation}
                     mode={draft.draftKind}
                     onLostPointerCapture={

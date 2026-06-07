@@ -18,6 +18,7 @@ import { t } from "../lib/i18n";
 
 type DraftBoardActionBarProps = {
     anchor: ActionBarAnchor;
+    canShareDraft?: boolean;
     canUndo?: boolean;
     dragX: number | null;
     mode?: "board" | "variation";
@@ -37,6 +38,7 @@ type DraftBoardActionBarProps = {
 
 export default function DraftBoardActionBar({
     anchor,
+    canShareDraft = true,
     canUndo = false,
     dragX,
     mode = "board",
@@ -98,12 +100,13 @@ export default function DraftBoardActionBar({
             <button
                 type="button"
                 ref={shareTriggerRef}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                disabled={!canShareDraft}
                 onClick={onToggleShareMenu}
                 aria-label={t("share")}
                 aria-expanded={shareMenuOpen}
                 aria-controls="share-menu"
-                title={t("share")}
+                title={canShareDraft ? t("share") : t("addMoveBeforeSharing")}
             >
                 <SquareArrowUpRight size={18} />
             </button>
