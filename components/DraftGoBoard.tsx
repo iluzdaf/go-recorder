@@ -11,7 +11,7 @@ import type { LocalDraftRecord, Stone } from "./types";
 import BoardStatusMessage from "./BoardStatusMessage";
 import DraftBoardActionBar from "./DraftBoardActionBar";
 import ShareMenu, { type ShareMenuMode } from "./ShareMenu";
-import { exportSgf, createSgfFilename } from "./sgf";
+import { downloadSgf } from "./sgf";
 import { useHeaderStatus, useTheme } from "./AppShell";
 import {
     applyBoardDraftStrokeVertex,
@@ -347,7 +347,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         const currentDraft = draftRef.current;
         if (!currentDraft) return;
 
-        const sgf = exportSgf({
+        downloadSgf({
             boardSize: currentDraft.boardSize,
             moves: [],
             setupStones: currentDraft.gameState.setupStones,
@@ -355,20 +355,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             blackPlayerName: currentDraft.blackPlayerName,
             whitePlayerName: currentDraft.whitePlayerName,
         });
-        const blob = new Blob([sgf], {
-            type: "application/x-go-sgf;charset=utf-8",
-        });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-
-        link.href = url;
-        link.download = createSgfFilename(
-            currentDraft.blackPlayerName,
-            currentDraft.whitePlayerName
-        );
-        link.click();
-
-        URL.revokeObjectURL(url);
     }, []);
 
     const handleDownloadSgfFromShareMenu = useCallback(() => {

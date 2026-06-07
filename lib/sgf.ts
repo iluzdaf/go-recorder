@@ -1,12 +1,20 @@
 import type { Move, SetupStone } from "../components/types";
 
-type ExportSgfInput = {
+export type ExportSgfInput = {
     boardSize: number;
     moves: Move[];
     setupStones?: SetupStone[];
     handicap?: number;
     blackPlayerName?: string | null;
     whitePlayerName?: string | null;
+};
+
+type DownloadLink = Pick<HTMLAnchorElement, "click" | "download" | "href">;
+
+type DownloadSgfEnvironment = {
+    createLink: () => DownloadLink;
+    createObjectURL: (blob: Blob) => string;
+    revokeObjectURL: (url: string) => void;
 };
 
 export function toSgfCoord(x: number, y: number) {
@@ -81,4 +89,30 @@ export function exportSgf({
         .join("");
 
     return `(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[${boardSize}]${formatProperty("PB", blackPlayerName)}${formatProperty("PW", whitePlayerName)}${handicapText}${setupStoneText}${moveText})`;
+}
+
+export function downloadSgf(
+    input: ExportSgfInput,
+    environment?: DownloadSgfEnvironment
+) {
+    const sgf = exportSgf(input);
+    const blob = new Blob([sgf], {
+        type: "application/x-go-sgf;charset=utf-8",
+    });
+    const helpers = environment ?? {
+        createLink: () => document.createElement("a"),
+        createObjectURL: (nextBlob: Blob) => URL.createObjectURL(nextBlob),
+        revokeObjectURL: (url: string) => URL.revokeObjectURL(url),
+    };
+    const url = helpers.createObjectURL(blob);
+    const link = helpers.createLink();
+
+    link.href = url;
+    link.download = createSgfFilename(
+        input.blackPlayerName,
+        input.whitePlayerName
+    );
+    link.click();
+
+    helpers.revokeObjectURL(url);
 }

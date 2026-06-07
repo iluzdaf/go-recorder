@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { createSgfFilename, exportSgf, toSgfCoord } from "../lib/sgf";
+import {
+    createSgfFilename,
+    downloadSgf,
+    exportSgf,
+    toSgfCoord,
+} from "../lib/sgf";
 
 describe("toSgfCoord", () => {
     it("converts zero-based board coordinates to SGF coordinates", () => {
@@ -176,5 +181,48 @@ describe("createSgfFilename", () => {
         expect(createSgfFilename(undefined, undefined, date)).toBe(
             "2026-06-03T10-24-42.303Z.sgf"
         );
+    });
+});
+
+describe("downloadSgf", () => {
+    it("downloads exported SGF and revokes the temporary URL", async () => {
+        const blobs: Blob[] = [];
+        const click = vi.fn();
+        const link = {
+            click,
+            download: "",
+            href: "",
+        };
+        const createObjectURL = vi.fn((blob: Blob) => {
+            blobs.push(blob);
+            return "blob:sgf";
+        });
+        const revokeObjectURL = vi.fn();
+
+        downloadSgf(
+            {
+                boardSize: 9,
+                blackPlayerName: "Black Player",
+                moves: [{ type: "play", color: "B", x: 2, y: 3 }],
+                whitePlayerName: "White Player",
+            },
+            {
+                createLink: () => link,
+                createObjectURL,
+                revokeObjectURL,
+            }
+        );
+
+        expect(createObjectURL).toHaveBeenCalledOnce();
+        expect(await blobs[0]?.text()).toBe(
+            "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[9]PB[Black Player]PW[White Player];B[cd])"
+        );
+        expect(blobs[0]?.type).toBe("application/x-go-sgf;charset=utf-8");
+        expect(link.href).toBe("blob:sgf");
+        expect(link.download).toMatch(
+            / Black Player \(b\) vs White Player \(w\)\.sgf$/
+        );
+        expect(click).toHaveBeenCalledOnce();
+        expect(revokeObjectURL).toHaveBeenCalledWith("blob:sgf");
     });
 });

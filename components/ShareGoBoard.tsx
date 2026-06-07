@@ -5,7 +5,7 @@ import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type { ComponentType } from "react";
 
 import type { ShareRecord } from "./types";
-import { exportSgf, createSgfFilename } from "./sgf";
+import { downloadSgf } from "./sgf";
 import { useHeaderStatus, useTheme } from "./AppShell";
 import { buildBoardFromGameState } from "../lib/shareBoardState";
 import BoardStatusMessage from "./BoardStatusMessage";
@@ -84,12 +84,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     }, [dismissShareStatus, setHeaderStatus, shareStatus]);
 
     const handleDownloadSgf = useCallback(() => {
-        const sgfFilename = createSgfFilename(
-            share.blackPlayerName,
-            share.whitePlayerName
-        );
-
-        const sgf = exportSgf({
+        downloadSgf({
             boardSize: share.boardSize,
             moves: share.gameState.moves,
             setupStones: share.gameState.setupStones,
@@ -97,19 +92,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
             blackPlayerName: share.blackPlayerName,
             whitePlayerName: share.whitePlayerName,
         });
-
-        const blob = new Blob([sgf], {
-            type: "application/x-go-sgf;charset=utf-8",
-        });
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-
-        link.href = url;
-        link.download = sgfFilename;
-        link.click();
-
-        URL.revokeObjectURL(url);
     }, [
         share.boardSize,
         share.blackPlayerName,

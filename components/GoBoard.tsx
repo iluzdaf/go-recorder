@@ -11,7 +11,7 @@ import type {
     Move,
     Stone,
 } from "./types";
-import { exportSgf, createSgfFilename } from "./sgf";
+import { downloadSgf } from "./sgf";
 import {
     createGameSnapshot,
     shouldAutosave,
@@ -990,7 +990,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     };
 
     const handleDownloadSgf = useCallback(() => {
-        const sgf = exportSgf({
+        downloadSgf({
             boardSize: size,
             moves: gameState.moves,
             setupStones: gameState.setupStones,
@@ -998,22 +998,6 @@ export default function GoBoard({ id }: GoBoardProps) {
             blackPlayerName: gameMetadata.blackPlayerName,
             whitePlayerName: gameMetadata.whitePlayerName,
         });
-
-        const blob = new Blob([sgf], {
-            type: "application/x-go-sgf;charset=utf-8",
-        });
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-
-        link.href = url;
-        link.download = createSgfFilename(
-            gameMetadata.blackPlayerName,
-            gameMetadata.whitePlayerName
-        );
-        link.click();
-
-        URL.revokeObjectURL(url);
     }, [gameMetadata.blackPlayerName, gameMetadata.whitePlayerName, gameMetadata.handicap, gameState.moves, gameState.setupStones, size]);
 
     const handleDownloadSgfFromShareMenu = useCallback(() => {
