@@ -35,11 +35,21 @@ export function toCreateShareInput(
 
     return {
         sourceKind,
+        draftKind:
+            localRecord.recordKind === "draft" ? localRecord.draftKind : null,
         boardSize: localRecord.boardSize,
         gameState: localRecord.gameState,
         blackPlayerName: localRecord.blackPlayerName,
         whitePlayerName: localRecord.whitePlayerName,
         handicap: localRecord.handicap,
+        parentShareSlug:
+            localRecord.recordKind === "draft"
+                ? localRecord.parentShareSlug
+                : null,
+        baseMoveCount:
+            localRecord.recordKind === "draft"
+                ? localRecord.baseMoveCount
+                : null,
     };
 }
 

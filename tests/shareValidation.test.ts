@@ -138,4 +138,39 @@ describe("validateCreateShareInput", () => {
             })
         ).toBe(false);
     });
+
+    it("accepts variation draft metadata", () => {
+        expect(
+            validateCreateShareInput({
+                ...validShareInput,
+                sourceKind: "draft",
+                draftKind: "variation",
+                parentShareSlug: "share123",
+                baseMoveCount: 1,
+            })
+        ).toBe(true);
+    });
+
+    it("rejects draft metadata on game shares", () => {
+        expect(
+            validateCreateShareInput({
+                ...validShareInput,
+                draftKind: "variation",
+                parentShareSlug: "share123",
+                baseMoveCount: 1,
+            })
+        ).toBe(false);
+    });
+
+    it("rejects incomplete variation draft metadata", () => {
+        expect(
+            validateCreateShareInput({
+                ...validShareInput,
+                sourceKind: "draft",
+                draftKind: "variation",
+                parentShareSlug: null,
+                baseMoveCount: 1,
+            })
+        ).toBe(false);
+    });
 });

@@ -20,6 +20,10 @@ import {
 import { replayGame } from "../lib/gameReplay";
 import { buildBoardFromGameState } from "../lib/shareBoardState";
 import { toVariationDraftInput } from "../lib/shareFork";
+import {
+    createVariationMoveNumberMarkerMap,
+    type MoveNumberMarker,
+} from "../lib/variationDraft";
 import BoardStatusMessage from "./BoardStatusMessage";
 import ShareBoardActionBar from "./ShareBoardActionBar";
 import ShareMenu from "./ShareMenu";
@@ -30,7 +34,7 @@ import useShareMenu from "./useShareMenu";
 type ShudanGobanProps = {
     vertexSize: number;
     signMap: number[][];
-    markerMap: (null | { type: "circle" })[][];
+    markerMap: (null | { type: "circle" } | MoveNumberMarker)[][];
     showCoordinates: boolean;
 };
 
@@ -87,15 +91,24 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
             ? pendingVariationReplay.board.signMap
             : board.signMap;
 
-    type Marker = null | { type: "circle" };
+    type Marker = null | { type: "circle" } | MoveNumberMarker;
 
-    const markerMap: Marker[][] = Array.from({ length: share.boardSize }, () =>
-        Array.from({ length: share.boardSize }, () => null)
-    );
+    const markerMap: Marker[][] =
+        share.draftKind === "variation" &&
+        typeof share.baseMoveCount === "number"
+            ? createVariationMoveNumberMarkerMap({
+                  boardSize: share.boardSize,
+                  moves: pendingVariationInput?.gameState.moves ?? visibleMoves,
+                  signMap,
+                  startMoveIndex: share.baseMoveCount,
+              })
+            : Array.from({ length: share.boardSize }, () =>
+                  Array.from<null>({ length: share.boardSize }).fill(null)
+              );
 
     const lastMove =
         pendingVariationInput?.gameState.moves.at(-1) ?? visibleMoves.at(-1);
-    if (lastMove?.type === "play") {
+    if (share.draftKind !== "variation" && lastMove?.type === "play") {
         markerMap[lastMove.y][lastMove.x] = { type: "circle" };
     }
 

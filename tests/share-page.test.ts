@@ -70,6 +70,7 @@ describe("/shares/[slug] page", () => {
         expect(tree.props.children.props.share).toEqual({
             slug: "share123",
             sourceKind: "game",
+            draftKind: null,
             boardSize: 19,
             gameState: {
                 setupStones: [],
@@ -79,6 +80,8 @@ describe("/shares/[slug] page", () => {
             blackPlayerName: "Black",
             whitePlayerName: null,
             handicap: 0,
+            parentShareSlug: null,
+            baseMoveCount: null,
             createdAt: "2026-05-29T00:00:00.000Z",
         });
         expect(mockSupabaseAdmin.from).toHaveBeenCalledWith("shares");

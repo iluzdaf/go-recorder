@@ -77,21 +77,27 @@ export type LocalEditableRecord = LocalGameRecord | LocalDraftRecord;
 export type ShareRecord = {
     slug: string;
     sourceKind: ShareSourceKind;
+    draftKind?: DraftKind | null;
     boardSize: BoardSize;
     gameState: GameState;
     blackPlayerName: string | null;
     whitePlayerName: string | null;
     handicap: number;
+    parentShareSlug?: string | null;
+    baseMoveCount?: number | null;
     createdAt: string;
 };
 
 export type CreateShareInput = {
     sourceKind: ShareSourceKind;
+    draftKind?: DraftKind | null;
     boardSize: BoardSize;
     gameState: GameState;
     blackPlayerName: string | null;
     whitePlayerName: string | null;
     handicap: number;
+    parentShareSlug?: string | null;
+    baseMoveCount?: number | null;
 };
 
 export type CreateShareResponse = {

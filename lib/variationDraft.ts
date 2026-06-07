@@ -76,17 +76,23 @@ export function createVariationMoveNumberMarkerMap({
     boardSize,
     moves,
     signMap,
+    startMoveIndex = 0,
 }: {
     boardSize: BoardSize;
     moves: Move[];
     signMap: number[][];
+    startMoveIndex?: number;
 }) {
     const markerMap: (MoveNumberMarker | null)[][] = Array.from(
         { length: boardSize },
         () => Array.from({ length: boardSize }, () => null)
     );
 
-    for (let moveIndex = 0; moveIndex < moves.length; moveIndex += 1) {
+    for (
+        let moveIndex = startMoveIndex;
+        moveIndex < moves.length;
+        moveIndex += 1
+    ) {
         const move = moves[moveIndex];
         if (move.type !== "play") continue;
         if (signMap[move.y]?.[move.x] === 0) continue;

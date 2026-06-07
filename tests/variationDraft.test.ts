@@ -152,4 +152,32 @@ describe("createVariationMoveNumberMarkerMap", () => {
 
         expect(markerMap[3][3]).toBeNull();
     });
+
+    it("can label only moves after a base move index", () => {
+        const markerMap = createVariationMoveNumberMarkerMap({
+            boardSize: 9,
+            moves: [
+                { type: "play", x: 3, y: 3, color: "B" },
+                { type: "play", x: 4, y: 4, color: "W" },
+            ],
+            signMap: [
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, -1, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            startMoveIndex: 1,
+        });
+
+        expect(markerMap[3][3]).toBeNull();
+        expect(markerMap[4][4]).toEqual({
+            type: "label",
+            label: "2",
+        });
+    });
 });

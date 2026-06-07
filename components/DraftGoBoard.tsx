@@ -529,10 +529,11 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             : createSignMap(draft);
     const markerMap =
         draft.draftKind === "variation"
-            ? createVariationMoveNumberMarkerMap({
+              ? createVariationMoveNumberMarkerMap({
                   boardSize: draft.boardSize,
                   moves: draft.gameState.moves,
                   signMap,
+                  startMoveIndex: draft.baseMoveCount ?? 0,
               })
             : Array.from({ length: draft.boardSize }, () =>
                   Array.from<null>({ length: draft.boardSize }).fill(null)
