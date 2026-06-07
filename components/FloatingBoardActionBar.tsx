@@ -71,16 +71,16 @@ export default function FloatingBoardActionBar({
     return (
         <div
             ref={railRef}
-            className="absolute inset-x-3 bottom-3 z-40 h-14 select-none sm:bottom-4"
+            className="pointer-events-none absolute inset-x-3 bottom-3 z-40 h-14 select-none sm:bottom-4"
         >
             <div className="relative h-full w-full">
                 <div
                     className={
                         dragX !== null
-                            ? "absolute top-1/2 -translate-y-1/2"
+                            ? "pointer-events-auto absolute top-1/2 -translate-y-1/2"
                             : anchor === "left"
-                              ? "absolute left-0 top-1/2 -translate-y-1/2"
-                              : "absolute right-0 top-1/2 -translate-y-1/2"
+                              ? "pointer-events-auto absolute left-0 top-1/2 -translate-y-1/2"
+                              : "pointer-events-auto absolute right-0 top-1/2 -translate-y-1/2"
                     }
                     style={dragX !== null ? { left: `${dragX}px` } : undefined}
                 >
