@@ -243,15 +243,3 @@ export function shouldAutosave({
         currentSnapshot !== lastSavedSnapshot
     );
 }
-
-export function shouldContinueAutosaveQueue({
-    needsSaveAfterCurrentSave,
-    latestSnapshot,
-    lastSavedSnapshot,
-}: {
-    needsSaveAfterCurrentSave: boolean;
-    latestSnapshot: string;
-    lastSavedSnapshot: string;
-}) {
-    return needsSaveAfterCurrentSave && latestSnapshot !== lastSavedSnapshot;
-}

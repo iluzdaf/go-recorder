@@ -15,9 +15,9 @@ import { downloadSgf } from "./sgf";
 import {
     createGameSnapshot,
     shouldAutosave,
-    shouldContinueAutosaveQueue,
 } from "../lib/gameLogic";
-import { getLocalGame, saveLocalGame } from "../lib/localGames";
+import { getLocalGame } from "../lib/localGames";
+import { saveLocalEditableRecord } from "../lib/localEditableSave";
 import { createLoadedLocalGame } from "../lib/localGameView";
 import { createShareFromLocalGame } from "../lib/shareClient";
 import { formatMoveEditError, t } from "../lib/i18n";
@@ -106,8 +106,6 @@ export default function GoBoard({ id }: GoBoardProps) {
     const { isDarkMode } = useTheme();
     const { setHeaderStatus } = useHeaderStatus();
     const hasLoadedGameRef = useRef(false);
-    const isSavingRef = useRef(false);
-    const needsSaveAfterCurrentSaveRef = useRef(false);
     const stoneSelectTimeoutRef = useRef<number | null>(null);
     const stoneSelectOriginRef = useRef<Vertex | null>(null);
     const selectedGroupDragOriginRef = useRef<Vertex | null>(null);
@@ -126,19 +124,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         useState(false);
     const lastSavedSnapshotRef = useRef("");
     const localGameRecordRef = useRef<LocalGameRecord | null>(null);
-    const latestSaveStateRef = useRef<{
-        size: BoardSize;
-        gameState: GameState;
-        updatedAt: string | null;
-    }>({
-        size: 19,
-        gameState: {
-            setupStones: [],
-            moves: [],
-            currentPlayer: "B",
-        },
-        updatedAt: null,
-    });
     const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
     const [placementZoomWindow, setPlacementZoomWindow] =
         useState<BoardAreaZoomWindow | null>(null);
@@ -204,14 +189,6 @@ export default function GoBoard({ id }: GoBoardProps) {
     });
 
     useEffect(() => {
-        latestSaveStateRef.current = {
-            size,
-            gameState,
-            updatedAt,
-        };
-    }, [size, gameState, updatedAt]);
-
-    useEffect(() => {
         selectedMoveIndexesRef.current = selectedMoveIndexes;
     }, [selectedMoveIndexes]);
 
@@ -274,77 +251,28 @@ export default function GoBoard({ id }: GoBoardProps) {
             return;
         }
 
-        const saveLatestGame = async () => {
-            if (isSavingRef.current) {
-                needsSaveAfterCurrentSaveRef.current = true;
-                return;
-            }
-
-            isSavingRef.current = true;
-
+        const timeoutId = window.setTimeout(() => {
             try {
-                while (true) {
-                    needsSaveAfterCurrentSaveRef.current = false;
+                const localGameRecord = localGameRecordRef.current;
 
-                    const latestSaveState = latestSaveStateRef.current;
-
-                    if (!latestSaveState.updatedAt) return;
-
-                    const latestSnapshot = createGameSnapshot(
-                        latestSaveState.size,
-                        latestSaveState.gameState
-                    );
-
-                    if (latestSnapshot === lastSavedSnapshotRef.current) {
-                        setHasUnsavedChanges(false);
-                        return;
-                    }
-
-                    const localGameRecord = localGameRecordRef.current;
-
-                    if (!localGameRecord) {
-                        console.error("Failed to save game: local game record was not loaded");
-                        return;
-                    }
-
-                    const savedGame = saveLocalGame({
-                        ...localGameRecord,
-                        boardSize: latestSaveState.size,
-                        gameState: latestSaveState.gameState,
-                    });
-
-                    localGameRecordRef.current = savedGame;
-                    setUpdatedAt(savedGame.updatedAt);
-                    latestSaveStateRef.current = {
-                        ...latestSaveStateRef.current,
-                        updatedAt: savedGame.updatedAt,
-                    };
-                    lastSavedSnapshotRef.current = latestSnapshot;
-
-                    if (
-                        !shouldContinueAutosaveQueue({
-                            needsSaveAfterCurrentSave:
-                                needsSaveAfterCurrentSaveRef.current,
-                            latestSnapshot: createGameSnapshot(
-                                latestSaveStateRef.current.size,
-                                latestSaveStateRef.current.gameState
-                            ),
-                            lastSavedSnapshot: lastSavedSnapshotRef.current,
-                        })
-                    ) {
-                        setHasUnsavedChanges(false);
-                        return;
-                    }
+                if (!localGameRecord) {
+                    console.error("Failed to save game: local game record was not loaded");
+                    return;
                 }
+
+                const savedGame = saveLocalEditableRecord({
+                    boardSize: size,
+                    gameState,
+                    record: localGameRecord,
+                });
+
+                localGameRecordRef.current = savedGame;
+                setUpdatedAt(savedGame.updatedAt);
+                lastSavedSnapshotRef.current = currentSnapshot;
+                setHasUnsavedChanges(false);
             } catch (error) {
                 console.error("Failed to save game", error);
-            } finally {
-                isSavingRef.current = false;
             }
-        };
-
-        const timeoutId = window.setTimeout(() => {
-            saveLatestGame();
         }, 500);
 
         return () => window.clearTimeout(timeoutId);
@@ -990,9 +918,11 @@ export default function GoBoard({ id }: GoBoardProps) {
                 localGame: currentLocalGame,
             });
 
-            const updatedLocalGame = saveLocalGame({
-                ...currentLocalGame,
-                lastShareSlug: slug,
+            const updatedLocalGame = saveLocalEditableRecord({
+                record: {
+                    ...currentLocalGame,
+                    lastShareSlug: slug,
+                },
             });
 
             localGameRecordRef.current = updatedLocalGame;

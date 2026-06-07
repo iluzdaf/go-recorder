@@ -22,7 +22,8 @@ import {
 import { getLiveBoardGridMetrics } from "../lib/boardGeometry";
 import { getVertexFromBoardPointer } from "../lib/gameCorrectionUi";
 import { t } from "../lib/i18n";
-import { getLocalRecord, saveLocalRecord } from "../lib/localGames";
+import { saveLocalEditableRecord } from "../lib/localEditableSave";
+import { getLocalRecord } from "../lib/localGames";
 import { createShareFromLocalRecord } from "../lib/shareClient";
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
@@ -89,6 +90,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         loadLocalBoardDraft(id)
     );
     const draftRef = useRef<LocalDraftRecord | null>(draft);
+    const hasPendingSaveRef = useRef(false);
     const [selectedColor, setSelectedColor] = useState<Stone>("B");
     const [shareStatus, setShareStatus] = useState<string | null>(null);
     const strokeStateRef = useRef<BoardDraftStrokeState | null>(null);
@@ -165,19 +167,41 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         clearShareLink();
     }, [clearShareLink]);
 
-    const saveDraft = useCallback((nextDraft: LocalDraftRecord) => {
-        const savedRecord = saveLocalRecord(nextDraft);
-
-        if (
-            savedRecord.recordKind !== "draft" ||
-            savedRecord.draftKind !== "board"
-        ) {
-            return;
-        }
-
-        draftRef.current = savedRecord;
-        setDraft(savedRecord);
+    const updateDraft = useCallback((nextDraft: LocalDraftRecord) => {
+        draftRef.current = nextDraft;
+        hasPendingSaveRef.current = true;
+        setDraft(nextDraft);
     }, []);
+
+    useEffect(() => {
+        if (!draft || !hasPendingSaveRef.current) return;
+
+        const timeoutId = window.setTimeout(() => {
+            const pendingDraft = draftRef.current;
+            if (!pendingDraft) return;
+
+            try {
+                const savedRecord = saveLocalEditableRecord({
+                    record: pendingDraft,
+                });
+
+                if (
+                    savedRecord.recordKind !== "draft" ||
+                    savedRecord.draftKind !== "board"
+                ) {
+                    return;
+                }
+
+                draftRef.current = savedRecord;
+                hasPendingSaveRef.current = false;
+                setDraft(savedRecord);
+            } catch (error) {
+                console.error("Failed to save draft", error);
+            }
+        }, 500);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [draft]);
 
     const applyStrokeVertex = useCallback(
         ({
@@ -205,9 +229,9 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             });
 
             clearCachedShareLink();
-            saveDraft(nextDraft);
+            updateDraft(nextDraft);
         },
-        [clearCachedShareLink, saveDraft, selectedColor]
+        [clearCachedShareLink, selectedColor, updateDraft]
     );
 
     const visitStrokeVertex = useCallback(
@@ -343,9 +367,11 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 localRecord: currentDraft,
                 sourceKind: "draft",
             });
-            const savedRecord = saveLocalRecord({
-                ...currentDraft,
-                lastShareSlug: slug,
+            const savedRecord = saveLocalEditableRecord({
+                record: {
+                    ...currentDraft,
+                    lastShareSlug: slug,
+                },
             });
 
             if (
@@ -356,6 +382,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             }
 
             draftRef.current = savedRecord;
+            hasPendingSaveRef.current = false;
             setDraft(savedRecord);
             finishEditableShareCreated(slug);
         } catch (error) {
