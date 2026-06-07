@@ -20,6 +20,7 @@ import {
     type BoardDraftStrokeMode,
 } from "../lib/boardDraft";
 import { getLiveBoardGridMetrics } from "../lib/boardGeometry";
+import { canShareDraft } from "../lib/draftSharing";
 import { getVertexFromBoardPointer } from "../lib/gameCorrectionUi";
 import { t } from "../lib/i18n";
 import { saveLocalEditableRecord } from "../lib/localEditableSave";
@@ -455,6 +456,11 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             return;
         }
 
+        if (!canShareDraft(currentDraft)) {
+            setEditableShareError(t("addMoveBeforeSharing"));
+            return;
+        }
+
         setEditableShareCreating(t("creatingShare"));
 
         try {
@@ -531,6 +537,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         draft.draftKind === "variation" &&
         draft.baseMoveCount !== null &&
         draft.gameState.moves.length > draft.baseMoveCount;
+    const canShareCurrentDraft = canShareDraft(draft);
 
     return (
         <div
@@ -546,7 +553,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             >
                 {shareMenu.isOpen ? (
                     <ShareMenu
-                        canShareGame
+                        canShareGame={canShareCurrentDraft}
                         isCreating={shareMenu.isCreating}
                         menuRef={shareMenu.menuRef}
                         message={shareMenu.message}
