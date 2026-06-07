@@ -32,17 +32,18 @@ function getSiteUrl() {
 }
 
 function getShareTitle({
-    blackPlayerName,
-    whitePlayerName,
+    draftKind,
+    sourceKind,
 }: {
-    blackPlayerName: string | null;
-    whitePlayerName: string | null;
+    draftKind?: "board" | "variation" | null;
+    sourceKind: "game" | "draft";
 }) {
-    const blackName = blackPlayerName?.trim();
-    const whiteName = whitePlayerName?.trim();
+    if (sourceKind === "draft" && draftKind === "variation") {
+        return "Shared go variation";
+    }
 
-    if (blackName && whiteName) {
-        return `${blackName} vs ${whiteName}`;
+    if (sourceKind === "draft") {
+        return "Shared Go position";
     }
 
     return "Shared Go game";
@@ -67,8 +68,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
     const share = mapShareRowToShareRecord(data);
     const title = getShareTitle({
-        blackPlayerName: share.blackPlayerName,
-        whitePlayerName: share.whitePlayerName,
+        draftKind: share.draftKind,
+        sourceKind: share.sourceKind,
     });
     const description = "View this shared Go game position.";
     const imageUrl = new URL(

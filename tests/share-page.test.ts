@@ -119,10 +119,10 @@ describe("/shares/[slug] page", () => {
         });
 
         expect(metadata).toEqual({
-            title: "Black vs White",
+            title: "Shared Go game",
             description: "View this shared Go game position.",
             openGraph: {
-                title: "Black vs White",
+                title: "Shared Go game",
                 description: "View this shared Go game position.",
                 images: [
                     {
@@ -136,7 +136,7 @@ describe("/shares/[slug] page", () => {
             },
             twitter: {
                 card: "summary_large_image",
-                title: "Black vs White",
+                title: "Shared Go game",
                 description: "View this shared Go game position.",
                 images: [
                     "https://go-recorder-preview.vercel.app/shares/share123/opengraph-image",
@@ -227,7 +227,7 @@ describe("/shares/[slug] page", () => {
         });
     });
 
-    it("uses generic metadata titles when player names are missing", async () => {
+    it("uses Shared Go game metadata titles for shared games", async () => {
         const query = createSelectResult({
             data: {
                 slug: "share123",
@@ -260,6 +260,87 @@ describe("/shares/[slug] page", () => {
         });
         expect(metadata.twitter).toMatchObject({
             title: "Shared Go game",
+        });
+    });
+
+    it("uses Shared Go position metadata titles for board draft shares", async () => {
+        const query = createSelectResult({
+            data: {
+                slug: "share123",
+                source_kind: "draft",
+                draft_kind: "board",
+                board_size: 19,
+                game_state: {
+                    setupStones: [{ x: 3, y: 3, color: "B" }],
+                    moves: [],
+                    currentPlayer: "B",
+                },
+                black_player_name: "Black",
+                white_player_name: "White",
+                handicap: 0,
+                parent_share_slug: null,
+                base_move_count: null,
+                created_at: "2026-05-29T00:00:00.000Z",
+            },
+            error: null,
+        });
+
+        mockSupabaseAdmin.from.mockReturnValueOnce(query);
+
+        const metadata = await generateMetadata({
+            params: Promise.resolve({
+                slug: "share123",
+            }),
+        });
+
+        expect(metadata.title).toBe("Shared Go position");
+        expect(metadata.openGraph).toMatchObject({
+            title: "Shared Go position",
+        });
+        expect(metadata.twitter).toMatchObject({
+            title: "Shared Go position",
+        });
+    });
+
+    it("uses Shared go variation metadata titles for variation draft shares", async () => {
+        const query = createSelectResult({
+            data: {
+                slug: "share123",
+                source_kind: "draft",
+                draft_kind: "variation",
+                board_size: 19,
+                game_state: {
+                    setupStones: [],
+                    moves: [
+                        { type: "play", x: 3, y: 3, color: "B" },
+                        { type: "play", x: 4, y: 4, color: "W" },
+                    ],
+                    currentPlayer: "B",
+                },
+                black_player_name: "Black",
+                white_player_name: "White",
+                handicap: 0,
+                parent_share_slug: "parent123",
+                base_move_count: 1,
+                created_at: "2026-05-29T00:00:00.000Z",
+            },
+            error: null,
+        });
+
+        mockSupabaseAdmin.from.mockReturnValueOnce(query);
+
+        const metadata = await generateMetadata({
+            params: Promise.resolve({
+                slug: "share123",
+            }),
+        });
+
+        expect(metadata.title).toBe("Shared go variation");
+        expect(metadata.openGraph).toMatchObject({
+            title: "Shared go variation",
+        });
+        expect(metadata.twitter).toMatchObject({
+            title: "Shared go variation",
         });
     });
 
