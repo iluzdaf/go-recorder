@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
-import { useRouter } from "next/navigation";
 import type {
     ComponentType,
     PointerEvent as ReactPointerEvent,
@@ -37,7 +36,6 @@ type ShudanGobanProps = {
 const BoardView = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
 
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
-    const router = useRouter();
     const { isDarkMode } = useTheme();
     const { setHeaderStatus } = useHeaderStatus();
     const {
@@ -191,8 +189,8 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         if (!pendingVariationInput) return;
 
         const draft = createLocalDraft(pendingVariationInput);
-        router.push(`/drafts/${draft.id}`);
-    }, [pendingVariationInput, router]);
+        window.open(`/drafts/${draft.id}`, "_blank", "noopener,noreferrer");
+    }, [pendingVariationInput]);
 
     const handleDownloadSgfFromShareMenu = useCallback(() => {
         handleDownloadSgf();
