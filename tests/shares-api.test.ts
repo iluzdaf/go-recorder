@@ -78,11 +78,44 @@ describe("POST /api/shares", () => {
             expect.objectContaining({
                 slug: expect.any(String),
                 source_kind: "game",
+                draft_kind: null,
                 board_size: 19,
                 game_state: validShareInput.gameState,
                 black_player_name: "Black",
                 white_player_name: null,
                 handicap: 0,
+                parent_share_slug: null,
+                base_move_count: null,
+            })
+        );
+    });
+
+    it("creates a variation draft share with draft metadata", async () => {
+        const insertQuery = createInsertResult({
+            data: {
+                slug: "share123",
+            },
+            error: null,
+        });
+        const variationShareInput = {
+            ...validShareInput,
+            sourceKind: "draft",
+            draftKind: "variation",
+            parentShareSlug: "parent123",
+            baseMoveCount: 1,
+        };
+
+        mockSupabaseAdmin.from.mockReturnValueOnce(insertQuery);
+
+        const response = await POST(createJsonRequest(variationShareInput));
+
+        expect(response.status).toBe(200);
+        expect(insertQuery.insert).toHaveBeenCalledWith(
+            expect.objectContaining({
+                source_kind: "draft",
+                draft_kind: "variation",
+                parent_share_slug: "parent123",
+                base_move_count: 1,
             })
         );
     });
