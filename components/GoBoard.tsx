@@ -24,10 +24,10 @@ import { formatMoveEditError, t } from "../lib/i18n";
 import { useHeaderStatus, useTheme } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
 import RecorderActionBar from "./RecorderActionBar";
-import ShareMenu, { type ShareMenuMode } from "./ShareMenu";
+import ShareMenu from "./ShareMenu";
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
-import useShareMenu from "./useShareMenu";
+import useEditableShareMenuController from "./useEditableShareMenuController";
 import { replayGame } from "../lib/gameReplay";
 import { isActionBarAnchor } from "../lib/actionBarDrag";
 import { getLiveBoardGridMetrics } from "../lib/boardGeometry";
@@ -151,36 +151,20 @@ export default function GoBoard({ id }: GoBoardProps) {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
-    const [shareMenuMode, setShareMenuMode] =
-        useState<ShareMenuMode>("chooser");
-    const [shareSlug, setShareSlug] = useState<string | null>(null);
-    const [shareMenuMessage, setShareMenuMessage] = useState<string | null>(
-        null
-    );
-    const [shareMenuIsCreating, setShareMenuIsCreating] = useState(false);
-    const shareAutoCreateAttemptedRef = useRef(false);
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
-    const sharePath = shareSlug ? `/shares/${shareSlug}` : null;
-    const resetShareMenuState = useCallback(() => {
-        shareAutoCreateAttemptedRef.current = false;
-        setShareMenuMessage(null);
-        setShareMenuIsCreating(false);
-    }, []);
-    const {
-        clearQrCode: clearShareQrCode,
-        close: closeShareMenu,
-        copyShareLink,
-        isOpen: shareMenuOpen,
-        menuRef: shareMenuRef,
-        open: openShareMenuBase,
-        qrCodeDataUrl: shareQrCodeDataUrl,
-        triggerRef: shareTriggerRef,
-    } = useShareMenu({
-        onClose: resetShareMenuState,
+    const shareMenu = useEditableShareMenuController({
         onStatus: setShareStatus,
-        sharePath,
-        shouldGenerateQrCode: shareMenuMode === "created",
     });
+    const {
+        canAutoCreateNow,
+        clearShareLink,
+        close: closeEditableShareMenu,
+        finishCreated: finishEditableShareCreated,
+        markAutoCreateAttempted,
+        resetToShareSlug,
+        setCreating: setEditableShareCreating,
+        setError: setEditableShareError,
+    } = shareMenu;
     const isStonePlacementActiveRef = useRef(false);
     const stonePlacementCanCommitRef = useRef(false);
     const isPendingPlacementZoomRef = useRef(false);
@@ -256,11 +240,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             const loadedGame = createLoadedLocalGame(gameRecord);
 
             localGameRecordRef.current = gameRecord;
-            setShareSlug(gameRecord.lastShareSlug ?? null);
-            setShareMenuMode(gameRecord.lastShareSlug ? "created" : "chooser");
-            clearShareQrCode();
-            setShareMenuMessage(null);
-            setShareMenuIsCreating(false);
+            resetToShareSlug(gameRecord.lastShareSlug ?? null);
             setSize(loadedGame.size);
             setGameState(loadedGame.gameState);
             setUpdatedAt(loadedGame.updatedAt);
@@ -272,7 +252,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         };
 
         loadGame();
-    }, [clearShareQrCode, id]);
+    }, [id, resetToShareSlug]);
 
     useEffect(() => {
         if (!hasLoadedGameRef.current) return;
@@ -916,24 +896,9 @@ export default function GoBoard({ id }: GoBoardProps) {
     };
 
     const canShareGame = gameState.moves.some((move) => move.type === "play");
-    const openShareMenu = useCallback(() => {
-        setShareMenuMode(shareSlug ? "created" : "chooser");
-        openShareMenuBase();
-    }, [openShareMenuBase, shareSlug]);
-
-    const toggleShareMenu = useCallback(() => {
-        if (shareMenuOpen) {
-            closeShareMenu();
-            return;
-        }
-
-        openShareMenu();
-    }, [closeShareMenu, openShareMenu, shareMenuOpen]);
 
     const clearCachedShareLink = () => {
-        setShareSlug(null);
-        setShareMenuMode("chooser");
-        clearShareQrCode();
+        clearShareLink();
 
         const localGameRecord = localGameRecordRef.current;
         if (!localGameRecord) return;
@@ -1002,26 +967,23 @@ export default function GoBoard({ id }: GoBoardProps) {
 
     const handleDownloadSgfFromShareMenu = useCallback(() => {
         handleDownloadSgf();
-        closeShareMenu();
-    }, [closeShareMenu, handleDownloadSgf]);
+        closeEditableShareMenu();
+    }, [closeEditableShareMenu, handleDownloadSgf]);
 
     const handleShare = useCallback(async () => {
         const currentLocalGame = createCurrentLocalGameRecord();
 
         if (!currentLocalGame) {
-            setShareMenuMessage(t("gameNotLoaded"));
-            setShareMenuIsCreating(false);
+            setEditableShareError(t("gameNotLoaded"));
             return;
         }
 
         if (!canShareGame) {
-            setShareMenuMessage(t("addMoveBeforeSharing"));
-            setShareMenuIsCreating(false);
+            setEditableShareError(t("addMoveBeforeSharing"));
             return;
         }
 
-        setShareMenuIsCreating(true);
-        setShareMenuMessage(t("creatingShare"));
+        setEditableShareCreating(t("creatingShare"));
 
         try {
             const { slug } = await createShareFromLocalGame({
@@ -1034,37 +996,28 @@ export default function GoBoard({ id }: GoBoardProps) {
             });
 
             localGameRecordRef.current = updatedLocalGame;
-            setShareSlug(slug);
-            setShareMenuMode("created");
-            openShareMenuBase();
-            clearShareQrCode();
-            setShareMenuMessage(null);
-            setShareMenuIsCreating(false);
+            finishEditableShareCreated(slug);
         } catch (error) {
-            setShareMenuMessage(
+            setEditableShareError(
                 error instanceof Error ? error.message : t("failedToCreateShare")
             );
-            setShareMenuIsCreating(false);
         }
     }, [
         canShareGame,
-        clearShareQrCode,
         createCurrentLocalGameRecord,
-        openShareMenuBase,
+        finishEditableShareCreated,
+        setEditableShareCreating,
+        setEditableShareError,
     ]);
 
     useEffect(() => {
-        if (!shareMenuOpen || shareMenuMode !== "chooser" || sharePath) {
+        if (!canShareGame || !canAutoCreateNow) {
             return;
         }
 
-        if (!canShareGame || shareAutoCreateAttemptedRef.current) {
-            return;
-        }
-
-        shareAutoCreateAttemptedRef.current = true;
+        markAutoCreateAttempted();
         void handleShare();
-    }, [canShareGame, handleShare, shareMenuMode, shareMenuOpen, sharePath]);
+    }, [canAutoCreateNow, canShareGame, handleShare, markAutoCreateAttempted]);
 
     const handleClosePlacementZoom = useCallback(() => {
         clearPlacementZoom();
@@ -1098,22 +1051,22 @@ export default function GoBoard({ id }: GoBoardProps) {
                     ref={boardAreaRef}
                     className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
                 >
-                    {shareMenuOpen ? (
+                    {shareMenu.isOpen ? (
                         <ShareMenu
                             canShareGame={canShareGame}
-                            isCreating={shareMenuIsCreating}
-                            menuRef={shareMenuRef}
-                            message={shareMenuMessage}
-                            mode={shareMenuMode}
+                            isCreating={shareMenu.isCreating}
+                            menuRef={shareMenu.menuRef}
+                            message={shareMenu.message}
+                            mode={shareMenu.mode}
                             onCreateShare={() => {
                                 void handleShare();
                             }}
                             onDownloadSgf={handleDownloadSgfFromShareMenu}
                             onCopyLink={() => {
-                                void copyShareLink();
+                                void shareMenu.copyShareLink();
                             }}
-                            qrCodeDataUrl={shareQrCodeDataUrl}
-                            sharePath={sharePath}
+                            qrCodeDataUrl={shareMenu.qrCodeDataUrl}
+                            sharePath={shareMenu.sharePath}
                         />
                     ) : null}
                     <RecorderActionBar
@@ -1132,11 +1085,11 @@ export default function GoBoard({ id }: GoBoardProps) {
                         onPointerDown={actionBar.dragHandlers.onPointerDown}
                         onPointerMove={actionBar.dragHandlers.onPointerMove}
                         onPointerUp={actionBar.dragHandlers.onPointerUp}
-                        onToggleShareMenu={toggleShareMenu}
+                        onToggleShareMenu={shareMenu.toggle}
                         onUndo={handleUndo}
                         railRef={actionBar.railRef}
-                        shareMenuOpen={shareMenuOpen}
-                        shareTriggerRef={shareTriggerRef}
+                        shareMenuOpen={shareMenu.isOpen}
+                        shareTriggerRef={shareMenu.triggerRef}
                         showPlacementZoomControl={Boolean(placementZoomWindow)}
                     />
                     <div

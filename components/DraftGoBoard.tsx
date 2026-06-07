@@ -10,7 +10,7 @@ import type {
 import type { LocalDraftRecord, Stone } from "./types";
 import BoardStatusMessage from "./BoardStatusMessage";
 import DraftBoardActionBar from "./DraftBoardActionBar";
-import ShareMenu, { type ShareMenuMode } from "./ShareMenu";
+import ShareMenu from "./ShareMenu";
 import { downloadSgf } from "./sgf";
 import { useHeaderStatus, useTheme } from "./AppShell";
 import {
@@ -26,7 +26,7 @@ import { getLocalRecord, saveLocalRecord } from "../lib/localGames";
 import { createShareFromLocalRecord } from "../lib/shareClient";
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
-import useShareMenu from "./useShareMenu";
+import useEditableShareMenuController from "./useEditableShareMenuController";
 
 type ShudanGobanProps = {
     vertexSize: number;
@@ -90,19 +90,21 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     );
     const draftRef = useRef<LocalDraftRecord | null>(draft);
     const [selectedColor, setSelectedColor] = useState<Stone>("B");
-    const [shareSlug, setShareSlug] = useState<string | null>(
-        draft?.lastShareSlug ?? null
-    );
     const [shareStatus, setShareStatus] = useState<string | null>(null);
-    const [shareMenuMode, setShareMenuMode] =
-        useState<ShareMenuMode>(draft?.lastShareSlug ? "created" : "chooser");
-    const [shareMenuMessage, setShareMenuMessage] = useState<string | null>(
-        null
-    );
-    const [shareMenuIsCreating, setShareMenuIsCreating] = useState(false);
-    const shareAutoCreateAttemptedRef = useRef(false);
     const strokeStateRef = useRef<BoardDraftStrokeState | null>(null);
-    const sharePath = shareSlug ? `/shares/${shareSlug}` : null;
+    const shareMenu = useEditableShareMenuController({
+        initialShareSlug: draft?.lastShareSlug ?? null,
+        onStatus: setShareStatus,
+    });
+    const {
+        canAutoCreateNow,
+        clearShareLink,
+        close: closeEditableShareMenu,
+        finishCreated: finishEditableShareCreated,
+        markAutoCreateAttempted,
+        setCreating: setEditableShareCreating,
+        setError: setEditableShareError,
+    } = shareMenu;
     const actionBar = useActionBarDrag();
     const {
         boardAreaRef,
@@ -112,26 +114,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     } = useBoardGeometry({
         boardSize: draft?.boardSize ?? 19,
         measureGrid: true,
-    });
-    const resetShareMenuState = useCallback(() => {
-        shareAutoCreateAttemptedRef.current = false;
-        setShareMenuMessage(null);
-        setShareMenuIsCreating(false);
-    }, []);
-    const {
-        clearQrCode: clearShareQrCode,
-        close: closeShareMenu,
-        copyShareLink,
-        isOpen: shareMenuOpen,
-        menuRef: shareMenuRef,
-        open: openShareMenuBase,
-        qrCodeDataUrl: shareQrCodeDataUrl,
-        triggerRef: shareTriggerRef,
-    } = useShareMenu({
-        onClose: resetShareMenuState,
-        onStatus: setShareStatus,
-        sharePath,
-        shouldGenerateQrCode: shareMenuMode === "created",
     });
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
 
@@ -180,10 +162,8 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     );
 
     const clearCachedShareLink = useCallback(() => {
-        setShareSlug(null);
-        setShareMenuMode("chooser");
-        clearShareQrCode();
-    }, [clearShareQrCode]);
+        clearShareLink();
+    }, [clearShareLink]);
 
     const saveDraft = useCallback((nextDraft: LocalDraftRecord) => {
         const savedRecord = saveLocalRecord(nextDraft);
@@ -329,20 +309,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         setSelectedColor((currentColor) => (currentColor === "B" ? "W" : "B"));
     }, []);
 
-    const openShareMenu = useCallback(() => {
-        setShareMenuMode(shareSlug ? "created" : "chooser");
-        openShareMenuBase();
-    }, [openShareMenuBase, shareSlug]);
-
-    const toggleShareMenu = useCallback(() => {
-        if (shareMenuOpen) {
-            closeShareMenu();
-            return;
-        }
-
-        openShareMenu();
-    }, [closeShareMenu, openShareMenu, shareMenuOpen]);
-
     const handleDownloadSgf = useCallback(() => {
         const currentDraft = draftRef.current;
         if (!currentDraft) return;
@@ -359,20 +325,18 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
 
     const handleDownloadSgfFromShareMenu = useCallback(() => {
         handleDownloadSgf();
-        closeShareMenu();
-    }, [closeShareMenu, handleDownloadSgf]);
+        closeEditableShareMenu();
+    }, [closeEditableShareMenu, handleDownloadSgf]);
 
     const handleShare = useCallback(async () => {
         const currentDraft = draftRef.current;
 
         if (!currentDraft) {
-            setShareMenuMessage(t("gameNotLoaded"));
-            setShareMenuIsCreating(false);
+            setEditableShareError(t("gameNotLoaded"));
             return;
         }
 
-        setShareMenuIsCreating(true);
-        setShareMenuMessage(t("creatingShare"));
+        setEditableShareCreating(t("creatingShare"));
 
         try {
             const { slug } = await createShareFromLocalRecord({
@@ -393,32 +357,26 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
 
             draftRef.current = savedRecord;
             setDraft(savedRecord);
-            setShareSlug(slug);
-            setShareMenuMode("created");
-            openShareMenuBase();
-            clearShareQrCode();
-            setShareMenuMessage(null);
-            setShareMenuIsCreating(false);
+            finishEditableShareCreated(slug);
         } catch (error) {
-            setShareMenuMessage(
+            setEditableShareError(
                 error instanceof Error ? error.message : t("failedToCreateShare")
             );
-            setShareMenuIsCreating(false);
         }
-    }, [clearShareQrCode, openShareMenuBase]);
+    }, [
+        finishEditableShareCreated,
+        setEditableShareCreating,
+        setEditableShareError,
+    ]);
 
     useEffect(() => {
-        if (!shareMenuOpen || shareMenuMode !== "chooser" || sharePath) {
+        if (!canAutoCreateNow) {
             return;
         }
 
-        if (shareAutoCreateAttemptedRef.current) {
-            return;
-        }
-
-        shareAutoCreateAttemptedRef.current = true;
+        markAutoCreateAttempted();
         void handleShare();
-    }, [handleShare, shareMenuMode, shareMenuOpen, sharePath]);
+    }, [canAutoCreateNow, handleShare, markAutoCreateAttempted]);
 
     if (!draft) {
         return (
@@ -445,18 +403,18 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 ref={boardAreaRef}
                 className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
             >
-                {shareMenuOpen ? (
+                {shareMenu.isOpen ? (
                     <ShareMenu
                         canShareGame
-                        isCreating={shareMenuIsCreating}
-                        menuRef={shareMenuRef}
-                        message={shareMenuMessage}
-                        mode={shareMenuMode}
+                        isCreating={shareMenu.isCreating}
+                        menuRef={shareMenu.menuRef}
+                        message={shareMenu.message}
+                        mode={shareMenu.mode}
                         onCreateShare={handleShare}
                         onDownloadSgf={handleDownloadSgfFromShareMenu}
-                        onCopyLink={copyShareLink}
-                        qrCodeDataUrl={shareQrCodeDataUrl}
-                        sharePath={sharePath}
+                        onCopyLink={shareMenu.copyShareLink}
+                        qrCodeDataUrl={shareMenu.qrCodeDataUrl}
+                        sharePath={shareMenu.sharePath}
                     />
                 ) : null}
                 <DraftBoardActionBar
@@ -470,11 +428,11 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                     onPointerMove={actionBar.dragHandlers.onPointerMove}
                     onPointerUp={actionBar.dragHandlers.onPointerUp}
                     onToggleColor={handleToggleColor}
-                    onToggleShareMenu={toggleShareMenu}
+                    onToggleShareMenu={shareMenu.toggle}
                     railRef={actionBar.railRef}
                     selectedColor={selectedColor}
-                    shareMenuOpen={shareMenuOpen}
-                    shareTriggerRef={shareTriggerRef}
+                    shareMenuOpen={shareMenu.isOpen}
+                    shareTriggerRef={shareMenu.triggerRef}
                 />
                 <div
                     ref={gobanWrapperRef}
