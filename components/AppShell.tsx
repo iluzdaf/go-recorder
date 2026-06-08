@@ -14,7 +14,7 @@ import {
 } from "react";
 import { Expand, Home, Menu, Minimize2, Moon, Sun, X } from "lucide-react";
 import ChangelogReleaseList from "./ChangelogReleaseList";
-import { t } from "@/lib/i18n";
+import { t } from "../lib/i18n";
 
 type ThemeContextValue = {
     isDarkMode: boolean;
@@ -71,6 +71,21 @@ function getIsShortViewport() {
     if (typeof window === "undefined") return false;
 
     return window.matchMedia(SHORT_VIEWPORT_QUERY).matches;
+}
+
+export function shouldUseOverlayHeader({
+    isShortViewport,
+    pathname,
+}: {
+    isShortViewport: boolean;
+    pathname: string | null | undefined;
+}) {
+    return Boolean(
+        isShortViewport &&
+            (pathname?.startsWith("/games/") ||
+                pathname?.startsWith("/drafts/") ||
+                pathname?.startsWith("/shares/"))
+    );
 }
 
 function getIsFullscreenSupported() {
@@ -384,10 +399,10 @@ export default function AppShell({
         };
     }, [closeChangelog, isChangelogOpen]);
 
-    const isRecordingGame = pathname?.startsWith("/games/");
-    const usesOverlayHeader = Boolean(
-        isShortViewport && (isRecordingGame || pathname?.startsWith("/shares/"))
-    );
+    const usesOverlayHeader = shouldUseOverlayHeader({
+        isShortViewport,
+        pathname,
+    });
     const isHeaderVisible =
         !usesOverlayHeader || isHeaderExpanded || Boolean(headerStatus);
 
