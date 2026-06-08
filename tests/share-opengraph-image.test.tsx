@@ -44,8 +44,8 @@ describe("/shares/[slug]/opengraph-image", () => {
 
     it("scales board coordinate size from stone radius", () => {
         expect(getCoordinateFontSize(10)).toBe(16);
-        expect(getCoordinateFontSize(28)).toBeCloseTo(20.72);
-        expect(getCoordinateFontSize(40)).toBe(24);
+        expect(getCoordinateFontSize(28)).toBeCloseTo(25.2);
+        expect(getCoordinateFontSize(40)).toBe(34);
     });
 
     it("renders a generated preview image for a share", async () => {

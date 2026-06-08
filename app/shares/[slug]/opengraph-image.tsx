@@ -44,7 +44,7 @@ export function getGoRowLabel({
 }
 
 export function getCoordinateFontSize(stoneRadius: number) {
-    return Math.max(16, Math.min(24, stoneRadius * 0.74));
+    return Math.max(16, Math.min(34, stoneRadius * 0.9));
 }
 
 function getStarPoints(boardSize: number) {
@@ -149,6 +149,7 @@ export default async function Image({ params }: ImageProps) {
     const gridTop = boardPadding + (gridSize - visibleGridHeight) / 2;
     const stoneRadius = Math.max(10, gridStep * 0.42);
     const coordinateFontSize = getCoordinateFontSize(stoneRadius);
+    const coordinateNudge = coordinateFontSize * 0.28;
     const blackPlayerName = getDisplayPlayerName(share.blackPlayerName);
     const whitePlayerName = getDisplayPlayerName(share.whitePlayerName);
     const hasPlayerNames = blackPlayerName !== null || whitePlayerName !== null;
@@ -226,7 +227,10 @@ export default async function Image({ params }: ImageProps) {
                                         fontSize: coordinateFontSize,
                                         fontWeight: 800,
                                         justifyContent: "center",
-                                        left: offset - gridStep / 2,
+                                        left:
+                                            offset -
+                                            gridStep / 2 +
+                                            coordinateNudge,
                                         letterSpacing: "0",
                                         lineHeight: 1,
                                         position: "absolute",
@@ -253,7 +257,10 @@ export default async function Image({ params }: ImageProps) {
                                         fontSize: coordinateFontSize,
                                         fontWeight: 800,
                                         justifyContent: "center",
-                                        left: offset - gridStep / 2,
+                                        left:
+                                            offset -
+                                            gridStep / 2 +
+                                            coordinateNudge,
                                         letterSpacing: "0",
                                         lineHeight: 1,
                                         position: "absolute",
@@ -292,7 +299,10 @@ export default async function Image({ params }: ImageProps) {
                                         letterSpacing: "0",
                                         lineHeight: 1,
                                         position: "absolute",
-                                        top: offset - coordinateFontSize / 2,
+                                        top:
+                                            offset -
+                                            coordinateFontSize / 2 +
+                                            coordinateNudge,
                                         width: 26,
                                     }}
                                 >
@@ -311,7 +321,10 @@ export default async function Image({ params }: ImageProps) {
                                         letterSpacing: "0",
                                         lineHeight: 1,
                                         position: "absolute",
-                                        top: offset - coordinateFontSize / 2,
+                                        top:
+                                            offset -
+                                            coordinateFontSize / 2 +
+                                            coordinateNudge,
                                         width: 26,
                                     }}
                                 >
