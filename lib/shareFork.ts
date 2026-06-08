@@ -76,11 +76,12 @@ export function toVariationDraftInput({
             draftKind: "variation",
             boardSize: share.boardSize,
             gameState: playResult.gameState,
-            blackPlayerName: share.blackPlayerName,
-            whitePlayerName: share.whitePlayerName,
-            handicap: share.handicap,
+            blackPlayerName: null,
+            whitePlayerName: null,
+            handicap: 0,
             parentShareSlug: share.slug,
             baseMoveCount: visibleMoveCount,
+            positionView: share.positionView ?? null,
         },
     };
 }

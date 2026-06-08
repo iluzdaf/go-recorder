@@ -128,8 +128,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         toggle: toggleEditableShareMenu,
     } = shareMenu;
     const actionBar = useActionBarDrag();
-    const positionView =
-        draft?.draftKind === "board" ? draft.positionView ?? null : null;
+    const positionView = draft?.positionView ?? null;
     const displayBoardSize = draft
         ? getPositionViewDisplaySize({
               boardSize: draft.boardSize,
@@ -165,8 +164,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
 
         const positionRange = getPositionViewRange({
             boardSize: draft.boardSize,
-            positionView:
-                draft.draftKind === "board" ? draft.positionView ?? null : null,
+            positionView: draft.positionView ?? null,
         });
         const metrics = positionRange
             ? getLivePositionViewGridMetrics({
@@ -660,13 +658,10 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         draft.baseMoveCount !== null &&
         draft.gameState.moves.length > draft.baseMoveCount;
     const canShareCurrentDraft = canShareDraft(draft);
-    const positionRange =
-        draft.draftKind === "board"
-            ? getPositionViewRange({
-                  boardSize: draft.boardSize,
-                  positionView: draft.positionView ?? null,
-              })
-            : null;
+    const positionRange = getPositionViewRange({
+        boardSize: draft.boardSize,
+        positionView: draft.positionView ?? null,
+    });
 
     return (
         <div

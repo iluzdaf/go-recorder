@@ -322,32 +322,28 @@ describe("local game storage", () => {
         expect(getLocalRecord("invalid-variation")).toBeNull();
     });
 
-    it("rejects stored variation drafts with position views", () => {
-        window.localStorage.setItem(
-            "go-recorder:local-game:invalid-variation-position-view",
-            JSON.stringify({
-                recordKind: "draft",
-                draftKind: "variation",
-                id: "invalid-variation-position-view",
-                boardSize: 19,
-                gameState: emptyGameState,
-                blackPlayerName: null,
-                whitePlayerName: null,
-                handicap: 0,
-                createdAt: "2026-05-28T00:00:00.000Z",
-                updatedAt: "2026-05-28T00:00:00.000Z",
-                lastShareSlug: null,
-                parentShareSlug: "share123",
-                baseMoveCount: 1,
-                positionView: {
-                    anchor: "top-left",
-                    rows: 6,
-                    columns: 6,
-                },
-            })
-        );
+    it("creates and stores a variation draft position view", () => {
+        const record = createLocalDraft({
+            draftKind: "variation",
+            boardSize: 19,
+            gameState: emptyGameState,
+            parentShareSlug: "share123",
+            baseMoveCount: 1,
+            positionView: {
+                anchor: "top-left",
+                rows: 6,
+                columns: 6,
+            },
+        });
 
-        expect(getLocalRecord("invalid-variation-position-view")).toBeNull();
+        expect(getLocalRecord(record.id)).toMatchObject({
+            draftKind: "variation",
+            positionView: {
+                anchor: "top-left",
+                rows: 6,
+                columns: 6,
+            },
+        });
     });
 
     it("saves local drafts while preserving draft metadata", () => {

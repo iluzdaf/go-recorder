@@ -52,6 +52,11 @@ describe("toVariationDraftInput", () => {
                     blackPlayerName: "Black",
                     whitePlayerName: "White",
                     handicap: 2,
+                    positionView: {
+                        anchor: "top-left",
+                        rows: 6,
+                        columns: 8,
+                    },
                     createdAt: "2026-05-29T00:00:00.000Z",
                 },
                 vertex: { x: 6, y: 4 },
@@ -70,11 +75,16 @@ describe("toVariationDraftInput", () => {
                     ],
                     currentPlayer: "W",
                 },
-                blackPlayerName: "Black",
-                whitePlayerName: "White",
-                handicap: 2,
+                blackPlayerName: null,
+                whitePlayerName: null,
+                handicap: 0,
                 parentShareSlug: "share123",
                 baseMoveCount: 1,
+                positionView: {
+                    anchor: "top-left",
+                    rows: 6,
+                    columns: 8,
+                },
             },
         });
     });

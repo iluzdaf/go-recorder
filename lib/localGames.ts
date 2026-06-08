@@ -121,8 +121,7 @@ function isLocalDraftRecord(value: unknown): value is LocalDraftRecord {
         return (
             typeof record.parentShareSlug === "string" &&
             record.parentShareSlug.length > 0 &&
-            typeof record.baseMoveCount === "number" &&
-            (record.positionView === undefined || record.positionView === null)
+            typeof record.baseMoveCount === "number"
         );
     }
 
@@ -185,7 +184,7 @@ export function createLocalDraft({
         lastShareSlug: null,
         parentShareSlug,
         baseMoveCount,
-        positionView: draftKind === "board" ? positionView : null,
+        positionView,
     };
 
     if (!isLocalDraftRecord(record)) {
