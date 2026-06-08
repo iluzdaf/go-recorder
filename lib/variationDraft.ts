@@ -9,8 +9,11 @@ export type MoveNumberMarker = {
 };
 
 export type CapturedVariationMoveCaptionEntry = {
+    color: Move["color"];
+    coordinate: string;
     label: string;
     moveIndex: number;
+    moveNumber: number;
     x: number;
     y: number;
 };
@@ -150,14 +153,20 @@ export function getCapturedVariationMoveCaptionEntries({
         const owner = replay.visibleStoneOwners[move.y]?.[move.x] ?? null;
         if (owner?.type === "move" && owner.moveIndex === moveIndex) return [];
 
+        const moveNumber = moveIndex + 1;
+        const coordinate = getGoCoordinate({
+            boardSize,
+            x: move.x,
+            y: move.y,
+        });
+
         return [
             {
-                label: `${moveIndex + 1} at ${getGoCoordinate({
-                    boardSize,
-                    x: move.x,
-                    y: move.y,
-                })}`,
+                color: move.color,
+                coordinate,
+                label: `${moveNumber} at ${coordinate}`,
                 moveIndex,
+                moveNumber,
                 x: move.x,
                 y: move.y,
             },

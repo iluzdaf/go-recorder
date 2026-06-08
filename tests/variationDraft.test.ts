@@ -218,8 +218,11 @@ describe("getCapturedVariationMoveCaptionEntries", () => {
             })
         ).toEqual([
             {
+                color: "W",
+                coordinate: "B8",
                 label: "2 at B8",
                 moveIndex: 1,
+                moveNumber: 2,
                 x: 1,
                 y: 1,
             },

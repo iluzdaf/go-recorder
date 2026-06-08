@@ -38,6 +38,32 @@ import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
 import useShareMenu from "./useShareMenu";
 
+function getMoveColorName(color: CapturedVariationMoveCaptionEntry["color"]) {
+    return color === "B" ? "Black" : "White";
+}
+
+function MoveColorStone({
+    color,
+    moveNumber,
+}: {
+    color: CapturedVariationMoveCaptionEntry["color"];
+    moveNumber: number;
+}) {
+    return (
+        <span
+            aria-hidden="true"
+            className={
+                color === "B"
+                    ? "inline-flex size-5 shrink-0 items-center justify-center border border-zinc-950 bg-zinc-950 text-[10px] font-bold leading-none text-white dark:border-white"
+                    : "inline-flex size-5 shrink-0 items-center justify-center border-2 border-zinc-950 bg-white text-[10px] font-bold leading-none text-zinc-950 dark:border-white"
+            }
+            style={{ borderRadius: "50%" }}
+        >
+            {moveNumber}
+        </span>
+    );
+}
+
 type ShudanGobanProps = {
     vertexSize: number;
     signMap: number[][];
@@ -68,14 +94,19 @@ export function CapturedVariationMoveCaption({
                 <button
                     key={entry.moveIndex}
                     type="button"
-                    className="inline-flex h-8 items-center justify-center rounded-full border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-950 hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-950 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800 dark:focus-visible:outline-white"
+                    aria-label={`${getMoveColorName(entry.color)} ${entry.label}`}
+                    className="inline-flex h-8 items-center justify-center gap-1.5 px-1.5 text-xs font-semibold text-zinc-950 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-950 dark:text-white dark:focus-visible:outline-white"
                     onBlur={onRestorePreview}
                     onClick={() => onCommit(entry.moveIndex)}
                     onFocus={() => onPreview(entry.moveIndex)}
                     onPointerEnter={() => onPreview(entry.moveIndex)}
                     onPointerLeave={onRestorePreview}
                 >
-                    {entry.label}
+                    <MoveColorStone
+                        color={entry.color}
+                        moveNumber={entry.moveNumber}
+                    />
+                    <span>{entry.coordinate}</span>
                 </button>
             ))}
         </div>
@@ -120,6 +151,8 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         share.gameState.moves.length
     );
     const captionPreviewMoveCountRef = useRef<number | null>(null);
+    const captionCommittedMoveIndexRef = useRef<number | null>(null);
+    const captionCommittedRestoreMoveCountRef = useRef<number | null>(null);
 
     const visibleMoves = share.gameState.moves.slice(0, visibleMoveCount);
     const board = buildBoardFromGameState(
@@ -301,16 +334,22 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
 
     const handleJumpToStart = useCallback(() => {
         captionPreviewMoveCountRef.current = null;
+        captionCommittedMoveIndexRef.current = null;
+        captionCommittedRestoreMoveCountRef.current = null;
         setVisibleMoveCount(0);
     }, []);
 
     const handlePreviousMove = useCallback(() => {
         captionPreviewMoveCountRef.current = null;
+        captionCommittedMoveIndexRef.current = null;
+        captionCommittedRestoreMoveCountRef.current = null;
         setVisibleMoveCount((currentCount) => Math.max(0, currentCount - 1));
     }, []);
 
     const handleNextMove = useCallback(() => {
         captionPreviewMoveCountRef.current = null;
+        captionCommittedMoveIndexRef.current = null;
+        captionCommittedRestoreMoveCountRef.current = null;
         setVisibleMoveCount((currentCount) =>
             Math.min(share.gameState.moves.length, currentCount + 1)
         );
@@ -318,6 +357,8 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
 
     const handleJumpToEnd = useCallback(() => {
         captionPreviewMoveCountRef.current = null;
+        captionCommittedMoveIndexRef.current = null;
+        captionCommittedRestoreMoveCountRef.current = null;
         setVisibleMoveCount(share.gameState.moves.length);
     }, [share.gameState.moves.length]);
 
@@ -338,9 +379,33 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     }, []);
 
     const handleCommitCaptionMove = useCallback((moveIndex: number) => {
+        const targetMoveCount = moveIndex + 1;
+
+        if (
+            captionCommittedMoveIndexRef.current === moveIndex &&
+            visibleMoveCount === targetMoveCount
+        ) {
+            const restoreMoveCount =
+                captionCommittedRestoreMoveCountRef.current;
+
+            captionPreviewMoveCountRef.current = null;
+            captionCommittedMoveIndexRef.current = null;
+            captionCommittedRestoreMoveCountRef.current = null;
+
+            if (restoreMoveCount !== null) {
+                setVisibleMoveCount(restoreMoveCount);
+            }
+            return;
+        }
+
+        const restoreMoveCount =
+            captionPreviewMoveCountRef.current ?? visibleMoveCount;
+
         captionPreviewMoveCountRef.current = null;
-        setVisibleMoveCount(moveIndex + 1);
-    }, []);
+        captionCommittedMoveIndexRef.current = moveIndex;
+        captionCommittedRestoreMoveCountRef.current = restoreMoveCount;
+        setVisibleMoveCount(targetMoveCount);
+    }, [visibleMoveCount]);
 
     return (
         <div

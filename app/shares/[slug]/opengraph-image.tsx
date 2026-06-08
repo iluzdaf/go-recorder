@@ -230,9 +230,44 @@ export default async function Image({ params }: ImageProps) {
                                 zIndex: 5,
                             }}
                         >
-                            {capturedVariationCaptionEntries
-                                .map((entry) => entry.label)
-                                .join("  ")}
+                            {capturedVariationCaptionEntries.map((entry) => (
+                                <div
+                                    key={entry.moveIndex}
+                                    style={{
+                                        alignItems: "center",
+                                        display: "flex",
+                                        gap: 6,
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            background:
+                                                entry.color === "B"
+                                                    ? "#18181b"
+                                                    : "#fafafa",
+                                            border:
+                                                entry.color === "B"
+                                                    ? "2px solid #18181b"
+                                                    : "3px solid #18181b",
+                                            borderRadius: "50%",
+                                            color:
+                                                entry.color === "B"
+                                                    ? "#fafafa"
+                                                    : "#18181b",
+                                            display: "flex",
+                                            fontSize: 12,
+                                            fontWeight: 900,
+                                            height: 18,
+                                            justifyContent: "center",
+                                            lineHeight: 1,
+                                            width: 18,
+                                        }}
+                                    >
+                                        {entry.moveNumber}
+                                    </div>
+                                    <span>{entry.coordinate}</span>
+                                </div>
+                            ))}
                         </div>
                     )}
                     {Array.from({ length: visibleRows }, (_, rowIndex) => {
