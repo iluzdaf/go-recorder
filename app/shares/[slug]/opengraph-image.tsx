@@ -5,6 +5,7 @@ import {
     getDisplayPlayerName,
 } from "../../../lib/sharePresentation";
 import { getFinalPositionFromGameState } from "../../../lib/shareFinalPosition";
+import { getShareBoardPositionView } from "../../../lib/shareBoardView";
 import { mapShareRowToShareRecord } from "../../../lib/shareView";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { createVariationMoveNumberMarkerMap } from "../../../lib/variationDraft";
@@ -130,13 +131,10 @@ export default async function Image({ params }: ImageProps) {
     const boardPixelSize = 560;
     const boardPadding = 36;
     const gridSize = boardPixelSize - boardPadding * 2;
-    const positionRange =
-        share.sourceKind === "draft"
-            ? getPositionViewRange({
-                  boardSize,
-                  positionView: share.positionView ?? null,
-              })
-            : null;
+    const positionRange = getPositionViewRange({
+        boardSize,
+        positionView: getShareBoardPositionView(share),
+    });
     const visibleRows = positionRange?.rows ?? boardSize;
     const visibleColumns = positionRange?.columns ?? boardSize;
     const startX = positionRange?.startX ?? 0;

@@ -17,6 +17,7 @@ import {
     type CreateLocalDraftInput,
 } from "../lib/localGames";
 import { replayGame } from "../lib/gameReplay";
+import { getShareBoardPositionView } from "../lib/shareBoardView";
 import { buildBoardFromGameState } from "../lib/shareBoardState";
 import { toVariationDraftInput } from "../lib/shareFork";
 import {
@@ -50,10 +51,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const { isDarkMode } = useTheme();
     const { setHeaderStatus } = useHeaderStatus();
     const { isOverlayHeader } = useHeaderVisibility();
-    const positionView =
-        share.sourceKind === "draft" && share.draftKind === "board"
-            ? share.positionView ?? null
-            : null;
+    const positionView = getShareBoardPositionView(share);
     const displayBoardSize = getPositionViewDisplaySize({
         boardSize: share.boardSize,
         positionView,
