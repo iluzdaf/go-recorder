@@ -48,6 +48,13 @@ export function getCoordinateFontSize(stoneRadius: number) {
     return Math.max(16, Math.min(34, stoneRadius * 0.9));
 }
 
+export function getBoardCoordinatePadding(visibleDimension: number) {
+    if (visibleDimension <= 9) return 76;
+    if (visibleDimension <= 13) return 56;
+
+    return 36;
+}
+
 function getStarPoints(boardSize: number) {
     if (boardSize === 19) {
         return [3, 9, 15].flatMap((x) => [3, 9, 15].map((y) => [x, y]));
@@ -129,8 +136,6 @@ export default async function Image({ params }: ImageProps) {
 
     const boardSize = share.boardSize;
     const boardPixelSize = 560;
-    const boardPadding = 36;
-    const gridSize = boardPixelSize - boardPadding * 2;
     const positionRange = getPositionViewRange({
         boardSize,
         positionView: getShareBoardPositionView(share),
@@ -140,6 +145,8 @@ export default async function Image({ params }: ImageProps) {
     const startX = positionRange?.startX ?? 0;
     const startY = positionRange?.startY ?? 0;
     const maxVisibleDimension = Math.max(visibleRows, visibleColumns);
+    const boardPadding = getBoardCoordinatePadding(maxVisibleDimension);
+    const gridSize = boardPixelSize - boardPadding * 2;
     const gridStep = gridSize / (maxVisibleDimension - 1);
     const visibleGridWidth = (visibleColumns - 1) * gridStep;
     const visibleGridHeight = (visibleRows - 1) * gridStep;

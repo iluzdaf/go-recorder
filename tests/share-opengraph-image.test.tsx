@@ -9,6 +9,7 @@ vi.mock("../lib/supabaseAdmin", () => ({
 }));
 
 import Image, {
+    getBoardCoordinatePadding,
     getCoordinateFontSize,
     getGoColumnLabel,
     getGoRowLabel,
@@ -46,6 +47,13 @@ describe("/shares/[slug]/opengraph-image", () => {
         expect(getCoordinateFontSize(10)).toBe(16);
         expect(getCoordinateFontSize(28)).toBeCloseTo(25.2);
         expect(getCoordinateFontSize(40)).toBe(34);
+    });
+
+    it("adds more coordinate gutter for smaller visible board views", () => {
+        expect(getBoardCoordinatePadding(6)).toBe(76);
+        expect(getBoardCoordinatePadding(9)).toBe(76);
+        expect(getBoardCoordinatePadding(13)).toBe(56);
+        expect(getBoardCoordinatePadding(19)).toBe(36);
     });
 
     it("renders a generated preview image for a share", async () => {
