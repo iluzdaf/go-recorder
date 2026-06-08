@@ -14,10 +14,7 @@ import {
 import type { ChangeEvent, ComponentType, RefObject } from "react";
 
 import type { BoardSize, PositionView, PositionViewAnchor } from "./types";
-import {
-    clampPositionView,
-    getDefaultPositionView,
-} from "../lib/positionView";
+import { clampPositionView } from "../lib/positionView";
 import { t } from "../lib/i18n";
 
 type PositionViewSettingsDialogProps = {
@@ -68,6 +65,14 @@ const ANCHOR_ICONS: Record<PositionViewAnchor, AnchorIcon> = {
     "bottom-right": ArrowDownRight,
 };
 
+function getDefaultSettingsPositionView(boardSize: BoardSize): PositionView {
+    return {
+        anchor: "top-left",
+        rows: boardSize,
+        columns: boardSize,
+    };
+}
+
 export default function PositionViewSettingsDialog({
     alignToViewportTop = false,
     boardSize,
@@ -76,9 +81,11 @@ export default function PositionViewSettingsDialog({
     positionView,
 }: PositionViewSettingsDialogProps) {
     const currentView = clampPositionView(
-        positionView ?? getDefaultPositionView(boardSize),
+        positionView ?? getDefaultSettingsPositionView(boardSize),
         boardSize
     );
+    const selectedAnchor =
+        currentView.anchor === "full" ? "top-left" : currentView.anchor;
 
     const changePositionView = (nextView: PositionView) => {
         onChange(clampPositionView(nextView, boardSize));
@@ -89,7 +96,10 @@ export default function PositionViewSettingsDialog({
         (event: ChangeEvent<HTMLSelectElement>) => {
             changePositionView({
                 ...currentView,
-                anchor: currentView.anchor === "full" ? "center" : currentView.anchor,
+                anchor:
+                    currentView.anchor === "full"
+                        ? "top-left"
+                        : currentView.anchor,
                 [key]: Number(event.target.value),
             });
         };
@@ -104,7 +114,7 @@ export default function PositionViewSettingsDialog({
             aria-labelledby="position-view-settings-title"
             className={
                 alignToViewportTop
-                    ? "absolute right-4 top-4 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-zinc-200 bg-white p-3 text-zinc-950 shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                    ? "absolute right-4 top-4 z-50 w-[min(42rem,calc(100vw-2rem))] rounded-lg border border-zinc-200 bg-white p-3 text-zinc-950 shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
                     : "fixed right-4 top-16 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-zinc-200 bg-white p-3 text-zinc-950 shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
             }
             ref={dialogRef}
@@ -120,19 +130,13 @@ export default function PositionViewSettingsDialog({
                 </h2>
             </div>
 
-            <div className="flex flex-col gap-2">
-                <button
-                    type="button"
-                    className={
-                        currentView.anchor === "full"
-                            ? "inline-flex h-11 w-full items-center justify-center rounded-md bg-zinc-950 px-3 text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
-                            : "inline-flex h-11 w-full items-center justify-center rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                    }
-                    onClick={() => changePositionView(getDefaultPositionView(boardSize))}
-                >
-                    {t("fullBoard")}
-                </button>
-
+            <div
+                className={
+                    alignToViewportTop
+                        ? "grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem]"
+                        : "flex flex-col gap-2"
+                }
+            >
                 <div className="grid grid-cols-3 gap-1 rounded-md border border-zinc-200 bg-zinc-50 p-2 dark:border-neutral-700 dark:bg-neutral-950">
                     {REGION_ANCHORS.map((anchor) => {
                         const Icon = ANCHOR_ICONS[anchor];
@@ -142,7 +146,7 @@ export default function PositionViewSettingsDialog({
                                 key={anchor}
                                 type="button"
                                 className={
-                                    currentView.anchor === anchor
+                                    selectedAnchor === anchor
                                         ? "inline-flex h-11 items-center justify-center rounded-md bg-zinc-950 text-white dark:bg-white dark:text-zinc-950"
                                         : "inline-flex h-11 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
                                 }
