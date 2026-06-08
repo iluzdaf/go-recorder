@@ -131,7 +131,7 @@ export default async function Image({ params }: ImageProps) {
     const boardPadding = 36;
     const gridSize = boardPixelSize - boardPadding * 2;
     const positionRange =
-        share.sourceKind === "draft" && share.draftKind === "board"
+        share.sourceKind === "draft"
             ? getPositionViewRange({
                   boardSize,
                   positionView: share.positionView ?? null,

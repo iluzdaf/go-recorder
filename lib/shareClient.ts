@@ -51,7 +51,7 @@ export function toCreateShareInput(
                 ? localRecord.baseMoveCount
                 : null,
         positionView:
-            localRecord.recordKind === "draft" && localRecord.draftKind === "board"
+            localRecord.recordKind === "draft"
                 ? localRecord.positionView ?? null
                 : null,
     };

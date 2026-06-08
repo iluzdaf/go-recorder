@@ -150,6 +150,11 @@ describe("/shares/[slug]/opengraph-image", () => {
                     currentPlayer: "B",
                 },
                 final_position: finalPosition,
+                position_view: {
+                    anchor: "top-left",
+                    rows: 6,
+                    columns: 8,
+                },
                 black_player_name: null,
                 white_player_name: null,
                 handicap: 0,

@@ -221,7 +221,7 @@ describe("validateCreateShareInput", () => {
         ).toBe(false);
     });
 
-    it("rejects position view metadata on variation draft shares", () => {
+    it("accepts position view metadata on variation draft shares", () => {
         expect(
             validateCreateShareInput({
                 ...validShareInput,
@@ -235,6 +235,6 @@ describe("validateCreateShareInput", () => {
                     columns: 8,
                 },
             })
-        ).toBe(false);
+        ).toBe(true);
     });
 });

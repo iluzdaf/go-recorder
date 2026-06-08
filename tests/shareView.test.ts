@@ -101,7 +101,28 @@ describe("mapShareRowToShareRecord", () => {
         });
     });
 
-    it("ignores invalid or non-board draft position views", () => {
+    it("maps valid variation draft position views", () => {
+        expect(
+            mapShareRowToShareRecord({
+                ...baseShareRow,
+                source_kind: "draft",
+                draft_kind: "variation",
+                position_view: {
+                    anchor: "top-left",
+                    rows: 6,
+                    columns: 8,
+                },
+            })
+        ).toMatchObject({
+            positionView: {
+                anchor: "top-left",
+                rows: 6,
+                columns: 8,
+            },
+        });
+    });
+
+    it("ignores invalid or non-draft position views", () => {
         expect(
             mapShareRowToShareRecord({
                 ...baseShareRow,
@@ -119,8 +140,6 @@ describe("mapShareRowToShareRecord", () => {
         expect(
             mapShareRowToShareRecord({
                 ...baseShareRow,
-                source_kind: "draft",
-                draft_kind: "variation",
                 position_view: {
                     anchor: "top-left",
                     rows: 6,

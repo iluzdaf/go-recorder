@@ -141,7 +141,7 @@ function hasValidShareDraftMetadata(input: Partial<CreateShareInput>) {
             typeof parentShareSlug === "string" &&
             parentShareSlug.length > 0 &&
             typeof baseMoveCount === "number" &&
-            positionView === null
+            isNullablePositionView(positionView, input.boardSize)
         );
     }
 

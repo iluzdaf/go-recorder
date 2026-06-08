@@ -145,6 +145,11 @@ describe("toCreateShareInput", () => {
             },
             parentShareSlug: "share123",
             baseMoveCount: 1,
+            positionView: {
+                anchor: "top-left",
+                rows: 6,
+                columns: 8,
+            },
         };
 
         expect(
@@ -169,7 +174,11 @@ describe("toCreateShareInput", () => {
             handicap: 0,
             parentShareSlug: "share123",
             baseMoveCount: 1,
-            positionView: null,
+            positionView: {
+                anchor: "top-left",
+                rows: 6,
+                columns: 8,
+            },
         });
     });
 });

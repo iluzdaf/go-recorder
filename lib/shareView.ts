@@ -34,7 +34,7 @@ export function mapShareRowToShareRecord(row: ShareRow): ShareRecord {
         parentShareSlug: row.parent_share_slug ?? null,
         baseMoveCount: row.base_move_count ?? null,
         positionView:
-            row.source_kind === "draft" && row.draft_kind === "board"
+            row.source_kind === "draft"
                 ? sanitizePositionView(row.position_view, row.board_size)
                 : null,
         createdAt: row.created_at,
