@@ -1,5 +1,16 @@
 [
     {
+        "version": "0.3.0",
+        "date": "2026-06-08",
+        "title": "Corners, then sides, then center.",
+        "items": [
+            {
+                "id": "drafts-and-variations",
+                "text": "Add drafts and variations."
+            }
+        ]
+    },
+    {
         "version": "0.2.0",
         "date": "2026-06-02",
         "title": "Good shape is good.",
