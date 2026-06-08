@@ -77,13 +77,17 @@ describe("/shares/[slug]/opengraph-image", () => {
         ).toBeCloseTo(514.12);
     });
 
-    it("places variation captions inside the grid area", () => {
+    it("places variation captions above the board", () => {
         expect(
             getVariationCaptionTopOffset({
-                coordinateFontSize: 16,
-                gridTop: 36,
+                boardTop: 65,
             })
-        ).toBe(44);
+        ).toBe(16);
+        expect(
+            getVariationCaptionTopOffset({
+                boardTop: 92,
+            })
+        ).toBe(40);
     });
 
     it("renders a generated preview image for a share", async () => {
