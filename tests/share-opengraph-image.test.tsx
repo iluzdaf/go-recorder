@@ -9,6 +9,7 @@ vi.mock("../lib/supabaseAdmin", () => ({
 }));
 
 import Image, {
+    getCoordinateFontSize,
     getGoColumnLabel,
     getGoRowLabel,
 } from "../app/shares/[slug]/opengraph-image";
@@ -39,6 +40,12 @@ describe("/shares/[slug]/opengraph-image", () => {
         expect(getGoColumnLabel(18)).toBe("T");
         expect(getGoRowLabel({ boardSize: 19, y: 0 })).toBe("19");
         expect(getGoRowLabel({ boardSize: 19, y: 18 })).toBe("1");
+    });
+
+    it("scales board coordinate size from stone radius", () => {
+        expect(getCoordinateFontSize(10)).toBe(16);
+        expect(getCoordinateFontSize(28)).toBeCloseTo(20.72);
+        expect(getCoordinateFontSize(40)).toBe(24);
     });
 
     it("renders a generated preview image for a share", async () => {

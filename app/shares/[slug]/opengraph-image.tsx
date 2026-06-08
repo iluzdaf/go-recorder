@@ -43,6 +43,10 @@ export function getGoRowLabel({
     return String(boardSize - y);
 }
 
+export function getCoordinateFontSize(stoneRadius: number) {
+    return Math.max(16, Math.min(24, stoneRadius * 0.74));
+}
+
 function getStarPoints(boardSize: number) {
     if (boardSize === 19) {
         return [3, 9, 15].flatMap((x) => [3, 9, 15].map((y) => [x, y]));
@@ -144,7 +148,7 @@ export default async function Image({ params }: ImageProps) {
     const gridLeft = boardPadding + (gridSize - visibleGridWidth) / 2;
     const gridTop = boardPadding + (gridSize - visibleGridHeight) / 2;
     const stoneRadius = Math.max(10, gridStep * 0.42);
-    const coordinateFontSize = Math.max(16, Math.min(24, gridStep * 0.42));
+    const coordinateFontSize = getCoordinateFontSize(stoneRadius);
     const blackPlayerName = getDisplayPlayerName(share.blackPlayerName);
     const whitePlayerName = getDisplayPlayerName(share.whitePlayerName);
     const hasPlayerNames = blackPlayerName !== null || whitePlayerName !== null;
