@@ -5,8 +5,10 @@ import type {
     LocalDraftRecord,
     LocalEditableRecord,
     LocalGameRecord,
+    PositionView,
 } from "../components/types";
 import { isValidBoardSize, isValidGameState } from "./gameLogic";
+import { isValidPositionView } from "./positionView";
 import { createRandomId } from "./randomId";
 
 const LOCAL_GAME_STORAGE_KEY_PREFIX = "go-recorder:local-game:";
@@ -30,6 +32,7 @@ export type CreateLocalDraftInput = {
     handicap?: number;
     parentShareSlug?: string | null;
     baseMoveCount?: number | null;
+    positionView?: PositionView | null;
 };
 
 function getLocalStorage() {
@@ -56,6 +59,17 @@ function isValidBaseMoveCount(value: unknown) {
     return (
         value === null ||
         (typeof value === "number" && Number.isInteger(value) && value >= 0)
+    );
+}
+
+function isOptionalPositionView(
+    value: unknown,
+    boardSize: BoardSize | undefined
+) {
+    return (
+        value === undefined ||
+        value === null ||
+        (isValidBoardSize(boardSize) && isValidPositionView(value, boardSize))
     );
 }
 
@@ -97,7 +111,8 @@ function isLocalDraftRecord(value: unknown): value is LocalDraftRecord {
         (record.draftKind !== "board" && record.draftKind !== "variation") ||
         !hasValidLocalRecordBase(record) ||
         !isNullableString(record.parentShareSlug) ||
-        !isValidBaseMoveCount(record.baseMoveCount)
+        !isValidBaseMoveCount(record.baseMoveCount) ||
+        !isOptionalPositionView(record.positionView, record.boardSize)
     ) {
         return false;
     }
@@ -106,7 +121,8 @@ function isLocalDraftRecord(value: unknown): value is LocalDraftRecord {
         return (
             typeof record.parentShareSlug === "string" &&
             record.parentShareSlug.length > 0 &&
-            typeof record.baseMoveCount === "number"
+            typeof record.baseMoveCount === "number" &&
+            (record.positionView === undefined || record.positionView === null)
         );
     }
 
@@ -152,6 +168,7 @@ export function createLocalDraft({
     handicap = 0,
     parentShareSlug = null,
     baseMoveCount = null,
+    positionView = null,
 }: CreateLocalDraftInput) {
     const now = new Date().toISOString();
     const record: LocalDraftRecord = {
@@ -168,6 +185,7 @@ export function createLocalDraft({
         lastShareSlug: null,
         parentShareSlug,
         baseMoveCount,
+        positionView: draftKind === "board" ? positionView : null,
     };
 
     if (!isLocalDraftRecord(record)) {

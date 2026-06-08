@@ -45,6 +45,7 @@ export async function POST(request: Request) {
             handicap: body.handicap,
             parent_share_slug: body.parentShareSlug ?? null,
             base_move_count: body.baseMoveCount ?? null,
+            position_view: body.positionView ?? null,
         })
         .select("slug")
         .single();

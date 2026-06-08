@@ -1,4 +1,5 @@
 import type { BoardGridGeometry } from "./gameCorrectionUi";
+import type { PositionViewGridGeometry } from "./positionView";
 
 export const BOARD_PADDING_PX = 16;
 export const MIN_VERTEX_SIZE_PX = 16;
@@ -25,6 +26,14 @@ type GetBoardVertexSizeOptions = {
 type GetLiveBoardGridMetricsOptions = {
     boardSize: BoardGridGeometry["boardSize"];
     gobanWrapper: Element;
+};
+
+type GetLivePositionViewGridMetricsOptions = {
+    columns: number;
+    gobanWrapper: Element;
+    rows: number;
+    startX: number;
+    startY: number;
 };
 
 export function getBoardVertexSize({
@@ -86,5 +95,28 @@ export function getLiveBoardGridMetrics({
             boardSize,
         },
         gridMetrics,
+    };
+}
+
+export function getLivePositionViewGridMetrics({
+    columns,
+    gobanWrapper,
+    rows,
+    startX,
+    startY,
+}: GetLivePositionViewGridMetricsOptions): PositionViewGridGeometry | null {
+    const grid = gobanWrapper.querySelector(".shudan-grid");
+    if (!isShudanGridElement(grid)) return null;
+
+    const gridRect = grid.getBoundingClientRect();
+
+    return {
+        left: gridRect.left,
+        top: gridRect.top,
+        cellSize: gridRect.width / columns,
+        rows,
+        columns,
+        startX,
+        startY,
     };
 }

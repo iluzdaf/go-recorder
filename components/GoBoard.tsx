@@ -21,7 +21,7 @@ import { saveLocalEditableRecord } from "../lib/localEditableSave";
 import { createLoadedLocalGame } from "../lib/localGameView";
 import { createShareFromLocalGame } from "../lib/shareClient";
 import { formatMoveEditError, t } from "../lib/i18n";
-import { useHeaderStatus, useTheme } from "./AppShell";
+import { useHeaderStatus, useHeaderVisibility, useTheme } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
 import RecorderActionBar from "./RecorderActionBar";
 import ShareMenu from "./ShareMenu";
@@ -105,6 +105,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     const [size, setSize] = useState<BoardSize>(19);
     const { isDarkMode } = useTheme();
     const { setHeaderStatus } = useHeaderStatus();
+    const { isOverlayHeader } = useHeaderVisibility();
     const hasLoadedGameRef = useRef(false);
     const stoneSelectTimeoutRef = useRef<number | null>(null);
     const stoneSelectOriginRef = useRef<Vertex | null>(null);
@@ -970,6 +971,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                 >
                     {shareMenu.isOpen ? (
                         <ShareMenu
+                            alignToViewportTop={isOverlayHeader}
                             canShareGame={canShareGame}
                             isCreating={shareMenu.isCreating}
                             menuRef={shareMenu.menuRef}

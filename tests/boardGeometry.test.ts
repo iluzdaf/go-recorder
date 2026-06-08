@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
     createDefaultBoardGridMetrics,
     getLiveBoardGridMetrics,
+    getLivePositionViewGridMetrics,
     getBoardVertexSize,
 } from "../lib/boardGeometry";
 
@@ -83,5 +84,37 @@ describe("board geometry helpers", () => {
                 gobanWrapper: wrapper,
             })
         ).toBeNull();
+    });
+
+    it("measures cropped position view grid metrics", () => {
+        const grid = {
+            getBoundingClientRect: () => ({
+                left: 48,
+                top: 72,
+                width: 320,
+            }),
+        } as Element;
+        const wrapper = {
+            querySelector: (selector: string) =>
+                selector === ".shudan-grid" ? grid : null,
+        } as Element;
+
+        expect(
+            getLivePositionViewGridMetrics({
+                columns: 8,
+                rows: 6,
+                startX: 11,
+                startY: 13,
+                gobanWrapper: wrapper,
+            })
+        ).toEqual({
+            left: 48,
+            top: 72,
+            cellSize: 40,
+            rows: 6,
+            columns: 8,
+            startX: 11,
+            startY: 13,
+        });
     });
 });

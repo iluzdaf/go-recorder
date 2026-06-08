@@ -34,6 +34,24 @@ export type LocalRecordKind = "game" | "draft";
 
 export type DraftKind = "board" | "variation";
 
+export type PositionViewAnchor =
+    | "full"
+    | "top-left"
+    | "top"
+    | "top-right"
+    | "left"
+    | "center"
+    | "right"
+    | "bottom-left"
+    | "bottom"
+    | "bottom-right";
+
+export type PositionView = {
+    anchor: PositionViewAnchor;
+    rows: number;
+    columns: number;
+};
+
 export type GameRecord = {
     slug: string;
     boardSize: BoardSize;
@@ -72,6 +90,7 @@ export type LocalDraftRecord = {
     lastShareSlug: string | null;
     parentShareSlug: string | null;
     baseMoveCount: number | null;
+    positionView?: PositionView | null;
 };
 
 export type LocalEditableRecord = LocalGameRecord | LocalDraftRecord;
@@ -88,6 +107,7 @@ export type ShareRecord = {
     handicap: number;
     parentShareSlug?: string | null;
     baseMoveCount?: number | null;
+    positionView?: PositionView | null;
     createdAt: string;
 };
 
@@ -101,6 +121,7 @@ export type CreateShareInput = {
     handicap: number;
     parentShareSlug?: string | null;
     baseMoveCount?: number | null;
+    positionView?: PositionView | null;
 };
 
 export type CreateShareResponse = {

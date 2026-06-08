@@ -151,6 +151,40 @@ describe("validateCreateShareInput", () => {
         ).toBe(true);
     });
 
+    it("accepts board draft position view metadata", () => {
+        expect(
+            validateCreateShareInput({
+                ...validShareInput,
+                sourceKind: "draft",
+                draftKind: "board",
+                parentShareSlug: null,
+                baseMoveCount: null,
+                positionView: {
+                    anchor: "top-left",
+                    rows: 6,
+                    columns: 8,
+                },
+            })
+        ).toBe(true);
+    });
+
+    it("rejects invalid board draft position view metadata", () => {
+        expect(
+            validateCreateShareInput({
+                ...validShareInput,
+                sourceKind: "draft",
+                draftKind: "board",
+                parentShareSlug: null,
+                baseMoveCount: null,
+                positionView: {
+                    anchor: "top-left",
+                    rows: 1,
+                    columns: 8,
+                },
+            })
+        ).toBe(false);
+    });
+
     it("rejects draft metadata on game shares", () => {
         expect(
             validateCreateShareInput({
@@ -158,6 +192,19 @@ describe("validateCreateShareInput", () => {
                 draftKind: "variation",
                 parentShareSlug: "share123",
                 baseMoveCount: 1,
+            })
+        ).toBe(false);
+    });
+
+    it("rejects position view metadata on game shares", () => {
+        expect(
+            validateCreateShareInput({
+                ...validShareInput,
+                positionView: {
+                    anchor: "top-left",
+                    rows: 6,
+                    columns: 8,
+                },
             })
         ).toBe(false);
     });
@@ -170,6 +217,23 @@ describe("validateCreateShareInput", () => {
                 draftKind: "variation",
                 parentShareSlug: null,
                 baseMoveCount: 1,
+            })
+        ).toBe(false);
+    });
+
+    it("rejects position view metadata on variation draft shares", () => {
+        expect(
+            validateCreateShareInput({
+                ...validShareInput,
+                sourceKind: "draft",
+                draftKind: "variation",
+                parentShareSlug: "share123",
+                baseMoveCount: 1,
+                positionView: {
+                    anchor: "top-left",
+                    rows: 6,
+                    columns: 8,
+                },
             })
         ).toBe(false);
     });

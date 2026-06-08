@@ -83,6 +83,7 @@ describe("/shares/[slug] page", () => {
             handicap: 0,
             parentShareSlug: null,
             baseMoveCount: null,
+            positionView: null,
             createdAt: "2026-05-29T00:00:00.000Z",
         });
         expect(mockSupabaseAdmin.from).toHaveBeenCalledWith("shares");

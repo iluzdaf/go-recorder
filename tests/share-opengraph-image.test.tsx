@@ -154,6 +154,56 @@ describe("/shares/[slug]/opengraph-image", () => {
         expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0);
     });
 
+    it("renders cropped board position previews", async () => {
+        const finalPosition = createEmptySignMap(19);
+        finalPosition[0][0] = 1;
+        finalPosition[5][7] = -1;
+        finalPosition[18][18] = 1;
+
+        const query = createSelectResult({
+            data: {
+                slug: "share987",
+                source_kind: "draft",
+                draft_kind: "board",
+                board_size: 19,
+                game_state: {
+                    setupStones: [
+                        { x: 0, y: 0, color: "B" },
+                        { x: 7, y: 5, color: "W" },
+                        { x: 18, y: 18, color: "B" },
+                    ],
+                    moves: [],
+                    currentPlayer: "B",
+                },
+                final_position: finalPosition,
+                position_view: {
+                    anchor: "top-left",
+                    rows: 6,
+                    columns: 8,
+                },
+                black_player_name: null,
+                white_player_name: null,
+                handicap: 0,
+                created_at: "2026-05-29T00:00:00.000Z",
+            },
+            error: null,
+        });
+
+        mockSupabaseAdmin.from.mockReturnValueOnce(query);
+
+        const response = await Image({
+            params: Promise.resolve({
+                slug: "share987",
+            }),
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Cache-Control")).toBe(
+            "public, max-age=31536000, immutable"
+        );
+        expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0);
+    });
+
     it("renders without text details when player names are missing", async () => {
         const query = createSelectResult({
             data: {

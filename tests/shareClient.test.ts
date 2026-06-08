@@ -45,6 +45,7 @@ const localDraft: LocalDraftRecord = {
     lastShareSlug: null,
     parentShareSlug: null,
     baseMoveCount: null,
+    positionView: null,
 };
 
 beforeEach(() => {
@@ -63,6 +64,7 @@ describe("toCreateShareInput", () => {
             handicap: 2,
             parentShareSlug: null,
             baseMoveCount: null,
+            positionView: null,
         });
     });
 
@@ -82,6 +84,7 @@ describe("toCreateShareInput", () => {
             handicap: 2,
             parentShareSlug: null,
             baseMoveCount: null,
+            positionView: null,
         });
     });
 
@@ -101,6 +104,30 @@ describe("toCreateShareInput", () => {
             handicap: 0,
             parentShareSlug: null,
             baseMoveCount: null,
+            positionView: null,
+        });
+    });
+
+    it("maps a board draft position view to draft share input", () => {
+        expect(
+            toCreateShareInput({
+                localRecord: {
+                    ...localDraft,
+                    positionView: {
+                        anchor: "top-left" as const,
+                        rows: 6,
+                        columns: 8,
+                    },
+                },
+                sourceKind: "draft",
+            })
+        ).toMatchObject({
+            draftKind: "board",
+            positionView: {
+                anchor: "top-left",
+                rows: 6,
+                columns: 8,
+            },
         });
     });
 
@@ -142,6 +169,7 @@ describe("toCreateShareInput", () => {
             handicap: 0,
             parentShareSlug: "share123",
             baseMoveCount: 1,
+            positionView: null,
         });
     });
 });
@@ -178,6 +206,7 @@ describe("createShareFromLocalGame", () => {
                     handicap: 2,
                     parentShareSlug: null,
                     baseMoveCount: null,
+                    positionView: null,
                 }),
             })
         );
