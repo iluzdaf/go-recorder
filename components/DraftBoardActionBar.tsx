@@ -30,6 +30,7 @@ type DraftBoardActionBarProps = {
     onToggleColor?: () => void;
     onTogglePositionViewSettings?: () => void;
     onToggleShareMenu: () => void;
+    positionViewSettingsTriggerRef?: RefObject<HTMLButtonElement | null>;
     onUndo?: () => void;
     railRef: RefObject<HTMLDivElement | null>;
     selectedColor?: Stone;
@@ -51,6 +52,7 @@ export default function DraftBoardActionBar({
     onToggleColor,
     onTogglePositionViewSettings,
     onToggleShareMenu,
+    positionViewSettingsTriggerRef,
     onUndo,
     railRef,
     selectedColor = "B",
@@ -97,6 +99,7 @@ export default function DraftBoardActionBar({
                     </button>
                     <button
                         type="button"
+                        ref={positionViewSettingsTriggerRef}
                         className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
                         onClick={onTogglePositionViewSettings}
                         aria-label={t("positionViewSettings")}

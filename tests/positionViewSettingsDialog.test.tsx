@@ -2,14 +2,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import PositionViewSettingsDialog from "../components/PositionViewSettingsDialog";
+import { t } from "../lib/i18n";
 
 function renderDialog(alignToViewportTop: boolean) {
     return renderToStaticMarkup(
         <PositionViewSettingsDialog
             alignToViewportTop={alignToViewportTop}
             boardSize={19}
-            onApply={vi.fn()}
-            onClose={vi.fn()}
+            onChange={vi.fn()}
             positionView={null}
         />
     );
@@ -26,5 +26,14 @@ describe("PositionViewSettingsDialog", () => {
         expect(markup).toContain("absolute");
         expect(markup).toContain("right-4");
         expect(markup).toContain("top-4");
+    });
+
+    it("uses menu-style instant controls instead of close and apply actions", () => {
+        const markup = renderDialog(false);
+
+        expect(markup).not.toContain(`>${t("cancel")}<`);
+        expect(markup).not.toContain(`>${t("apply")}<`);
+        expect(markup).toContain('aria-label="Top left"');
+        expect(markup).toContain("<svg");
     });
 });
