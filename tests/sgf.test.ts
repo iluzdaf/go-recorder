@@ -167,19 +167,43 @@ describe("exportSgf", () => {
 });
 
 describe("createSgfFilename", () => {
-    it("prefixes the filename with an ISO timestamp", () => {
-        const date = new Date("2026-06-03T10:24:42.303Z");
+    it("uses a readable timestamp and both player names", () => {
+        const date = new Date(2026, 5, 3, 10, 24, 42);
 
         expect(
             createSgfFilename("Black Player", "White Player", date)
-        ).toBe("2026-06-03T10-24-42.303Z Black Player (b) vs White Player (w).sgf");
+        ).toBe("2026-06-03 10-24 Black Player (B) White Player (W).sgf");
     });
 
-    it("prefixes the fallback filename with an ISO timestamp", () => {
-        const date = new Date("2026-06-03T10:24:42.303Z");
+    it("uses the black player name when only black is available", () => {
+        const date = new Date(2026, 5, 3, 10, 24, 42);
+
+        expect(createSgfFilename("Black Player", null, date)).toBe(
+            "2026-06-03 10-24 Black Player (B).sgf"
+        );
+    });
+
+    it("uses the white player name when only white is available", () => {
+        const date = new Date(2026, 5, 3, 10, 24, 42);
+
+        expect(createSgfFilename(null, "White Player", date)).toBe(
+            "2026-06-03 10-24 White Player (W).sgf"
+        );
+    });
+
+    it("uses only a readable timestamp when names are missing", () => {
+        const date = new Date(2026, 5, 3, 10, 24, 42);
 
         expect(createSgfFilename(undefined, undefined, date)).toBe(
-            "2026-06-03T10-24-42.303Z.sgf"
+            "2026-06-03 10-24.sgf"
+        );
+    });
+
+    it("sanitizes player names in filenames", () => {
+        const date = new Date(2026, 5, 3, 10, 24, 42);
+
+        expect(createSgfFilename("Black / Player", "White: Player", date)).toBe(
+            "2026-06-03 10-24 Black Player (B) White Player (W).sgf"
         );
     });
 });
@@ -220,7 +244,7 @@ describe("downloadSgf", () => {
         expect(blobs[0]?.type).toBe("application/x-go-sgf;charset=utf-8");
         expect(link.href).toBe("blob:sgf");
         expect(link.download).toMatch(
-            / Black Player \(b\) vs White Player \(w\)\.sgf$/
+            / Black Player \(B\) White Player \(W\)\.sgf$/
         );
         expect(click).toHaveBeenCalledOnce();
         expect(revokeObjectURL).toHaveBeenCalledWith("blob:sgf");

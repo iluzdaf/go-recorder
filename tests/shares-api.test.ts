@@ -81,6 +81,7 @@ describe("POST /api/shares", () => {
                 draft_kind: null,
                 board_size: 19,
                 game_state: validShareInput.gameState,
+                final_position: expect.any(Array),
                 black_player_name: "Black",
                 white_player_name: null,
                 handicap: 0,
@@ -88,6 +89,31 @@ describe("POST /api/shares", () => {
                 base_move_count: null,
             })
         );
+        const insertedShare = insertQuery.insert.mock.calls[0]?.[0];
+        expect(insertedShare.final_position).toHaveLength(19);
+        expect(insertedShare.final_position[3][3]).toBe(1);
+    });
+
+    it("rejects share input with illegal replay state", async () => {
+        const response = await POST(
+            createJsonRequest({
+                ...validShareInput,
+                gameState: {
+                    setupStones: [],
+                    moves: [
+                        { type: "play", x: 3, y: 3, color: "B" },
+                        { type: "play", x: 3, y: 3, color: "W" },
+                    ],
+                    currentPlayer: "B",
+                },
+            })
+        );
+
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({
+            error: t("invalidShareInput"),
+        });
+        expect(mockSupabaseAdmin.from).not.toHaveBeenCalled();
     });
 
     it("creates a variation draft share with draft metadata", async () => {

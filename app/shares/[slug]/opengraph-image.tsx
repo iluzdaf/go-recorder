@@ -1,6 +1,10 @@
 import { ImageResponse } from "next/og";
 
-import { replayGame } from "../../../lib/gameReplay";
+import {
+    formatShareDate,
+    getDisplayPlayerName,
+} from "../../../lib/sharePresentation";
+import { getFinalPositionFromGameState } from "../../../lib/shareFinalPosition";
 import { mapShareRowToShareRecord } from "../../../lib/shareView";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
@@ -19,11 +23,8 @@ type ImageProps = {
     }>;
 };
 
-function getPlayerName(name: string | null) {
-    const trimmedName = name?.trim();
-
-    return trimmedName && trimmedName.length > 0 ? trimmedName : null;
-}
+const SUCCESS_CACHE_CONTROL = "public, max-age=31536000, immutable";
+const ERROR_CACHE_CONTROL = "no-store";
 
 function getStarPoints(boardSize: number) {
     if (boardSize === 19) {
@@ -58,7 +59,12 @@ function renderFallbackImage(message: string) {
                 {message}
             </div>
         ),
-        size
+        {
+            ...size,
+            headers: {
+                "Cache-Control": ERROR_CACHE_CONTROL,
+            },
+        }
     );
 }
 
@@ -76,17 +82,26 @@ export default async function Image({ params }: ImageProps) {
     }
 
     if (!data) {
-        return new Response("Share not found", { status: 404 });
+        return new Response("Share not found", {
+            headers: {
+                "Cache-Control": ERROR_CACHE_CONTROL,
+            },
+            status: 404,
+        });
     }
 
     const share = mapShareRowToShareRecord(data);
-    const replay = replayGame({
-        boardSize: share.boardSize,
-        setupStones: share.gameState.setupStones,
-        moves: share.gameState.moves,
-    });
+    const finalPositionResult = share.finalPosition
+        ? {
+              ok: true as const,
+              finalPosition: share.finalPosition,
+          }
+        : getFinalPositionFromGameState({
+              boardSize: share.boardSize,
+              gameState: share.gameState,
+          });
 
-    if (!replay.legal) {
+    if (!finalPositionResult.ok) {
         return renderFallbackImage("Unable to render this game position.");
     }
 
@@ -96,11 +111,12 @@ export default async function Image({ params }: ImageProps) {
     const gridSize = boardPixelSize - boardPadding * 2;
     const gridStep = gridSize / (boardSize - 1);
     const stoneRadius = Math.max(10, gridStep * 0.42);
-    const blackPlayerName = getPlayerName(share.blackPlayerName);
-    const whitePlayerName = getPlayerName(share.whitePlayerName);
+    const blackPlayerName = getDisplayPlayerName(share.blackPlayerName);
+    const whitePlayerName = getDisplayPlayerName(share.whitePlayerName);
     const hasPlayerNames = blackPlayerName !== null || whitePlayerName !== null;
     const boardLeft = hasPlayerNames ? 80 : (size.width - boardPixelSize) / 2;
     const boardTop = (size.height - boardPixelSize) / 2;
+    const shareDate = formatShareDate(share.createdAt);
 
     return new ImageResponse(
         (
@@ -172,7 +188,7 @@ export default async function Image({ params }: ImageProps) {
                         />
                     ))}
 
-                    {replay.board.signMap.flatMap((row, y) =>
+                    {finalPositionResult.finalPosition.flatMap((row, y) =>
                         row.map((sign, x) => {
                             if (sign === 0) return null;
 
@@ -187,7 +203,7 @@ export default async function Image({ params }: ImageProps) {
                                         background: isBlack ? "#09090b" : "#fafafa",
                                         border: isBlack
                                             ? "1px solid #09090b"
-                                            : "1px solid #18181b",
+                                            : "3px solid #18181b",
                                         borderRadius: "50%",
                                         height: stoneRadius * 2,
                                         left,
@@ -206,13 +222,26 @@ export default async function Image({ params }: ImageProps) {
                         style={{
                             display: "flex",
                             flexDirection: "column",
-                            gap: 16,
+                            gap: 18,
                             left: 700,
                             position: "absolute",
-                            top: 150,
+                            top: 132,
                             width: 360,
                         }}
                     >
+                        {shareDate && (
+                            <span
+                                style={{
+                                    color: "#52525b",
+                                    fontSize: 28,
+                                    fontWeight: 700,
+                                    letterSpacing: "0",
+                                    lineHeight: 1,
+                                }}
+                            >
+                                {shareDate}
+                            </span>
+                        )}
                         {blackPlayerName && (
                             <div
                                 style={{
@@ -235,18 +264,13 @@ export default async function Image({ params }: ImageProps) {
                                         color: "#18181b",
                                         fontSize: 62,
                                         fontWeight: 800,
-                                        letterSpacing: "-0.04em",
+                                        letterSpacing: "0",
                                         lineHeight: 1,
                                     }}
                                 >
                                     {blackPlayerName}
                                 </span>
                             </div>
-                        )}
-                        {blackPlayerName && whitePlayerName && (
-                            <span style={{ color: "#52525b", fontSize: 34 }}>
-                                vs
-                            </span>
                         )}
                         {whitePlayerName && (
                             <div
@@ -259,7 +283,7 @@ export default async function Image({ params }: ImageProps) {
                                 <div
                                     style={{
                                         background: "#fafafa",
-                                        border: "1px solid #18181b",
+                                        border: "3px solid #18181b",
                                         borderRadius: "50%",
                                         height: 40,
                                         width: 40,
@@ -270,7 +294,7 @@ export default async function Image({ params }: ImageProps) {
                                         color: "#18181b",
                                         fontSize: 62,
                                         fontWeight: 800,
-                                        letterSpacing: "-0.04em",
+                                        letterSpacing: "0",
                                         lineHeight: 1,
                                     }}
                                 >
@@ -282,6 +306,11 @@ export default async function Image({ params }: ImageProps) {
                 )}
             </div>
         ),
-        size
+        {
+            ...size,
+            headers: {
+                "Cache-Control": SUCCESS_CACHE_CONTROL,
+            },
+        }
     );
 }

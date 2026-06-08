@@ -39,8 +39,19 @@ function sanitizeFilenamePart(value: string) {
         .replace(/\s+/g, " ");
 }
 
-function formatIsoTimestampForFilename(date: Date) {
-    return date.toISOString().replace(/:/g, "-");
+function padDatePart(value: number) {
+    return String(value).padStart(2, "0");
+}
+
+function formatTimestampForFilename(date: Date) {
+    const dateText = [
+        date.getFullYear(),
+        padDatePart(date.getMonth() + 1),
+        padDatePart(date.getDate()),
+    ].join("-");
+    const timeText = `${padDatePart(date.getHours())}-${padDatePart(date.getMinutes())}`;
+
+    return `${dateText} ${timeText}`;
 }
 
 export function createSgfFilename(
@@ -48,7 +59,7 @@ export function createSgfFilename(
     whitePlayerName?: string | null,
     now = new Date()
 ) {
-    const timestamp = formatIsoTimestampForFilename(now);
+    const timestamp = formatTimestampForFilename(now);
     const blackName = blackPlayerName
         ? sanitizeFilenamePart(blackPlayerName)
         : null;
@@ -58,7 +69,15 @@ export function createSgfFilename(
         : null;
 
     if (blackName && whiteName) {
-        return `${timestamp} ${blackName} (b) vs ${whiteName} (w).sgf`;
+        return `${timestamp} ${blackName} (B) ${whiteName} (W).sgf`;
+    }
+
+    if (blackName) {
+        return `${timestamp} ${blackName} (B).sgf`;
+    }
+
+    if (whiteName) {
+        return `${timestamp} ${whiteName} (W).sgf`;
     }
 
     return `${timestamp}.sgf`;

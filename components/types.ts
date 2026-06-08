@@ -24,6 +24,8 @@ export type GameState = {
     currentPlayer: Stone;
 };
 
+export type FinalPosition = number[][];
+
 export type BoardSize = 9 | 13 | 19;
 
 export type ShareSourceKind = "game" | "draft";
@@ -80,6 +82,7 @@ export type ShareRecord = {
     draftKind?: DraftKind | null;
     boardSize: BoardSize;
     gameState: GameState;
+    finalPosition?: FinalPosition | null;
     blackPlayerName: string | null;
     whitePlayerName: string | null;
     handicap: number;

@@ -25,6 +25,7 @@ describe("mapShareRowToShareRecord", () => {
             draftKind: null,
             boardSize: 19,
             gameState: baseShareRow.game_state,
+            finalPosition: null,
             blackPlayerName: "Black",
             whitePlayerName: null,
             handicap: 0,
@@ -48,6 +49,33 @@ describe("mapShareRowToShareRecord", () => {
             draftKind: "variation",
             parentShareSlug: "parent123",
             baseMoveCount: 1,
+        });
+    });
+
+    it("maps valid final positions", () => {
+        const finalPosition = Array.from({ length: 19 }, () =>
+            Array.from({ length: 19 }, () => 0)
+        );
+        finalPosition[3][3] = 1;
+
+        expect(
+            mapShareRowToShareRecord({
+                ...baseShareRow,
+                final_position: finalPosition,
+            })
+        ).toMatchObject({
+            finalPosition,
+        });
+    });
+
+    it("ignores invalid final positions", () => {
+        expect(
+            mapShareRowToShareRecord({
+                ...baseShareRow,
+                final_position: [[2]],
+            })
+        ).toMatchObject({
+            finalPosition: null,
         });
     });
 });

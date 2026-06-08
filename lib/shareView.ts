@@ -1,4 +1,5 @@
 import type { ShareRecord } from "../components/types";
+import { isValidFinalPosition } from "./shareFinalPosition";
 
 type ShareRow = {
     slug: string;
@@ -6,6 +7,7 @@ type ShareRow = {
     draft_kind?: ShareRecord["draftKind"];
     board_size: ShareRecord["boardSize"];
     game_state: ShareRecord["gameState"];
+    final_position?: unknown;
     black_player_name: string | null;
     white_player_name: string | null;
     handicap: number;
@@ -21,6 +23,9 @@ export function mapShareRowToShareRecord(row: ShareRow): ShareRecord {
         draftKind: row.draft_kind ?? null,
         boardSize: row.board_size,
         gameState: row.game_state,
+        finalPosition: isValidFinalPosition(row.final_position, row.board_size)
+            ? row.final_position
+            : null,
         blackPlayerName: row.black_player_name ?? null,
         whitePlayerName: row.white_player_name ?? null,
         handicap: row.handicap,
