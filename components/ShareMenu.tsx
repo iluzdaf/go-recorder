@@ -10,6 +10,7 @@ import { t } from "../lib/i18n";
 export type ShareMenuMode = "chooser" | "created";
 
 type ShareMenuProps = {
+    alignToViewportTop?: boolean;
     canShareGame: boolean;
     isCreating: boolean;
     menuRef: RefObject<HTMLDivElement | null>;
@@ -24,6 +25,7 @@ type ShareMenuProps = {
 };
 
 export default function ShareMenu({
+    alignToViewportTop = false,
     canShareGame,
     isCreating,
     menuRef,
@@ -40,7 +42,11 @@ export default function ShareMenu({
         <div
             id="share-menu"
             ref={menuRef}
-            className="fixed right-4 top-16 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
+            className={
+                alignToViewportTop
+                    ? "fixed right-4 top-3 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
+                    : "fixed right-4 top-16 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-zinc-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
+            }
         >
             <div className="mb-3">
                 <p className="text-sm font-semibold text-zinc-950 dark:text-white">

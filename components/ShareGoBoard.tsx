@@ -9,7 +9,7 @@ import type {
 
 import type { ShareRecord } from "./types";
 import { downloadSgf } from "./sgf";
-import { useHeaderStatus, useTheme } from "./AppShell";
+import { useHeaderStatus, useHeaderVisibility, useTheme } from "./AppShell";
 import { getLivePositionViewGridMetrics } from "../lib/boardGeometry";
 import { t } from "../lib/i18n";
 import {
@@ -49,6 +49,7 @@ const BoardView = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const { isDarkMode } = useTheme();
     const { setHeaderStatus } = useHeaderStatus();
+    const { isOverlayHeader } = useHeaderVisibility();
     const positionView =
         share.sourceKind === "draft" && share.draftKind === "board"
             ? share.positionView ?? null
@@ -287,6 +288,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
             >
                 {shareMenuOpen ? (
                     <ShareMenu
+                        alignToViewportTop={isOverlayHeader}
                         canShareGame
                         isCreating={false}
                         menuRef={shareMenuRef}

@@ -13,7 +13,7 @@ import DraftBoardActionBar from "./DraftBoardActionBar";
 import PositionViewSettingsDialog from "./PositionViewSettingsDialog";
 import ShareMenu from "./ShareMenu";
 import { downloadSgf } from "./sgf";
-import { useHeaderStatus, useTheme } from "./AppShell";
+import { useHeaderStatus, useHeaderVisibility, useTheme } from "./AppShell";
 import {
     applyBoardDraftStrokeVertex,
     clearDraftShareCache,
@@ -98,6 +98,7 @@ function loadLocalBoardDraft(id: string) {
 export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     const { isDarkMode } = useTheme();
     const { setHeaderStatus } = useHeaderStatus();
+    const { isOverlayHeader } = useHeaderVisibility();
     const [draft, setDraft] = useState<LocalDraftRecord | null>(() =>
         loadLocalBoardDraft(id)
     );
@@ -634,6 +635,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             >
                 {shareMenu.isOpen ? (
                     <ShareMenu
+                        alignToViewportTop={isOverlayHeader}
                         canShareGame={canShareCurrentDraft}
                         isCreating={shareMenu.isCreating}
                         menuRef={shareMenu.menuRef}
@@ -670,6 +672,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 />
                 {positionViewSettingsOpen && draft.draftKind === "board" ? (
                     <PositionViewSettingsDialog
+                        alignToViewportTop={isOverlayHeader}
                         boardSize={draft.boardSize}
                         onApply={handleApplyPositionViewSettings}
                         onClose={handleClosePositionViewSettings}

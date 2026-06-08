@@ -11,6 +11,7 @@ import {
 import { t } from "../lib/i18n";
 
 type PositionViewSettingsDialogProps = {
+    alignToViewportTop?: boolean;
     boardSize: BoardSize;
     onApply: (positionView: PositionView) => void;
     onClose: () => void;
@@ -56,6 +57,7 @@ const ANCHOR_SHORT_LABELS: Record<PositionViewAnchor, string> = {
 };
 
 export default function PositionViewSettingsDialog({
+    alignToViewportTop = false,
     boardSize,
     onApply,
     onClose,
@@ -82,7 +84,11 @@ export default function PositionViewSettingsDialog({
     return (
         <div
             aria-labelledby="position-view-settings-title"
-            className="fixed right-4 top-16 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-zinc-200 bg-white p-3 text-zinc-950 shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+            className={
+                alignToViewportTop
+                    ? "fixed right-4 top-3 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-zinc-200 bg-white p-3 text-zinc-950 shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                    : "fixed right-4 top-16 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-zinc-200 bg-white p-3 text-zinc-950 shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+            }
             role="dialog"
             aria-modal="true"
         >
