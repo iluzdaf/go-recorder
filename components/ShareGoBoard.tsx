@@ -152,7 +152,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     );
     const captionPreviewMoveCountRef = useRef<number | null>(null);
     const captionCommittedMoveIndexRef = useRef<number | null>(null);
-    const captionCommittedRestoreMoveCountRef = useRef<number | null>(null);
 
     const visibleMoves = share.gameState.moves.slice(0, visibleMoveCount);
     const board = buildBoardFromGameState(
@@ -335,21 +334,18 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const handleJumpToStart = useCallback(() => {
         captionPreviewMoveCountRef.current = null;
         captionCommittedMoveIndexRef.current = null;
-        captionCommittedRestoreMoveCountRef.current = null;
         setVisibleMoveCount(0);
     }, []);
 
     const handlePreviousMove = useCallback(() => {
         captionPreviewMoveCountRef.current = null;
         captionCommittedMoveIndexRef.current = null;
-        captionCommittedRestoreMoveCountRef.current = null;
         setVisibleMoveCount((currentCount) => Math.max(0, currentCount - 1));
     }, []);
 
     const handleNextMove = useCallback(() => {
         captionPreviewMoveCountRef.current = null;
         captionCommittedMoveIndexRef.current = null;
-        captionCommittedRestoreMoveCountRef.current = null;
         setVisibleMoveCount((currentCount) =>
             Math.min(share.gameState.moves.length, currentCount + 1)
         );
@@ -358,7 +354,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const handleJumpToEnd = useCallback(() => {
         captionPreviewMoveCountRef.current = null;
         captionCommittedMoveIndexRef.current = null;
-        captionCommittedRestoreMoveCountRef.current = null;
         setVisibleMoveCount(share.gameState.moves.length);
     }, [share.gameState.moves.length]);
 
@@ -385,27 +380,16 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
             captionCommittedMoveIndexRef.current === moveIndex &&
             visibleMoveCount === targetMoveCount
         ) {
-            const restoreMoveCount =
-                captionCommittedRestoreMoveCountRef.current;
-
             captionPreviewMoveCountRef.current = null;
             captionCommittedMoveIndexRef.current = null;
-            captionCommittedRestoreMoveCountRef.current = null;
-
-            if (restoreMoveCount !== null) {
-                setVisibleMoveCount(restoreMoveCount);
-            }
+            setVisibleMoveCount(share.gameState.moves.length);
             return;
         }
 
-        const restoreMoveCount =
-            captionPreviewMoveCountRef.current ?? visibleMoveCount;
-
         captionPreviewMoveCountRef.current = null;
         captionCommittedMoveIndexRef.current = moveIndex;
-        captionCommittedRestoreMoveCountRef.current = restoreMoveCount;
         setVisibleMoveCount(targetMoveCount);
-    }, [visibleMoveCount]);
+    }, [share.gameState.moves.length, visibleMoveCount]);
 
     return (
         <div
