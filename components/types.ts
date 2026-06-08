@@ -24,9 +24,15 @@ export type GameState = {
     currentPlayer: Stone;
 };
 
+export type FinalPosition = number[][];
+
 export type BoardSize = 9 | 13 | 19;
 
 export type ShareSourceKind = "game" | "draft";
+
+export type LocalRecordKind = "game" | "draft";
+
+export type DraftKind = "board" | "variation";
 
 export type GameRecord = {
     slug: string;
@@ -40,6 +46,7 @@ export type GameRecord = {
 };
 
 export type LocalGameRecord = {
+    recordKind?: "game";
     id: string;
     boardSize: BoardSize;
     gameState: GameState;
@@ -51,24 +58,49 @@ export type LocalGameRecord = {
     lastShareSlug?: string | null;
 };
 
-export type ShareRecord = {
-    slug: string;
-    sourceKind: ShareSourceKind;
+export type LocalDraftRecord = {
+    recordKind: "draft";
+    draftKind: DraftKind;
+    id: string;
     boardSize: BoardSize;
     gameState: GameState;
     blackPlayerName: string | null;
     whitePlayerName: string | null;
     handicap: number;
     createdAt: string;
+    updatedAt: string;
+    lastShareSlug: string | null;
+    parentShareSlug: string | null;
+    baseMoveCount: number | null;
+};
+
+export type LocalEditableRecord = LocalGameRecord | LocalDraftRecord;
+
+export type ShareRecord = {
+    slug: string;
+    sourceKind: ShareSourceKind;
+    draftKind?: DraftKind | null;
+    boardSize: BoardSize;
+    gameState: GameState;
+    finalPosition?: FinalPosition | null;
+    blackPlayerName: string | null;
+    whitePlayerName: string | null;
+    handicap: number;
+    parentShareSlug?: string | null;
+    baseMoveCount?: number | null;
+    createdAt: string;
 };
 
 export type CreateShareInput = {
     sourceKind: ShareSourceKind;
+    draftKind?: DraftKind | null;
     boardSize: BoardSize;
     gameState: GameState;
     blackPlayerName: string | null;
     whitePlayerName: string | null;
     handicap: number;
+    parentShareSlug?: string | null;
+    baseMoveCount?: number | null;
 };
 
 export type CreateShareResponse = {

@@ -70,15 +70,19 @@ describe("/shares/[slug] page", () => {
         expect(tree.props.children.props.share).toEqual({
             slug: "share123",
             sourceKind: "game",
+            draftKind: null,
             boardSize: 19,
             gameState: {
                 setupStones: [],
                 moves: [{ type: "play", x: 3, y: 3, color: "B" }],
                 currentPlayer: "W",
             },
+            finalPosition: null,
             blackPlayerName: "Black",
             whitePlayerName: null,
             handicap: 0,
+            parentShareSlug: null,
+            baseMoveCount: null,
             createdAt: "2026-05-29T00:00:00.000Z",
         });
         expect(mockSupabaseAdmin.from).toHaveBeenCalledWith("shares");
@@ -117,10 +121,10 @@ describe("/shares/[slug] page", () => {
 
         expect(metadata).toEqual({
             title: "Black vs White",
-            description: "View this shared Go game position.",
+            description: "View this shared Go game",
             openGraph: {
                 title: "Black vs White",
-                description: "View this shared Go game position.",
+                description: "View this shared Go game",
                 images: [
                     {
                         url: "https://go-recorder-preview.vercel.app/shares/share123/opengraph-image",
@@ -134,7 +138,7 @@ describe("/shares/[slug] page", () => {
             twitter: {
                 card: "summary_large_image",
                 title: "Black vs White",
-                description: "View this shared Go game position.",
+                description: "View this shared Go game",
                 images: [
                     "https://go-recorder-preview.vercel.app/shares/share123/opengraph-image",
                 ],
@@ -224,7 +228,43 @@ describe("/shares/[slug] page", () => {
         });
     });
 
-    it("uses generic metadata titles when player names are missing", async () => {
+    it("uses one player name when only one player name is present", async () => {
+        const query = createSelectResult({
+            data: {
+                slug: "share123",
+                source_kind: "game",
+                board_size: 19,
+                game_state: {
+                    setupStones: [],
+                    moves: [{ type: "play", x: 3, y: 3, color: "B" }],
+                    currentPlayer: "W",
+                },
+                black_player_name: "Black",
+                white_player_name: null,
+                handicap: 0,
+                created_at: "2026-05-29T00:00:00.000Z",
+            },
+            error: null,
+        });
+
+        mockSupabaseAdmin.from.mockReturnValueOnce(query);
+
+        const metadata = await generateMetadata({
+            params: Promise.resolve({
+                slug: "share123",
+            }),
+        });
+
+        expect(metadata.title).toBe("Black");
+        expect(metadata.openGraph).toMatchObject({
+            title: "Black",
+        });
+        expect(metadata.twitter).toMatchObject({
+            title: "Black",
+        });
+    });
+
+    it("uses generic game metadata titles when player names are missing", async () => {
         const query = createSelectResult({
             data: {
                 slug: "share123",
@@ -252,11 +292,127 @@ describe("/shares/[slug] page", () => {
         });
 
         expect(metadata.title).toBe("Shared Go game");
+        expect(metadata.description).toBe("View this shared Go game");
+    });
+
+    it("uses Shared Go position metadata titles for board draft shares", async () => {
+        const query = createSelectResult({
+            data: {
+                slug: "share123",
+                source_kind: "draft",
+                draft_kind: "board",
+                board_size: 19,
+                game_state: {
+                    setupStones: [{ x: 3, y: 3, color: "B" }],
+                    moves: [],
+                    currentPlayer: "B",
+                },
+                black_player_name: "Black",
+                white_player_name: "White",
+                handicap: 0,
+                parent_share_slug: null,
+                base_move_count: null,
+                created_at: "2026-05-29T00:00:00.000Z",
+            },
+            error: null,
+        });
+
+        mockSupabaseAdmin.from.mockReturnValueOnce(query);
+
+        const metadata = await generateMetadata({
+            params: Promise.resolve({
+                slug: "share123",
+            }),
+        });
+
+        expect(metadata.title).toBe("Black vs White");
+        expect(metadata.description).toBe("View this shared Go game position");
         expect(metadata.openGraph).toMatchObject({
-            title: "Shared Go game",
+            title: "Black vs White",
+            description: "View this shared Go game position",
         });
         expect(metadata.twitter).toMatchObject({
-            title: "Shared Go game",
+            title: "Black vs White",
+            description: "View this shared Go game position",
+        });
+    });
+
+    it("uses generic draft metadata titles when player names are missing", async () => {
+        const query = createSelectResult({
+            data: {
+                slug: "share123",
+                source_kind: "draft",
+                draft_kind: "board",
+                board_size: 19,
+                game_state: {
+                    setupStones: [{ x: 3, y: 3, color: "B" }],
+                    moves: [],
+                    currentPlayer: "B",
+                },
+                black_player_name: null,
+                white_player_name: null,
+                handicap: 0,
+                parent_share_slug: null,
+                base_move_count: null,
+                created_at: "2026-05-29T00:00:00.000Z",
+            },
+            error: null,
+        });
+
+        mockSupabaseAdmin.from.mockReturnValueOnce(query);
+
+        const metadata = await generateMetadata({
+            params: Promise.resolve({
+                slug: "share123",
+            }),
+        });
+
+        expect(metadata.title).toBe("Shared Go position");
+        expect(metadata.description).toBe("View this shared Go game position");
+    });
+
+    it("uses variation metadata descriptions for variation draft shares", async () => {
+        const query = createSelectResult({
+            data: {
+                slug: "share123",
+                source_kind: "draft",
+                draft_kind: "variation",
+                board_size: 19,
+                game_state: {
+                    setupStones: [],
+                    moves: [
+                        { type: "play", x: 3, y: 3, color: "B" },
+                        { type: "play", x: 4, y: 4, color: "W" },
+                    ],
+                    currentPlayer: "B",
+                },
+                black_player_name: null,
+                white_player_name: null,
+                handicap: 0,
+                parent_share_slug: "parent123",
+                base_move_count: 1,
+                created_at: "2026-05-29T00:00:00.000Z",
+            },
+            error: null,
+        });
+
+        mockSupabaseAdmin.from.mockReturnValueOnce(query);
+
+        const metadata = await generateMetadata({
+            params: Promise.resolve({
+                slug: "share123",
+            }),
+        });
+
+        expect(metadata.title).toBe("Shared Go variation");
+        expect(metadata.description).toBe("View this shared Go variation");
+        expect(metadata.openGraph).toMatchObject({
+            title: "Shared Go variation",
+            description: "View this shared Go variation",
+        });
+        expect(metadata.twitter).toMatchObject({
+            title: "Shared Go variation",
+            description: "View this shared Go variation",
         });
     });
 

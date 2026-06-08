@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    createDefaultLocalBoardDraftInput,
+    createLocalBoardDraftInputFromForm,
     createInitialGameState,
     createLocalGameInputFromForm,
     getOptionalPlayerName,
@@ -55,6 +57,50 @@ describe("createLocalGameInputFromForm", () => {
                 currentPlayer: "B",
             },
             blackPlayerName: "Black Player",
+            whitePlayerName: null,
+            handicap: 0,
+        });
+    });
+});
+
+describe("createLocalBoardDraftInputFromForm", () => {
+    it("creates board draft input from form values", () => {
+        expect(
+            createLocalBoardDraftInputFromForm({
+                boardSize: 9,
+                blackPlayerName: "  Black Player ",
+                whitePlayerName: "White Player",
+                handicap: 2,
+            })
+        ).toEqual({
+            draftKind: "board",
+            boardSize: 9,
+            gameState: {
+                setupStones: [
+                    { x: 2, y: 6, color: "B" },
+                    { x: 6, y: 2, color: "B" },
+                ],
+                moves: [],
+                currentPlayer: "W",
+            },
+            blackPlayerName: "Black Player",
+            whitePlayerName: "White Player",
+            handicap: 2,
+        });
+    });
+});
+
+describe("createDefaultLocalBoardDraftInput", () => {
+    it("creates an empty 19 x 19 board draft input", () => {
+        expect(createDefaultLocalBoardDraftInput()).toEqual({
+            draftKind: "board",
+            boardSize: 19,
+            gameState: {
+                setupStones: [],
+                moves: [],
+                currentPlayer: "B",
+            },
+            blackPlayerName: null,
             whitePlayerName: null,
             handicap: 0,
         });

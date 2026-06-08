@@ -22,6 +22,12 @@ function createSelectResult(result: unknown) {
     };
 }
 
+function createEmptySignMap(boardSize: number) {
+    return Array.from({ length: boardSize }, () =>
+        Array.from({ length: boardSize }, () => 0)
+    );
+}
+
 describe("/shares/[slug]/opengraph-image", () => {
     it("renders a generated preview image for a share", async () => {
         const query = createSelectResult({
@@ -52,6 +58,9 @@ describe("/shares/[slug]/opengraph-image", () => {
 
         expect(response.status).toBe(200);
         expect(response.headers.get("Content-Type")).toBe("image/png");
+        expect(response.headers.get("Cache-Control")).toBe(
+            "public, max-age=31536000, immutable"
+        );
         expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0);
         expect(mockSupabaseAdmin.from).toHaveBeenCalledWith("shares");
         expect(query.select).toHaveBeenCalledWith("*");
@@ -59,6 +68,46 @@ describe("/shares/[slug]/opengraph-image", () => {
         expect(query.maybeSingle).toHaveBeenCalled();
     });
 
+    it("renders from cached final position when available", async () => {
+        const finalPosition = createEmptySignMap(9);
+        finalPosition[2][2] = 1;
+
+        const query = createSelectResult({
+            data: {
+                slug: "share321",
+                source_kind: "game",
+                board_size: 9,
+                game_state: {
+                    setupStones: [],
+                    moves: [
+                        { type: "play", x: 2, y: 2, color: "B" },
+                        { type: "play", x: 2, y: 2, color: "W" },
+                    ],
+                    currentPlayer: "B",
+                },
+                final_position: finalPosition,
+                black_player_name: "Black",
+                white_player_name: "White",
+                handicap: 0,
+                created_at: "2026-05-29T00:00:00.000Z",
+            },
+            error: null,
+        });
+
+        mockSupabaseAdmin.from.mockReturnValueOnce(query);
+
+        const response = await Image({
+            params: Promise.resolve({
+                slug: "share321",
+            }),
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Cache-Control")).toBe(
+            "public, max-age=31536000, immutable"
+        );
+        expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0);
+    });
 
     it("renders without text details when player names are missing", async () => {
         const query = createSelectResult({
@@ -89,6 +138,44 @@ describe("/shares/[slug]/opengraph-image", () => {
 
         expect(response.status).toBe(200);
         expect(response.headers.get("Content-Type")).toBe("image/png");
+        expect(response.headers.get("Cache-Control")).toBe(
+            "public, max-age=31536000, immutable"
+        );
+        expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0);
+    });
+
+    it("does not cache fallback images for invalid old shares", async () => {
+        const query = createSelectResult({
+            data: {
+                slug: "share789",
+                source_kind: "game",
+                board_size: 9,
+                game_state: {
+                    setupStones: [],
+                    moves: [
+                        { type: "play", x: 2, y: 2, color: "B" },
+                        { type: "play", x: 2, y: 2, color: "W" },
+                    ],
+                    currentPlayer: "B",
+                },
+                black_player_name: "Black",
+                white_player_name: "White",
+                handicap: 0,
+                created_at: "2026-05-29T00:00:00.000Z",
+            },
+            error: null,
+        });
+
+        mockSupabaseAdmin.from.mockReturnValueOnce(query);
+
+        const response = await Image({
+            params: Promise.resolve({
+                slug: "share789",
+            }),
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Cache-Control")).toBe("no-store");
         expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0);
     });
 
@@ -107,6 +194,7 @@ describe("/shares/[slug]/opengraph-image", () => {
         });
 
         expect(response.status).toBe(404);
+        expect(response.headers.get("Cache-Control")).toBe("no-store");
         expect(await response.text()).toBe("Share not found");
     });
 });

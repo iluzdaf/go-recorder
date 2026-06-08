@@ -1,10 +1,16 @@
-import type { BoardSize, Move, SetupStone, Stone } from "../components/types";
+import type {
+    BoardSize,
+    GameState,
+    Move,
+    SetupStone,
+    Stone,
+} from "../components/types";
 
 // @sabaki/go-board does not ship complete ESM/TypeScript support.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const Board = require("@sabaki/go-board");
 
-type GoBoard = {
+export type GoBoard = {
     signMap: number[][];
     makeMove: (
         sign: -1 | 1,
@@ -47,6 +53,22 @@ export type GameReplay = {
 
 function stoneToSign(stone: Stone): -1 | 1 {
     return stone === "B" ? 1 : -1;
+}
+
+export function getOppositeStone(stone: Stone): Stone {
+    return stone === "B" ? "W" : "B";
+}
+
+export function getNextMoveColor({
+    fallbackCurrentPlayer,
+    moves,
+}: {
+    fallbackCurrentPlayer: Stone;
+    moves: Move[];
+}): Stone {
+    const lastMove = moves.at(-1);
+
+    return lastMove ? getOppositeStone(lastMove.color) : fallbackCurrentPlayer;
 }
 
 function createEmptyOwners(boardSize: BoardSize) {
@@ -214,5 +236,56 @@ export function replayGame({
         visibleStoneOwners: owners,
         legal: true,
         error: null,
+    };
+}
+
+export function playGameMove({
+    board,
+    gameState,
+    x,
+    y,
+}: {
+    board: GoBoard;
+    gameState: GameState;
+    x: number;
+    y: number;
+}):
+    | {
+        ok: true;
+        gameState: GameState;
+        move: Move & { type: "play" };
+    }
+    | {
+        ok: false;
+        error: string;
+    } {
+    try {
+        board.makeMove(stoneToSign(gameState.currentPlayer), [x, y], {
+            preventOverwrite: true,
+            preventSuicide: true,
+            preventKo: true,
+        });
+    } catch (error) {
+        return {
+            ok: false,
+            error: error instanceof Error ? error.message : "Invalid move",
+        };
+    }
+
+    const move: Move & { type: "play" } = {
+        type: "play",
+        x,
+        y,
+        color: gameState.currentPlayer,
+    };
+
+    return {
+        ok: true,
+        gameState: {
+            ...gameState,
+            moves: [...gameState.moves, move],
+            currentPlayer: getOppositeStone(gameState.currentPlayer),
+        },
+        move,
     };
 }

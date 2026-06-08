@@ -1,3 +1,5 @@
+import type { BoardGridGeometry } from "./gameCorrectionUi";
+
 export const BOARD_PADDING_PX = 16;
 export const MIN_VERTEX_SIZE_PX = 16;
 export const COORDINATE_GUTTER_VERTICES = 1;
@@ -9,10 +11,20 @@ export type BoardGridMetrics = {
     boardSizePx: number;
 };
 
+export type LiveBoardGridMetrics = {
+    gridGeometry: BoardGridGeometry;
+    gridMetrics: BoardGridMetrics;
+};
+
 type GetBoardVertexSizeOptions = {
     boardSize: number;
     width: number;
     height: number;
+};
+
+type GetLiveBoardGridMetricsOptions = {
+    boardSize: BoardGridGeometry["boardSize"];
+    gobanWrapper: Element;
 };
 
 export function getBoardVertexSize({
@@ -37,5 +49,42 @@ export function createDefaultBoardGridMetrics(
         top: 0,
         cellSize: vertexSize,
         boardSizePx: vertexSize * boardSize,
+    };
+}
+
+function isShudanGridElement(element: Element | null): element is Element {
+    if (!element) return false;
+
+    if (typeof SVGElement === "undefined") {
+        return typeof element.getBoundingClientRect === "function";
+    }
+
+    return element instanceof SVGElement;
+}
+
+export function getLiveBoardGridMetrics({
+    boardSize,
+    gobanWrapper,
+}: GetLiveBoardGridMetricsOptions): LiveBoardGridMetrics | null {
+    const grid = gobanWrapper.querySelector(".shudan-grid");
+    if (!isShudanGridElement(grid)) return null;
+
+    const wrapperRect = gobanWrapper.getBoundingClientRect();
+    const gridRect = grid.getBoundingClientRect();
+    const gridMetrics = {
+        left: gridRect.left - wrapperRect.left,
+        top: gridRect.top - wrapperRect.top,
+        cellSize: gridRect.width / boardSize,
+        boardSizePx: gridRect.width,
+    };
+
+    return {
+        gridGeometry: {
+            left: gridRect.left,
+            top: gridRect.top,
+            cellSize: gridMetrics.cellSize,
+            boardSize,
+        },
+        gridMetrics,
     };
 }

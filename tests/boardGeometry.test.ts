@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
     createDefaultBoardGridMetrics,
+    getLiveBoardGridMetrics,
     getBoardVertexSize,
 } from "../lib/boardGeometry";
 
@@ -31,5 +32,56 @@ describe("board geometry helpers", () => {
             cellSize: 18,
             boardSizePx: 234,
         });
+    });
+
+    it("measures live Shudan grid metrics from the wrapper and grid bounds", () => {
+        const grid = {
+            getBoundingClientRect: () => ({
+                left: 48,
+                top: 72,
+                width: 380,
+            }),
+        } as Element;
+        const wrapper = {
+            getBoundingClientRect: () => ({
+                left: 20,
+                top: 30,
+            }),
+            querySelector: (selector: string) =>
+                selector === ".shudan-grid" ? grid : null,
+        } as Element;
+
+        expect(
+            getLiveBoardGridMetrics({
+                boardSize: 19,
+                gobanWrapper: wrapper,
+            })
+        ).toEqual({
+            gridGeometry: {
+                left: 48,
+                top: 72,
+                cellSize: 20,
+                boardSize: 19,
+            },
+            gridMetrics: {
+                left: 28,
+                top: 42,
+                cellSize: 20,
+                boardSizePx: 380,
+            },
+        });
+    });
+
+    it("returns null when the Shudan grid is unavailable", () => {
+        const wrapper = {
+            querySelector: () => null,
+        } as unknown as Element;
+
+        expect(
+            getLiveBoardGridMetrics({
+                boardSize: 19,
+                gobanWrapper: wrapper,
+            })
+        ).toBeNull();
     });
 });

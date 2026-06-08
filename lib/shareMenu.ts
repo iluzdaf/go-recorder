@@ -19,3 +19,25 @@ export function shouldGenerateShareQrCode({
 }) {
     return isOpen && shouldGenerateQrCode && sharePath !== null;
 }
+
+export function shouldAutoCreateShare({
+    canAutoCreate,
+    hasAttempted,
+    isOpen,
+    mode,
+    sharePath,
+}: {
+    canAutoCreate: boolean;
+    hasAttempted: boolean;
+    isOpen: boolean;
+    mode: "chooser" | "created";
+    sharePath: string | null;
+}) {
+    return (
+        isOpen &&
+        mode === "chooser" &&
+        sharePath === null &&
+        canAutoCreate &&
+        !hasAttempted
+    );
+}

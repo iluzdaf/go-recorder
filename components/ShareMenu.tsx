@@ -89,6 +89,8 @@ export default function ShareMenu({
                         {showSharePageLink ? (
                             <Link
                                 href={sharePath}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
                             >
                                 <SquareArrowOutUpRight size={16} />

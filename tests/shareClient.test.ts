@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { LocalGameRecord } from "../components/types";
+import type { LocalDraftRecord, LocalGameRecord } from "../components/types";
 import { t } from "../lib/i18n";
 
 const mockFetch = vi.fn();
@@ -27,6 +27,26 @@ const localGame: LocalGameRecord = {
     updatedAt: "2026-05-29T00:01:00.000Z",
 };
 
+const localDraft: LocalDraftRecord = {
+    recordKind: "draft",
+    draftKind: "board",
+    id: "draft-1",
+    boardSize: 13,
+    gameState: {
+        setupStones: [{ x: 3, y: 3, color: "B" }],
+        moves: [],
+        currentPlayer: "B",
+    },
+    blackPlayerName: null,
+    whitePlayerName: "White",
+    handicap: 0,
+    createdAt: "2026-05-29T00:00:00.000Z",
+    updatedAt: "2026-05-29T00:01:00.000Z",
+    lastShareSlug: null,
+    parentShareSlug: null,
+    baseMoveCount: null,
+};
+
 beforeEach(() => {
     mockFetch.mockReset();
 });
@@ -35,11 +55,14 @@ describe("toCreateShareInput", () => {
     it("maps a local game to share input", () => {
         expect(toCreateShareInput({ localGame })).toEqual({
             sourceKind: "game",
+            draftKind: null,
             boardSize: 19,
             gameState: localGame.gameState,
             blackPlayerName: "Black",
             whitePlayerName: "White",
             handicap: 2,
+            parentShareSlug: null,
+            baseMoveCount: null,
         });
     });
 
@@ -51,11 +74,74 @@ describe("toCreateShareInput", () => {
             })
         ).toEqual({
             sourceKind: "draft",
+            draftKind: null,
             boardSize: 19,
             gameState: localGame.gameState,
             blackPlayerName: "Black",
             whitePlayerName: "White",
             handicap: 2,
+            parentShareSlug: null,
+            baseMoveCount: null,
+        });
+    });
+
+    it("maps a local draft to draft share input", () => {
+        expect(
+            toCreateShareInput({
+                localRecord: localDraft,
+                sourceKind: "draft",
+            })
+        ).toEqual({
+            sourceKind: "draft",
+            draftKind: "board",
+            boardSize: 13,
+            gameState: localDraft.gameState,
+            blackPlayerName: null,
+            whitePlayerName: "White",
+            handicap: 0,
+            parentShareSlug: null,
+            baseMoveCount: null,
+        });
+    });
+
+    it("maps a variation draft to draft share input", () => {
+        const variationDraft: LocalDraftRecord = {
+            ...localDraft,
+            draftKind: "variation",
+            gameState: {
+                setupStones: [],
+                moves: [
+                    { type: "play", x: 3, y: 3, color: "B" },
+                    { type: "play", x: 4, y: 4, color: "W" },
+                ],
+                currentPlayer: "B",
+            },
+            parentShareSlug: "share123",
+            baseMoveCount: 1,
+        };
+
+        expect(
+            toCreateShareInput({
+                localRecord: variationDraft,
+                sourceKind: "draft",
+            })
+        ).toEqual({
+            sourceKind: "draft",
+            draftKind: "variation",
+            boardSize: 13,
+            gameState: {
+                setupStones: [],
+                moves: [
+                    { type: "play", x: 3, y: 3, color: "B" },
+                    { type: "play", x: 4, y: 4, color: "W" },
+                ],
+                currentPlayer: "B",
+            },
+            blackPlayerName: null,
+            whitePlayerName: "White",
+            handicap: 0,
+            parentShareSlug: "share123",
+            baseMoveCount: 1,
         });
     });
 });
@@ -84,11 +170,14 @@ describe("createShareFromLocalGame", () => {
                 },
                 body: JSON.stringify({
                     sourceKind: "game",
+                    draftKind: null,
                     boardSize: 19,
                     gameState: localGame.gameState,
                     blackPlayerName: "Black",
                     whitePlayerName: "White",
                     handicap: 2,
+                    parentShareSlug: null,
+                    baseMoveCount: null,
                 }),
             })
         );

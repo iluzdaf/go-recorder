@@ -1,12 +1,20 @@
 import type { Move, SetupStone } from "../components/types";
 
-type ExportSgfInput = {
+export type ExportSgfInput = {
     boardSize: number;
     moves: Move[];
     setupStones?: SetupStone[];
     handicap?: number;
     blackPlayerName?: string | null;
     whitePlayerName?: string | null;
+};
+
+type DownloadLink = Pick<HTMLAnchorElement, "click" | "download" | "href">;
+
+type DownloadSgfEnvironment = {
+    createLink: () => DownloadLink;
+    createObjectURL: (blob: Blob) => string;
+    revokeObjectURL: (url: string) => void;
 };
 
 export function toSgfCoord(x: number, y: number) {
@@ -31,8 +39,19 @@ function sanitizeFilenamePart(value: string) {
         .replace(/\s+/g, " ");
 }
 
-function formatIsoTimestampForFilename(date: Date) {
-    return date.toISOString().replace(/:/g, "-");
+function padDatePart(value: number) {
+    return String(value).padStart(2, "0");
+}
+
+function formatTimestampForFilename(date: Date) {
+    const dateText = [
+        date.getFullYear(),
+        padDatePart(date.getMonth() + 1),
+        padDatePart(date.getDate()),
+    ].join("-");
+    const timeText = `${padDatePart(date.getHours())}-${padDatePart(date.getMinutes())}`;
+
+    return `${dateText} ${timeText}`;
 }
 
 export function createSgfFilename(
@@ -40,7 +59,7 @@ export function createSgfFilename(
     whitePlayerName?: string | null,
     now = new Date()
 ) {
-    const timestamp = formatIsoTimestampForFilename(now);
+    const timestamp = formatTimestampForFilename(now);
     const blackName = blackPlayerName
         ? sanitizeFilenamePart(blackPlayerName)
         : null;
@@ -50,7 +69,15 @@ export function createSgfFilename(
         : null;
 
     if (blackName && whiteName) {
-        return `${timestamp} ${blackName} (b) vs ${whiteName} (w).sgf`;
+        return `${timestamp} ${blackName} (B) ${whiteName} (W).sgf`;
+    }
+
+    if (blackName) {
+        return `${timestamp} ${blackName} (B).sgf`;
+    }
+
+    if (whiteName) {
+        return `${timestamp} ${whiteName} (W).sgf`;
     }
 
     return `${timestamp}.sgf`;
@@ -81,4 +108,30 @@ export function exportSgf({
         .join("");
 
     return `(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[${boardSize}]${formatProperty("PB", blackPlayerName)}${formatProperty("PW", whitePlayerName)}${handicapText}${setupStoneText}${moveText})`;
+}
+
+export function downloadSgf(
+    input: ExportSgfInput,
+    environment?: DownloadSgfEnvironment
+) {
+    const sgf = exportSgf(input);
+    const blob = new Blob([sgf], {
+        type: "application/x-go-sgf;charset=utf-8",
+    });
+    const helpers = environment ?? {
+        createLink: () => document.createElement("a"),
+        createObjectURL: (nextBlob: Blob) => URL.createObjectURL(nextBlob),
+        revokeObjectURL: (url: string) => URL.revokeObjectURL(url),
+    };
+    const url = helpers.createObjectURL(blob);
+    const link = helpers.createLink();
+
+    link.href = url;
+    link.download = createSgfFilename(
+        input.blackPlayerName,
+        input.whitePlayerName
+    );
+    link.click();
+
+    helpers.revokeObjectURL(url);
 }

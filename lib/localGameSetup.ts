@@ -16,6 +16,10 @@ type CreateLocalGameInputFromFormInput = {
     handicap: number;
 };
 
+type CreateLocalDraftInput = CreateLocalGameInput & {
+    draftKind: "board";
+};
+
 export function getOptionalPlayerName(value: string) {
     const trimmedValue = value.trim();
     return trimmedValue.length > 0 ? trimmedValue : null;
@@ -44,5 +48,32 @@ export function createLocalGameInputFromForm({
         blackPlayerName: getOptionalPlayerName(blackPlayerName),
         whitePlayerName: getOptionalPlayerName(whitePlayerName),
         handicap,
+    };
+}
+
+export function createLocalBoardDraftInputFromForm({
+    boardSize,
+    blackPlayerName,
+    whitePlayerName,
+    handicap,
+}: CreateLocalGameInputFromFormInput): CreateLocalDraftInput {
+    return {
+        draftKind: "board",
+        boardSize,
+        gameState: createInitialGameState(boardSize, handicap),
+        blackPlayerName: getOptionalPlayerName(blackPlayerName),
+        whitePlayerName: getOptionalPlayerName(whitePlayerName),
+        handicap,
+    };
+}
+
+export function createDefaultLocalBoardDraftInput(): CreateLocalDraftInput {
+    return {
+        draftKind: "board",
+        boardSize: 19,
+        gameState: createInitialGameState(19, 0),
+        blackPlayerName: null,
+        whitePlayerName: null,
+        handicap: 0,
     };
 }

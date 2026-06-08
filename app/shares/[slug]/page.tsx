@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import ShareBoardLoader from "../../../components/ShareBoardLoader";
+import {
+    getShareDescription,
+    getShareTitle,
+} from "../../../lib/sharePresentation";
 import { mapShareRowToShareRecord } from "../../../lib/shareView";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
@@ -31,23 +35,6 @@ function getSiteUrl() {
         : `https://${configuredUrl}`;
 }
 
-function getShareTitle({
-    blackPlayerName,
-    whitePlayerName,
-}: {
-    blackPlayerName: string | null;
-    whitePlayerName: string | null;
-}) {
-    const blackName = blackPlayerName?.trim();
-    const whiteName = whitePlayerName?.trim();
-
-    if (blackName && whiteName) {
-        return `${blackName} vs ${whiteName}`;
-    }
-
-    return "Shared Go game";
-}
-
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { slug } = await params;
 
@@ -68,9 +55,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const share = mapShareRowToShareRecord(data);
     const title = getShareTitle({
         blackPlayerName: share.blackPlayerName,
+        draftKind: share.draftKind,
+        sourceKind: share.sourceKind,
         whitePlayerName: share.whitePlayerName,
     });
-    const description = "View this shared Go game position.";
+    const description = getShareDescription({
+        draftKind: share.draftKind,
+        sourceKind: share.sourceKind,
+    });
     const imageUrl = new URL(
         `/shares/${encodeURIComponent(slug)}/opengraph-image`,
         getSiteUrl()

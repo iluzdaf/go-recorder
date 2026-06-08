@@ -2,11 +2,28 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
-import type { ComponentType } from "react";
+import type {
+    ComponentType,
+    PointerEvent as ReactPointerEvent,
+} from "react";
 
-import type { Move, SetupStone, ShareRecord, Stone } from "./types";
-import { exportSgf, createSgfFilename } from "./sgf";
+import type { ShareRecord } from "./types";
+import { downloadSgf } from "./sgf";
 import { useHeaderStatus, useTheme } from "./AppShell";
+import { getLiveBoardGridMetrics } from "../lib/boardGeometry";
+import { getVertexFromBoardPointer } from "../lib/gameCorrectionUi";
+import { t } from "../lib/i18n";
+import {
+    createLocalDraft,
+    type CreateLocalDraftInput,
+} from "../lib/localGames";
+import { replayGame } from "../lib/gameReplay";
+import { buildBoardFromGameState } from "../lib/shareBoardState";
+import { toVariationDraftInput } from "../lib/shareFork";
+import {
+    createVariationMoveNumberMarkerMap,
+    type MoveNumberMarker,
+} from "../lib/variationDraft";
 import BoardStatusMessage from "./BoardStatusMessage";
 import ShareBoardActionBar from "./ShareBoardActionBar";
 import ShareMenu from "./ShareMenu";
@@ -14,59 +31,31 @@ import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
 import useShareMenu from "./useShareMenu";
 
-// @sabaki/go-board does not ship TypeScript types, so keep the boundary small.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const Board = require("@sabaki/go-board");
-
 type ShudanGobanProps = {
     vertexSize: number;
     signMap: number[][];
-    markerMap: (null | { type: "circle" })[][];
+    markerMap: (null | { type: "circle" } | MoveNumberMarker)[][];
     showCoordinates: boolean;
 };
 
 const BoardView = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
 
-function stoneToSign(stone: Stone) {
-    return stone === "B" ? 1 : -1;
-}
-
-function buildBoardFromGameState(
-    size: number,
-    setupStones: SetupStone[],
-    moves: Move[]
-) {
-    let board = Board.fromDimensions(size);
-
-    for (const setupStone of setupStones) {
-        board = board.makeMove(stoneToSign("B"), [setupStone.x, setupStone.y], {
-            preventOverwrite: true,
-            preventSuicide: true,
-            preventKo: false,
-        });
-    }
-
-    for (const move of moves) {
-        if (move.type === "pass") continue;
-
-        board = board.makeMove(stoneToSign(move.color), [move.x, move.y], {
-            preventOverwrite: true,
-            preventSuicide: true,
-            preventKo: true,
-        });
-    }
-
-    return board;
-}
-
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const { isDarkMode } = useTheme();
     const { setHeaderStatus } = useHeaderStatus();
-    const { boardAreaRef, vertexSize } = useBoardGeometry({
+    const {
+        boardAreaRef,
+        gobanWrapperRef,
+        setGridMetrics,
+        vertexSize,
+    } = useBoardGeometry({
         boardSize: share.boardSize,
+        measureGrid: true,
     });
     const actionBar = useActionBarDrag();
     const [shareStatus, setShareStatus] = useState<string | null>(null);
+    const [pendingVariationInput, setPendingVariationInput] =
+        useState<CreateLocalDraftInput | null>(null);
     const sharePath = `/shares/${share.slug}`;
     const {
         close: closeShareMenu,
@@ -90,20 +79,68 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         share.gameState.setupStones,
         visibleMoves
     );
-    const signMap = board.signMap;
+    const pendingVariationReplay = pendingVariationInput
+        ? replayGame({
+              boardSize: pendingVariationInput.boardSize,
+              setupStones: pendingVariationInput.gameState.setupStones,
+              moves: pendingVariationInput.gameState.moves,
+          })
+        : null;
+    const signMap =
+        pendingVariationReplay?.legal === true
+            ? pendingVariationReplay.board.signMap
+            : board.signMap;
 
-    type Marker = null | { type: "circle" };
+    type Marker = null | { type: "circle" } | MoveNumberMarker;
 
-    const markerMap: Marker[][] = Array.from({ length: share.boardSize }, () =>
-        Array.from({ length: share.boardSize }, () => null)
-    );
+    const markerMap: Marker[][] =
+        share.draftKind === "variation" &&
+        typeof share.baseMoveCount === "number"
+            ? createVariationMoveNumberMarkerMap({
+                  boardSize: share.boardSize,
+                  moves: pendingVariationInput?.gameState.moves ?? visibleMoves,
+                  signMap,
+                  startMoveIndex: share.baseMoveCount,
+              })
+            : Array.from({ length: share.boardSize }, () =>
+                  Array.from<null>({ length: share.boardSize }).fill(null)
+              );
 
-    const lastMove = visibleMoves.at(-1);
-    if (lastMove?.type === "play") {
+    const lastMove =
+        pendingVariationInput?.gameState.moves.at(-1) ?? visibleMoves.at(-1);
+    if (share.draftKind !== "variation" && lastMove?.type === "play") {
         markerMap[lastMove.y][lastMove.x] = { type: "circle" };
     }
 
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
+
+    const getGridMetrics = useCallback(() => {
+        const gobanWrapper = gobanWrapperRef.current;
+        if (!gobanWrapper) return null;
+
+        const metrics = getLiveBoardGridMetrics({
+            boardSize: share.boardSize,
+            gobanWrapper,
+        });
+        if (!metrics) return null;
+
+        setGridMetrics(metrics.gridMetrics);
+        return { gridGeometry: metrics.gridGeometry };
+    }, [gobanWrapperRef, setGridMetrics, share.boardSize]);
+
+    const getVertexFromPointer = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            const metrics = getGridMetrics();
+            if (!metrics) return null;
+
+            return getVertexFromBoardPointer({
+                clientX: event.clientX,
+                clientY: event.clientY,
+                grid: metrics.gridGeometry,
+            });
+        },
+        [getGridMetrics]
+    );
 
     useEffect(() => {
         setHeaderStatus(
@@ -119,12 +156,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     }, [dismissShareStatus, setHeaderStatus, shareStatus]);
 
     const handleDownloadSgf = useCallback(() => {
-        const sgfFilename = createSgfFilename(
-            share.blackPlayerName,
-            share.whitePlayerName
-        );
-
-        const sgf = exportSgf({
+        downloadSgf({
             boardSize: share.boardSize,
             moves: share.gameState.moves,
             setupStones: share.gameState.setupStones,
@@ -132,19 +164,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
             blackPlayerName: share.blackPlayerName,
             whitePlayerName: share.whitePlayerName,
         });
-
-        const blob = new Blob([sgf], {
-            type: "application/x-go-sgf;charset=utf-8",
-        });
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-
-        link.href = url;
-        link.download = sgfFilename;
-        link.click();
-
-        URL.revokeObjectURL(url);
     }, [
         share.boardSize,
         share.blackPlayerName,
@@ -153,6 +172,51 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         share.handicap,
         share.whitePlayerName,
     ]);
+
+    const handleBoardPointerUp = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            if (
+                pendingVariationInput ||
+                shareMenuOpen ||
+                (event.target instanceof HTMLElement &&
+                    event.target.closest("button"))
+            ) {
+                return;
+            }
+
+            const vertex = getVertexFromPointer(event);
+            if (!vertex) return;
+
+            const variation = toVariationDraftInput({
+                share,
+                vertex,
+                visibleMoveCount,
+            });
+
+            if (!variation.ok) return;
+
+            setPendingVariationInput(variation.input);
+        },
+        [
+            getVertexFromPointer,
+            pendingVariationInput,
+            share,
+            shareMenuOpen,
+            visibleMoveCount,
+        ]
+    );
+
+    const handleCancelVariation = useCallback(() => {
+        setPendingVariationInput(null);
+    }, []);
+
+    const handleConfirmVariation = useCallback(() => {
+        if (!pendingVariationInput) return;
+
+        const draft = createLocalDraft(pendingVariationInput);
+        setPendingVariationInput(null);
+        window.open(`/drafts/${draft.id}`, "_blank", "noopener,noreferrer");
+    }, [pendingVariationInput]);
 
     const handleDownloadSgfFromShareMenu = useCallback(() => {
         handleDownloadSgf();
@@ -204,6 +268,37 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                         sharePath={sharePath}
                     />
                 ) : null}
+                {pendingVariationInput ? (
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="variation-draft-title"
+                        className="absolute left-1/2 top-4 z-20 w-[min(calc(100%-2rem),20rem)] -translate-x-1/2 rounded-lg border border-zinc-200 bg-white p-3 text-zinc-950 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                    >
+                        <p
+                            id="variation-draft-title"
+                            className="text-sm font-medium"
+                        >
+                            {t("createVariationPrompt")}
+                        </p>
+                        <div className="mt-3 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-sm text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                onClick={handleCancelVariation}
+                            >
+                                {t("cancel")}
+                            </button>
+                            <button
+                                type="button"
+                                className="inline-flex h-9 items-center justify-center rounded-full bg-zinc-950 px-3 text-sm text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                                onClick={handleConfirmVariation}
+                            >
+                                {t("createVariation")}
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
                 <ShareBoardActionBar
                     anchor={actionBar.anchor}
                     dragX={actionBar.dragX}
@@ -225,7 +320,11 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                     totalMoveCount={share.gameState.moves.length}
                     visibleMoveCount={visibleMoveCount}
                 />
-                <div className="relative">
+                <div
+                    ref={gobanWrapperRef}
+                    className="relative"
+                    onPointerUp={handleBoardPointerUp}
+                >
                     <BoardView
                         vertexSize={vertexSize}
                         signMap={signMap}

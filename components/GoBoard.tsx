@@ -11,25 +11,26 @@ import type {
     Move,
     Stone,
 } from "./types";
-import { exportSgf, createSgfFilename } from "./sgf";
+import { downloadSgf } from "./sgf";
 import {
     createGameSnapshot,
     shouldAutosave,
-    shouldContinueAutosaveQueue,
 } from "../lib/gameLogic";
-import { getLocalGame, saveLocalGame } from "../lib/localGames";
+import { getLocalGame } from "../lib/localGames";
+import { saveLocalEditableRecord } from "../lib/localEditableSave";
 import { createLoadedLocalGame } from "../lib/localGameView";
 import { createShareFromLocalGame } from "../lib/shareClient";
 import { formatMoveEditError, t } from "../lib/i18n";
 import { useHeaderStatus, useTheme } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
 import RecorderActionBar from "./RecorderActionBar";
-import ShareMenu, { type ShareMenuMode } from "./ShareMenu";
+import ShareMenu from "./ShareMenu";
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
-import useShareMenu from "./useShareMenu";
-import { replayGame } from "../lib/gameReplay";
+import useEditableShareMenuController from "./useEditableShareMenuController";
+import { playGameMove, replayGame } from "../lib/gameReplay";
 import { isActionBarAnchor } from "../lib/actionBarDrag";
+import { getLiveBoardGridMetrics } from "../lib/boardGeometry";
 import {
     applyRecorderCorrection,
     createStoneSelectionDragState,
@@ -54,7 +55,6 @@ import {
     toggleCorrectionSelection,
     visitCorrectionSelectionDragMove,
     type BoardAreaZoomWindow,
-    type BoardGridGeometry,
     type StoneSelectionDragState,
     type Vertex,
 } from "../lib/gameCorrectionUi";
@@ -106,8 +106,6 @@ export default function GoBoard({ id }: GoBoardProps) {
     const { isDarkMode } = useTheme();
     const { setHeaderStatus } = useHeaderStatus();
     const hasLoadedGameRef = useRef(false);
-    const isSavingRef = useRef(false);
-    const needsSaveAfterCurrentSaveRef = useRef(false);
     const stoneSelectTimeoutRef = useRef<number | null>(null);
     const stoneSelectOriginRef = useRef<Vertex | null>(null);
     const selectedGroupDragOriginRef = useRef<Vertex | null>(null);
@@ -126,19 +124,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         useState(false);
     const lastSavedSnapshotRef = useRef("");
     const localGameRecordRef = useRef<LocalGameRecord | null>(null);
-    const latestSaveStateRef = useRef<{
-        size: BoardSize;
-        gameState: GameState;
-        updatedAt: string | null;
-    }>({
-        size: 19,
-        gameState: {
-            setupStones: [],
-            moves: [],
-            currentPlayer: "B",
-        },
-        updatedAt: null,
-    });
     const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
     const [placementZoomWindow, setPlacementZoomWindow] =
         useState<BoardAreaZoomWindow | null>(null);
@@ -151,36 +136,20 @@ export default function GoBoard({ id }: GoBoardProps) {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
-    const [shareMenuMode, setShareMenuMode] =
-        useState<ShareMenuMode>("chooser");
-    const [shareSlug, setShareSlug] = useState<string | null>(null);
-    const [shareMenuMessage, setShareMenuMessage] = useState<string | null>(
-        null
-    );
-    const [shareMenuIsCreating, setShareMenuIsCreating] = useState(false);
-    const shareAutoCreateAttemptedRef = useRef(false);
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
-    const sharePath = shareSlug ? `/shares/${shareSlug}` : null;
-    const resetShareMenuState = useCallback(() => {
-        shareAutoCreateAttemptedRef.current = false;
-        setShareMenuMessage(null);
-        setShareMenuIsCreating(false);
-    }, []);
-    const {
-        clearQrCode: clearShareQrCode,
-        close: closeShareMenu,
-        copyShareLink,
-        isOpen: shareMenuOpen,
-        menuRef: shareMenuRef,
-        open: openShareMenuBase,
-        qrCodeDataUrl: shareQrCodeDataUrl,
-        triggerRef: shareTriggerRef,
-    } = useShareMenu({
-        onClose: resetShareMenuState,
+    const shareMenu = useEditableShareMenuController({
         onStatus: setShareStatus,
-        sharePath,
-        shouldGenerateQrCode: shareMenuMode === "created",
     });
+    const {
+        canAutoCreateNow,
+        clearShareLink,
+        close: closeEditableShareMenu,
+        finishCreated: finishEditableShareCreated,
+        markAutoCreateAttempted,
+        resetToShareSlug,
+        setCreating: setEditableShareCreating,
+        setError: setEditableShareError,
+    } = shareMenu;
     const isStonePlacementActiveRef = useRef(false);
     const stonePlacementCanCommitRef = useRef(false);
     const isPendingPlacementZoomRef = useRef(false);
@@ -220,14 +189,6 @@ export default function GoBoard({ id }: GoBoardProps) {
     });
 
     useEffect(() => {
-        latestSaveStateRef.current = {
-            size,
-            gameState,
-            updatedAt,
-        };
-    }, [size, gameState, updatedAt]);
-
-    useEffect(() => {
         selectedMoveIndexesRef.current = selectedMoveIndexes;
     }, [selectedMoveIndexes]);
 
@@ -256,11 +217,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             const loadedGame = createLoadedLocalGame(gameRecord);
 
             localGameRecordRef.current = gameRecord;
-            setShareSlug(gameRecord.lastShareSlug ?? null);
-            setShareMenuMode(gameRecord.lastShareSlug ? "created" : "chooser");
-            clearShareQrCode();
-            setShareMenuMessage(null);
-            setShareMenuIsCreating(false);
+            resetToShareSlug(gameRecord.lastShareSlug ?? null);
             setSize(loadedGame.size);
             setGameState(loadedGame.gameState);
             setUpdatedAt(loadedGame.updatedAt);
@@ -272,7 +229,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         };
 
         loadGame();
-    }, [clearShareQrCode, id]);
+    }, [id, resetToShareSlug]);
 
     useEffect(() => {
         if (!hasLoadedGameRef.current) return;
@@ -294,77 +251,28 @@ export default function GoBoard({ id }: GoBoardProps) {
             return;
         }
 
-        const saveLatestGame = async () => {
-            if (isSavingRef.current) {
-                needsSaveAfterCurrentSaveRef.current = true;
-                return;
-            }
-
-            isSavingRef.current = true;
-
+        const timeoutId = window.setTimeout(() => {
             try {
-                while (true) {
-                    needsSaveAfterCurrentSaveRef.current = false;
+                const localGameRecord = localGameRecordRef.current;
 
-                    const latestSaveState = latestSaveStateRef.current;
-
-                    if (!latestSaveState.updatedAt) return;
-
-                    const latestSnapshot = createGameSnapshot(
-                        latestSaveState.size,
-                        latestSaveState.gameState
-                    );
-
-                    if (latestSnapshot === lastSavedSnapshotRef.current) {
-                        setHasUnsavedChanges(false);
-                        return;
-                    }
-
-                    const localGameRecord = localGameRecordRef.current;
-
-                    if (!localGameRecord) {
-                        console.error("Failed to save game: local game record was not loaded");
-                        return;
-                    }
-
-                    const savedGame = saveLocalGame({
-                        ...localGameRecord,
-                        boardSize: latestSaveState.size,
-                        gameState: latestSaveState.gameState,
-                    });
-
-                    localGameRecordRef.current = savedGame;
-                    setUpdatedAt(savedGame.updatedAt);
-                    latestSaveStateRef.current = {
-                        ...latestSaveStateRef.current,
-                        updatedAt: savedGame.updatedAt,
-                    };
-                    lastSavedSnapshotRef.current = latestSnapshot;
-
-                    if (
-                        !shouldContinueAutosaveQueue({
-                            needsSaveAfterCurrentSave:
-                                needsSaveAfterCurrentSaveRef.current,
-                            latestSnapshot: createGameSnapshot(
-                                latestSaveStateRef.current.size,
-                                latestSaveStateRef.current.gameState
-                            ),
-                            lastSavedSnapshot: lastSavedSnapshotRef.current,
-                        })
-                    ) {
-                        setHasUnsavedChanges(false);
-                        return;
-                    }
+                if (!localGameRecord) {
+                    console.error("Failed to save game: local game record was not loaded");
+                    return;
                 }
+
+                const savedGame = saveLocalEditableRecord({
+                    boardSize: size,
+                    gameState,
+                    record: localGameRecord,
+                });
+
+                localGameRecordRef.current = savedGame;
+                setUpdatedAt(savedGame.updatedAt);
+                lastSavedSnapshotRef.current = currentSnapshot;
+                setHasUnsavedChanges(false);
             } catch (error) {
                 console.error("Failed to save game", error);
-            } finally {
-                isSavingRef.current = false;
             }
-        };
-
-        const timeoutId = window.setTimeout(() => {
-            saveLatestGame();
         }, 500);
 
         return () => window.clearTimeout(timeoutId);
@@ -570,27 +478,14 @@ export default function GoBoard({ id }: GoBoardProps) {
         const gobanWrapper = gobanWrapperRef.current;
         if (!gobanWrapper) return null;
 
-        const grid = gobanWrapper.querySelector(".shudan-grid");
-        if (!(grid instanceof SVGElement)) return null;
-
-        const wrapperRect = gobanWrapper.getBoundingClientRect();
-        const gridRect = grid.getBoundingClientRect();
-        const nextGridMetrics = {
-            left: gridRect.left - wrapperRect.left,
-            top: gridRect.top - wrapperRect.top,
-            cellSize: gridRect.width / size,
-            boardSizePx: gridRect.width,
-        };
-
-        setGridMetrics(nextGridMetrics);
-        const gridGeometry: BoardGridGeometry = {
-            left: gridRect.left,
-            top: gridRect.top,
-            cellSize: nextGridMetrics.cellSize,
+        const metrics = getLiveBoardGridMetrics({
             boardSize: size,
-        };
+            gobanWrapper,
+        });
+        if (!metrics) return null;
 
-        return { gridGeometry };
+        setGridMetrics(metrics.gridMetrics);
+        return { gridGeometry: metrics.gridGeometry };
     };
 
     const getFullBoardVertexFromPointer = (clientX: number, clientY: number) => {
@@ -859,30 +754,17 @@ export default function GoBoard({ id }: GoBoardProps) {
     };
 
     const playMove = (x: number, y: number) => {
-        try {
-            board.makeMove(stoneToSign(gameState.currentPlayer), [x, y], {
-                preventOverwrite: true,
-                preventSuicide: true,
-                preventKo: true,
-            });
-        } catch {
-            return;
-        }
-
-        clearCachedShareLink();
-
-        const newMove: Move = {
-            type: "play",
+        const result = playGameMove({
+            board,
+            gameState,
             x,
             y,
-            color: gameState.currentPlayer,
-        };
-
-        setGameState({
-            ...gameState,
-            moves: [...gameState.moves, newMove],
-            currentPlayer: gameState.currentPlayer === "B" ? "W" : "B",
         });
+
+        if (!result.ok) return;
+
+        clearCachedShareLink();
+        setGameState(result.gameState);
         setHasUnsavedChanges(true);
     };
 
@@ -929,24 +811,9 @@ export default function GoBoard({ id }: GoBoardProps) {
     };
 
     const canShareGame = gameState.moves.some((move) => move.type === "play");
-    const openShareMenu = useCallback(() => {
-        setShareMenuMode(shareSlug ? "created" : "chooser");
-        openShareMenuBase();
-    }, [openShareMenuBase, shareSlug]);
-
-    const toggleShareMenu = useCallback(() => {
-        if (shareMenuOpen) {
-            closeShareMenu();
-            return;
-        }
-
-        openShareMenu();
-    }, [closeShareMenu, openShareMenu, shareMenuOpen]);
 
     const clearCachedShareLink = () => {
-        setShareSlug(null);
-        setShareMenuMode("chooser");
-        clearShareQrCode();
+        clearShareLink();
 
         const localGameRecord = localGameRecordRef.current;
         if (!localGameRecord) return;
@@ -1003,7 +870,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     };
 
     const handleDownloadSgf = useCallback(() => {
-        const sgf = exportSgf({
+        downloadSgf({
             boardSize: size,
             moves: gameState.moves,
             setupStones: gameState.setupStones,
@@ -1011,89 +878,63 @@ export default function GoBoard({ id }: GoBoardProps) {
             blackPlayerName: gameMetadata.blackPlayerName,
             whitePlayerName: gameMetadata.whitePlayerName,
         });
-
-        const blob = new Blob([sgf], {
-            type: "application/x-go-sgf;charset=utf-8",
-        });
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-
-        link.href = url;
-        link.download = createSgfFilename(
-            gameMetadata.blackPlayerName,
-            gameMetadata.whitePlayerName
-        );
-        link.click();
-
-        URL.revokeObjectURL(url);
     }, [gameMetadata.blackPlayerName, gameMetadata.whitePlayerName, gameMetadata.handicap, gameState.moves, gameState.setupStones, size]);
 
     const handleDownloadSgfFromShareMenu = useCallback(() => {
         handleDownloadSgf();
-        closeShareMenu();
-    }, [closeShareMenu, handleDownloadSgf]);
+        closeEditableShareMenu();
+    }, [closeEditableShareMenu, handleDownloadSgf]);
 
     const handleShare = useCallback(async () => {
         const currentLocalGame = createCurrentLocalGameRecord();
 
         if (!currentLocalGame) {
-            setShareMenuMessage(t("gameNotLoaded"));
-            setShareMenuIsCreating(false);
+            setEditableShareError(t("gameNotLoaded"));
             return;
         }
 
         if (!canShareGame) {
-            setShareMenuMessage(t("addMoveBeforeSharing"));
-            setShareMenuIsCreating(false);
+            setEditableShareError(t("addMoveBeforeSharing"));
             return;
         }
 
-        setShareMenuIsCreating(true);
-        setShareMenuMessage(t("creatingShare"));
+        setEditableShareCreating(t("creatingShare"));
 
         try {
             const { slug } = await createShareFromLocalGame({
                 localGame: currentLocalGame,
             });
 
-            const updatedLocalGame = saveLocalGame({
-                ...currentLocalGame,
-                lastShareSlug: slug,
+            const updatedLocalGame = saveLocalEditableRecord({
+                record: {
+                    ...currentLocalGame,
+                    lastShareSlug: slug,
+                },
             });
 
             localGameRecordRef.current = updatedLocalGame;
-            setShareSlug(slug);
-            setShareMenuMode("created");
-            openShareMenuBase();
-            clearShareQrCode();
-            setShareMenuMessage(null);
-            setShareMenuIsCreating(false);
+            finishEditableShareCreated(slug);
         } catch (error) {
-            setShareMenuMessage(
+            setEditableShareError(
                 error instanceof Error ? error.message : t("failedToCreateShare")
             );
-            setShareMenuIsCreating(false);
         }
     }, [
         canShareGame,
-        clearShareQrCode,
         createCurrentLocalGameRecord,
-        openShareMenuBase,
+        finishEditableShareCreated,
+        setEditableShareCreating,
+        setEditableShareError,
     ]);
 
     useEffect(() => {
-        if (!shareMenuOpen || shareMenuMode !== "chooser" || sharePath) {
+        if (!canShareGame || !canAutoCreateNow) {
             return;
         }
 
-        if (!canShareGame || shareAutoCreateAttemptedRef.current) {
-            return;
-        }
-
-        shareAutoCreateAttemptedRef.current = true;
+        markAutoCreateAttempted();
         void handleShare();
-    }, [canShareGame, handleShare, shareMenuMode, shareMenuOpen, sharePath]);
+    }, [canAutoCreateNow, canShareGame, handleShare, markAutoCreateAttempted]);
 
     const handleClosePlacementZoom = useCallback(() => {
         clearPlacementZoom();
@@ -1127,22 +968,22 @@ export default function GoBoard({ id }: GoBoardProps) {
                     ref={boardAreaRef}
                     className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
                 >
-                    {shareMenuOpen ? (
+                    {shareMenu.isOpen ? (
                         <ShareMenu
                             canShareGame={canShareGame}
-                            isCreating={shareMenuIsCreating}
-                            menuRef={shareMenuRef}
-                            message={shareMenuMessage}
-                            mode={shareMenuMode}
+                            isCreating={shareMenu.isCreating}
+                            menuRef={shareMenu.menuRef}
+                            message={shareMenu.message}
+                            mode={shareMenu.mode}
                             onCreateShare={() => {
                                 void handleShare();
                             }}
                             onDownloadSgf={handleDownloadSgfFromShareMenu}
                             onCopyLink={() => {
-                                void copyShareLink();
+                                void shareMenu.copyShareLink();
                             }}
-                            qrCodeDataUrl={shareQrCodeDataUrl}
-                            sharePath={sharePath}
+                            qrCodeDataUrl={shareMenu.qrCodeDataUrl}
+                            sharePath={shareMenu.sharePath}
                         />
                     ) : null}
                     <RecorderActionBar
@@ -1161,11 +1002,11 @@ export default function GoBoard({ id }: GoBoardProps) {
                         onPointerDown={actionBar.dragHandlers.onPointerDown}
                         onPointerMove={actionBar.dragHandlers.onPointerMove}
                         onPointerUp={actionBar.dragHandlers.onPointerUp}
-                        onToggleShareMenu={toggleShareMenu}
+                        onToggleShareMenu={shareMenu.toggle}
                         onUndo={handleUndo}
                         railRef={actionBar.railRef}
-                        shareMenuOpen={shareMenuOpen}
-                        shareTriggerRef={shareTriggerRef}
+                        shareMenuOpen={shareMenu.isOpen}
+                        shareTriggerRef={shareMenu.triggerRef}
                         showPlacementZoomControl={Boolean(placementZoomWindow)}
                     />
                     <div

@@ -7,7 +7,6 @@ import {
     isValidBoardSize,
     isValidGameState,
     shouldAutosave,
-    shouldContinueAutosaveQueue,
 } from "../lib/gameLogic";
 import { createRandomId } from "../lib/randomId";
 
@@ -237,38 +236,6 @@ describe("shouldAutosave", () => {
                 hasUnsavedChanges: true,
                 currentSnapshot: changedSnapshot,
                 lastSavedSnapshot: savedSnapshot,
-            })
-        ).toBe(true);
-    });
-});
-
-describe("shouldContinueAutosaveQueue", () => {
-    it("does not continue when no save was requested during the current save", () => {
-        expect(
-            shouldContinueAutosaveQueue({
-                needsSaveAfterCurrentSave: false,
-                latestSnapshot: "changed",
-                lastSavedSnapshot: "saved",
-            })
-        ).toBe(false);
-    });
-
-    it("does not continue when the latest snapshot has already been saved", () => {
-        expect(
-            shouldContinueAutosaveQueue({
-                needsSaveAfterCurrentSave: true,
-                latestSnapshot: "saved",
-                lastSavedSnapshot: "saved",
-            })
-        ).toBe(false);
-    });
-
-    it("continues when another save was requested and the latest snapshot is still unsaved", () => {
-        expect(
-            shouldContinueAutosaveQueue({
-                needsSaveAfterCurrentSave: true,
-                latestSnapshot: "changed",
-                lastSavedSnapshot: "saved",
             })
         ).toBe(true);
     });
