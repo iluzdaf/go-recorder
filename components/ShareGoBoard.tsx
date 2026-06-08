@@ -10,8 +10,7 @@ import type {
 import type { ShareRecord } from "./types";
 import { downloadSgf } from "./sgf";
 import { useHeaderStatus, useTheme } from "./AppShell";
-import { getLiveBoardGridMetrics } from "../lib/boardGeometry";
-import { getVertexFromBoardPointer } from "../lib/gameCorrectionUi";
+import { getLivePositionViewGridMetrics } from "../lib/boardGeometry";
 import { t } from "../lib/i18n";
 import {
     createLocalDraft,
@@ -20,6 +19,11 @@ import {
 import { replayGame } from "../lib/gameReplay";
 import { buildBoardFromGameState } from "../lib/shareBoardState";
 import { toVariationDraftInput } from "../lib/shareFork";
+import {
+    getPositionViewDisplaySize,
+    getPositionViewRange,
+    getVertexFromPositionViewPointer,
+} from "../lib/positionView";
 import {
     createVariationMoveNumberMarkerMap,
     type MoveNumberMarker,
@@ -36,6 +40,8 @@ type ShudanGobanProps = {
     signMap: number[][];
     markerMap: (null | { type: "circle" } | MoveNumberMarker)[][];
     showCoordinates: boolean;
+    rangeX?: [number, number];
+    rangeY?: [number, number];
 };
 
 const BoardView = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
@@ -43,13 +49,20 @@ const BoardView = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const { isDarkMode } = useTheme();
     const { setHeaderStatus } = useHeaderStatus();
+    const positionView =
+        share.sourceKind === "draft" && share.draftKind === "board"
+            ? share.positionView ?? null
+            : null;
+    const displayBoardSize = getPositionViewDisplaySize({
+        boardSize: share.boardSize,
+        positionView,
+    });
     const {
         boardAreaRef,
         gobanWrapperRef,
-        setGridMetrics,
         vertexSize,
     } = useBoardGeometry({
-        boardSize: share.boardSize,
+        boardSize: displayBoardSize,
         measureGrid: true,
     });
     const actionBar = useActionBarDrag();
@@ -118,22 +131,36 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         const gobanWrapper = gobanWrapperRef.current;
         if (!gobanWrapper) return null;
 
-        const metrics = getLiveBoardGridMetrics({
+        const positionRange = getPositionViewRange({
             boardSize: share.boardSize,
-            gobanWrapper,
+            positionView,
         });
+        const metrics = positionRange
+            ? getLivePositionViewGridMetrics({
+                  columns: positionRange.columns,
+                  gobanWrapper,
+                  rows: positionRange.rows,
+                  startX: positionRange.startX,
+                  startY: positionRange.startY,
+              })
+            : getLivePositionViewGridMetrics({
+                  columns: share.boardSize,
+                  gobanWrapper,
+                  rows: share.boardSize,
+                  startX: 0,
+                  startY: 0,
+              });
         if (!metrics) return null;
 
-        setGridMetrics(metrics.gridMetrics);
-        return { gridGeometry: metrics.gridGeometry };
-    }, [gobanWrapperRef, setGridMetrics, share.boardSize]);
+        return { gridGeometry: metrics };
+    }, [gobanWrapperRef, positionView, share.boardSize]);
 
     const getVertexFromPointer = useCallback(
         (event: ReactPointerEvent<HTMLDivElement>) => {
             const metrics = getGridMetrics();
             if (!metrics) return null;
 
-            return getVertexFromBoardPointer({
+            return getVertexFromPositionViewPointer({
                 clientX: event.clientX,
                 clientY: event.clientY,
                 grid: metrics.gridGeometry,
@@ -141,6 +168,11 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         },
         [getGridMetrics]
     );
+
+    const positionRange = getPositionViewRange({
+        boardSize: share.boardSize,
+        positionView,
+    });
 
     useEffect(() => {
         setHeaderStatus(
@@ -329,6 +361,8 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                         vertexSize={vertexSize}
                         signMap={signMap}
                         markerMap={markerMap}
+                        rangeX={positionRange?.rangeX}
+                        rangeY={positionRange?.rangeY}
                         showCoordinates
                     />
                 </div>

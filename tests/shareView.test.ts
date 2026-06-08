@@ -31,6 +31,7 @@ describe("mapShareRowToShareRecord", () => {
             handicap: 0,
             parentShareSlug: null,
             baseMoveCount: null,
+            positionView: null,
             createdAt: "2026-06-07T00:00:00.000Z",
         });
     });
@@ -76,6 +77,58 @@ describe("mapShareRowToShareRecord", () => {
             })
         ).toMatchObject({
             finalPosition: null,
+        });
+    });
+
+    it("maps valid board draft position views", () => {
+        expect(
+            mapShareRowToShareRecord({
+                ...baseShareRow,
+                source_kind: "draft",
+                draft_kind: "board",
+                position_view: {
+                    anchor: "top-left",
+                    rows: 6,
+                    columns: 8,
+                },
+            })
+        ).toMatchObject({
+            positionView: {
+                anchor: "top-left",
+                rows: 6,
+                columns: 8,
+            },
+        });
+    });
+
+    it("ignores invalid or non-board draft position views", () => {
+        expect(
+            mapShareRowToShareRecord({
+                ...baseShareRow,
+                source_kind: "draft",
+                draft_kind: "board",
+                position_view: {
+                    anchor: "top-left",
+                    rows: 1,
+                    columns: 8,
+                },
+            })
+        ).toMatchObject({
+            positionView: null,
+        });
+        expect(
+            mapShareRowToShareRecord({
+                ...baseShareRow,
+                source_kind: "draft",
+                draft_kind: "variation",
+                position_view: {
+                    anchor: "top-left",
+                    rows: 6,
+                    columns: 8,
+                },
+            })
+        ).toMatchObject({
+            positionView: null,
         });
     });
 });

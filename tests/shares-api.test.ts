@@ -87,6 +87,7 @@ describe("POST /api/shares", () => {
                 handicap: 0,
                 parent_share_slug: null,
                 base_move_count: null,
+                position_view: null,
             })
         );
         const insertedShare = insertQuery.insert.mock.calls[0]?.[0];
@@ -142,6 +143,47 @@ describe("POST /api/shares", () => {
                 draft_kind: "variation",
                 parent_share_slug: "parent123",
                 base_move_count: 1,
+                position_view: null,
+            })
+        );
+    });
+
+    it("creates a board draft share with position view metadata", async () => {
+        const insertQuery = createInsertResult({
+            data: {
+                slug: "share123",
+            },
+            error: null,
+        });
+        const boardDraftShareInput = {
+            ...validShareInput,
+            sourceKind: "draft",
+            draftKind: "board",
+            parentShareSlug: null,
+            baseMoveCount: null,
+            positionView: {
+                anchor: "top-left",
+                rows: 6,
+                columns: 8,
+            },
+        };
+
+        mockSupabaseAdmin.from.mockReturnValueOnce(insertQuery);
+
+        const response = await POST(createJsonRequest(boardDraftShareInput));
+
+        expect(response.status).toBe(200);
+        expect(insertQuery.insert).toHaveBeenCalledWith(
+            expect.objectContaining({
+                source_kind: "draft",
+                draft_kind: "board",
+                parent_share_slug: null,
+                base_move_count: null,
+                position_view: {
+                    anchor: "top-left",
+                    rows: 6,
+                    columns: 8,
+                },
             })
         );
     });

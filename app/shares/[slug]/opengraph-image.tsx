@@ -8,6 +8,7 @@ import { getFinalPositionFromGameState } from "../../../lib/shareFinalPosition";
 import { mapShareRowToShareRecord } from "../../../lib/shareView";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { createVariationMoveNumberMarkerMap } from "../../../lib/variationDraft";
+import { getPositionViewRange } from "../../../lib/positionView";
 
 export const runtime = "nodejs";
 
@@ -110,7 +111,23 @@ export default async function Image({ params }: ImageProps) {
     const boardPixelSize = 560;
     const boardPadding = 36;
     const gridSize = boardPixelSize - boardPadding * 2;
-    const gridStep = gridSize / (boardSize - 1);
+    const positionRange =
+        share.sourceKind === "draft" && share.draftKind === "board"
+            ? getPositionViewRange({
+                  boardSize,
+                  positionView: share.positionView ?? null,
+              })
+            : null;
+    const visibleRows = positionRange?.rows ?? boardSize;
+    const visibleColumns = positionRange?.columns ?? boardSize;
+    const startX = positionRange?.startX ?? 0;
+    const startY = positionRange?.startY ?? 0;
+    const maxVisibleDimension = Math.max(visibleRows, visibleColumns);
+    const gridStep = gridSize / (maxVisibleDimension - 1);
+    const visibleGridWidth = (visibleColumns - 1) * gridStep;
+    const visibleGridHeight = (visibleRows - 1) * gridStep;
+    const gridLeft = boardPadding + (gridSize - visibleGridWidth) / 2;
+    const gridTop = boardPadding + (gridSize - visibleGridHeight) / 2;
     const stoneRadius = Math.max(10, gridStep * 0.42);
     const blackPlayerName = getDisplayPlayerName(share.blackPlayerName);
     const whitePlayerName = getDisplayPlayerName(share.whitePlayerName);
@@ -152,31 +169,42 @@ export default async function Image({ params }: ImageProps) {
                         width: boardPixelSize,
                     }}
                 >
-                    {Array.from({ length: boardSize }, (_, index) => {
-                        const offset = boardPadding + index * gridStep;
+                    {Array.from({ length: visibleRows }, (_, rowIndex) => {
+                        const offset = gridTop + rowIndex * gridStep;
 
                         return (
                             <div
-                                key={`line-${index}`}
+                                key={`row-line-${rowIndex}`}
                                 style={{ display: "flex" }}
                             >
                                 <div
                                     style={{
                                         background: "#52525b",
                                         height: 2,
-                                        left: boardPadding,
+                                        left: gridLeft,
                                         position: "absolute",
                                         top: offset,
-                                        width: gridSize,
+                                        width: visibleGridWidth,
                                     }}
                                 />
+                            </div>
+                        );
+                    })}
+                    {Array.from({ length: visibleColumns }, (_, columnIndex) => {
+                        const offset = gridLeft + columnIndex * gridStep;
+
+                        return (
+                            <div
+                                key={`column-line-${columnIndex}`}
+                                style={{ display: "flex" }}
+                            >
                                 <div
                                     style={{
                                         background: "#52525b",
-                                        height: gridSize,
+                                        height: visibleGridHeight,
                                         left: offset,
                                         position: "absolute",
-                                        top: boardPadding,
+                                        top: gridTop,
                                         width: 2,
                                     }}
                                 />
@@ -184,28 +212,49 @@ export default async function Image({ params }: ImageProps) {
                         );
                     })}
 
-                    {getStarPoints(boardSize).map(([x, y]) => (
-                        <div
-                            key={`star-${x}-${y}`}
-                            style={{
-                                background: "#3f3f46",
-                                borderRadius: "50%",
-                                height: 8,
-                                left: boardPadding + x * gridStep - 4,
-                                position: "absolute",
-                                top: boardPadding + y * gridStep - 4,
-                                width: 8,
-                            }}
-                        />
-                    ))}
+                    {getStarPoints(boardSize).map(([x, y]) => {
+                        if (
+                            x < startX ||
+                            x >= startX + visibleColumns ||
+                            y < startY ||
+                            y >= startY + visibleRows
+                        ) {
+                            return null;
+                        }
+
+                        return (
+                            <div
+                                key={`star-${x}-${y}`}
+                                style={{
+                                    background: "#3f3f46",
+                                    borderRadius: "50%",
+                                    height: 8,
+                                    left: gridLeft + (x - startX) * gridStep - 4,
+                                    position: "absolute",
+                                    top: gridTop + (y - startY) * gridStep - 4,
+                                    width: 8,
+                                }}
+                            />
+                        );
+                    })}
 
                     {finalPositionResult.finalPosition.flatMap((row, y) =>
                         row.map((sign, x) => {
                             if (sign === 0) return null;
+                            if (
+                                x < startX ||
+                                x >= startX + visibleColumns ||
+                                y < startY ||
+                                y >= startY + visibleRows
+                            ) {
+                                return null;
+                            }
 
                             const isBlack = sign === 1;
-                            const left = boardPadding + x * gridStep - stoneRadius;
-                            const top = boardPadding + y * gridStep - stoneRadius;
+                            const left =
+                                gridLeft + (x - startX) * gridStep - stoneRadius;
+                            const top =
+                                gridTop + (y - startY) * gridStep - stoneRadius;
                             const marker = markerMap?.[y]?.[x] ?? null;
 
                             return (

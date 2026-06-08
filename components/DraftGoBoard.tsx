@@ -7,9 +7,10 @@ import type {
     PointerEvent as ReactPointerEvent,
 } from "react";
 
-import type { LocalDraftRecord, Stone } from "./types";
+import type { LocalDraftRecord, PositionView, Stone } from "./types";
 import BoardStatusMessage from "./BoardStatusMessage";
 import DraftBoardActionBar from "./DraftBoardActionBar";
+import PositionViewSettingsDialog from "./PositionViewSettingsDialog";
 import ShareMenu from "./ShareMenu";
 import { downloadSgf } from "./sgf";
 import { useHeaderStatus, useTheme } from "./AppShell";
@@ -19,12 +20,17 @@ import {
     getBoardDraftStrokeMode,
     type BoardDraftStrokeMode,
 } from "../lib/boardDraft";
-import { getLiveBoardGridMetrics } from "../lib/boardGeometry";
+import { getLivePositionViewGridMetrics } from "../lib/boardGeometry";
 import { canShareDraft } from "../lib/draftSharing";
-import { getVertexFromBoardPointer } from "../lib/gameCorrectionUi";
 import { t } from "../lib/i18n";
 import { saveLocalEditableRecord } from "../lib/localEditableSave";
 import { getLocalRecord } from "../lib/localGames";
+import {
+    getDefaultPositionView,
+    getPositionViewDisplaySize,
+    getPositionViewRange,
+    getVertexFromPositionViewPointer,
+} from "../lib/positionView";
 import { createShareFromLocalRecord } from "../lib/shareClient";
 import { replayGame } from "../lib/gameReplay";
 import {
@@ -42,6 +48,8 @@ type ShudanGobanProps = {
     signMap: number[][];
     markerMap: (null | { type: "circle" } | MoveNumberMarker)[][];
     showCoordinates: boolean;
+    rangeX?: [number, number];
+    rangeY?: [number, number];
 };
 
 type DraftGoBoardProps = {
@@ -96,6 +104,8 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     const draftRef = useRef<LocalDraftRecord | null>(draft);
     const hasPendingSaveRef = useRef(false);
     const [selectedColor, setSelectedColor] = useState<Stone>("B");
+    const [positionViewSettingsOpen, setPositionViewSettingsOpen] =
+        useState(false);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
     const strokeStateRef = useRef<BoardDraftStrokeState | null>(null);
     const shareMenu = useEditableShareMenuController({
@@ -112,13 +122,20 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         setError: setEditableShareError,
     } = shareMenu;
     const actionBar = useActionBarDrag();
+    const positionView =
+        draft?.draftKind === "board" ? draft.positionView ?? null : null;
+    const displayBoardSize = draft
+        ? getPositionViewDisplaySize({
+              boardSize: draft.boardSize,
+              positionView,
+          })
+        : 19;
     const {
         boardAreaRef,
         gobanWrapperRef,
-        setGridMetrics,
         vertexSize,
     } = useBoardGeometry({
-        boardSize: draft?.boardSize ?? 19,
+        boardSize: displayBoardSize,
         measureGrid: true,
     });
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
@@ -140,15 +157,29 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         const gobanWrapper = gobanWrapperRef.current;
         if (!gobanWrapper || !draft) return null;
 
-        const metrics = getLiveBoardGridMetrics({
+        const positionRange = getPositionViewRange({
             boardSize: draft.boardSize,
-            gobanWrapper,
+            positionView:
+                draft.draftKind === "board" ? draft.positionView ?? null : null,
         });
-        if (!metrics) return null;
+        const metrics = positionRange
+            ? getLivePositionViewGridMetrics({
+                  columns: positionRange.columns,
+                  gobanWrapper,
+                  rows: positionRange.rows,
+                  startX: positionRange.startX,
+                  startY: positionRange.startY,
+              })
+            : getLivePositionViewGridMetrics({
+                  columns: draft.boardSize,
+                  gobanWrapper,
+                  rows: draft.boardSize,
+                  startX: 0,
+                  startY: 0,
+              });
 
-        setGridMetrics(metrics.gridMetrics);
-        return { gridGeometry: metrics.gridGeometry };
-    }, [draft, gobanWrapperRef, setGridMetrics]);
+        return metrics ? { gridGeometry: metrics } : null;
+    }, [draft, gobanWrapperRef]);
 
     const getVertexFromPointer = useCallback(
         (event: ReactPointerEvent<HTMLDivElement>): Vertex | null => {
@@ -158,7 +189,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             const metrics = getGridMetrics();
             if (!metrics) return null;
 
-            return getVertexFromBoardPointer({
+            return getVertexFromPositionViewPointer({
                 clientX: event.clientX,
                 clientY: event.clientY,
                 grid: metrics.gridGeometry,
@@ -333,6 +364,44 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     const handleToggleColor = useCallback(() => {
         setSelectedColor((currentColor) => (currentColor === "B" ? "W" : "B"));
     }, []);
+
+    const handleOpenPositionViewSettings = useCallback(() => {
+        setPositionViewSettingsOpen(true);
+    }, []);
+
+    const handleClosePositionViewSettings = useCallback(() => {
+        setPositionViewSettingsOpen(false);
+    }, []);
+
+    const handleApplyPositionViewSettings = useCallback(
+        (nextPositionView: PositionView) => {
+            const currentDraft = draftRef.current;
+            if (!currentDraft || currentDraft.draftKind !== "board") return;
+
+            const currentPositionView =
+                currentDraft.positionView ??
+                getDefaultPositionView(currentDraft.boardSize);
+
+            if (
+                currentPositionView.anchor === nextPositionView.anchor &&
+                currentPositionView.rows === nextPositionView.rows &&
+                currentPositionView.columns === nextPositionView.columns
+            ) {
+                setPositionViewSettingsOpen(false);
+                return;
+            }
+
+            clearCachedShareLink();
+            updateDraft(
+                clearDraftShareCache({
+                    ...currentDraft,
+                    positionView: nextPositionView,
+                })
+            );
+            setPositionViewSettingsOpen(false);
+        },
+        [clearCachedShareLink, updateDraft]
+    );
 
     const handleVariationPointerDown = useCallback(
         (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -543,6 +612,13 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         draft.baseMoveCount !== null &&
         draft.gameState.moves.length > draft.baseMoveCount;
     const canShareCurrentDraft = canShareDraft(draft);
+    const positionRange =
+        draft.draftKind === "board"
+            ? getPositionViewRange({
+                  boardSize: draft.boardSize,
+                  positionView: draft.positionView ?? null,
+              })
+            : null;
 
     return (
         <div
@@ -584,6 +660,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                     onPointerMove={actionBar.dragHandlers.onPointerMove}
                     onPointerUp={actionBar.dragHandlers.onPointerUp}
                     onToggleColor={handleToggleColor}
+                    onTogglePositionViewSettings={handleOpenPositionViewSettings}
                     onToggleShareMenu={shareMenu.toggle}
                     onUndo={handleVariationUndo}
                     railRef={actionBar.railRef}
@@ -591,6 +668,14 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                     shareMenuOpen={shareMenu.isOpen}
                     shareTriggerRef={shareMenu.triggerRef}
                 />
+                {positionViewSettingsOpen && draft.draftKind === "board" ? (
+                    <PositionViewSettingsDialog
+                        boardSize={draft.boardSize}
+                        onApply={handleApplyPositionViewSettings}
+                        onClose={handleClosePositionViewSettings}
+                        positionView={draft.positionView ?? null}
+                    />
+                ) : null}
                 <div
                     ref={gobanWrapperRef}
                     className="relative"
@@ -619,6 +704,8 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                         vertexSize={vertexSize}
                         signMap={signMap}
                         markerMap={markerMap}
+                        rangeX={positionRange?.rangeX}
+                        rangeY={positionRange?.rangeY}
                         showCoordinates
                     />
                 </div>

@@ -3,6 +3,7 @@
 import {
     Circle,
     FilePen,
+    Settings,
     SquareArrowUpRight,
     Undo2,
 } from "lucide-react";
@@ -27,6 +28,7 @@ type DraftBoardActionBarProps = {
     onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
     onPointerUp: (event: ReactPointerEvent<HTMLDivElement>) => void;
     onToggleColor?: () => void;
+    onTogglePositionViewSettings?: () => void;
     onToggleShareMenu: () => void;
     onUndo?: () => void;
     railRef: RefObject<HTMLDivElement | null>;
@@ -47,6 +49,7 @@ export default function DraftBoardActionBar({
     onPointerMove,
     onPointerUp,
     onToggleColor,
+    onTogglePositionViewSettings,
     onToggleShareMenu,
     onUndo,
     railRef,
@@ -78,19 +81,30 @@ export default function DraftBoardActionBar({
                     <Undo2 size={18} />
                 </button>
             ) : (
-                <button
-                    type="button"
-                    className={
-                        selectedColor === "B"
-                            ? "inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-zinc-950 text-white hover:bg-zinc-800 dark:border-neutral-700 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
-                            : "inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                    }
-                    onClick={onToggleColor}
-                    aria-label={t("toggleDraftStoneColor")}
-                    title={t("toggleDraftStoneColor")}
-                >
-                    <Circle size={18} fill="currentColor" />
-                </button>
+                <>
+                    <button
+                        type="button"
+                        className={
+                            selectedColor === "B"
+                                ? "inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-zinc-950 text-white hover:bg-zinc-800 dark:border-neutral-700 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                                : "inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                        }
+                        onClick={onToggleColor}
+                        aria-label={t("toggleDraftStoneColor")}
+                        title={t("toggleDraftStoneColor")}
+                    >
+                        <Circle size={18} fill="currentColor" />
+                    </button>
+                    <button
+                        type="button"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                        onClick={onTogglePositionViewSettings}
+                        aria-label={t("positionViewSettings")}
+                        title={t("positionViewSettings")}
+                    >
+                        <Settings size={18} />
+                    </button>
+                </>
             )}
             <button
                 type="button"

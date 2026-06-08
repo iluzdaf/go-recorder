@@ -4,11 +4,13 @@ import type {
     DraftKind,
     GameState,
     Move,
+    PositionView,
     SetupStone,
     ShareSourceKind,
     Stone,
 } from "../components/types";
 import { isValidBoardSize } from "./gameLogic";
+import { isValidPositionView } from "./positionView";
 
 function isStone(value: unknown): value is Stone {
     return value === "B" || value === "W";
@@ -96,21 +98,38 @@ function isValidBaseMoveCount(value: unknown) {
     );
 }
 
+function isNullablePositionView(
+    value: unknown,
+    boardSize: BoardSize | undefined
+): value is PositionView | null | undefined {
+    return (
+        value === undefined ||
+        value === null ||
+        (isValidBoardSize(boardSize) && isValidPositionView(value, boardSize))
+    );
+}
+
 function hasValidShareDraftMetadata(input: Partial<CreateShareInput>) {
     const draftKind = input.draftKind ?? null;
     const parentShareSlug = input.parentShareSlug ?? null;
     const baseMoveCount = input.baseMoveCount ?? null;
+    const positionView = input.positionView ?? null;
 
     if (input.sourceKind === "game") {
         return (
             draftKind === null &&
             parentShareSlug === null &&
-            baseMoveCount === null
+            baseMoveCount === null &&
+            positionView === null
         );
     }
 
     if (draftKind === null) {
-        return parentShareSlug === null && baseMoveCount === null;
+        return (
+            parentShareSlug === null &&
+            baseMoveCount === null &&
+            positionView === null
+        );
     }
 
     if (!isDraftKind(draftKind)) return false;
@@ -121,11 +140,16 @@ function hasValidShareDraftMetadata(input: Partial<CreateShareInput>) {
         return (
             typeof parentShareSlug === "string" &&
             parentShareSlug.length > 0 &&
-            typeof baseMoveCount === "number"
+            typeof baseMoveCount === "number" &&
+            positionView === null
         );
     }
 
-    return parentShareSlug === null && baseMoveCount === null;
+    return (
+        parentShareSlug === null &&
+        baseMoveCount === null &&
+        isNullablePositionView(positionView, input.boardSize)
+    );
 }
 
 export function validateCreateShareInput(

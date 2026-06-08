@@ -243,10 +243,32 @@ describe("local game storage", () => {
             lastShareSlug: null,
             parentShareSlug: null,
             baseMoveCount: null,
+            positionView: null,
         });
         expect(record.id).toHaveLength(36);
         expect(getLocalRecord(record.id)).toEqual(record);
         expect(getLocalGame(record.id)).toBeNull();
+    });
+
+    it("creates and stores a board draft position view", () => {
+        const record = createLocalDraft({
+            draftKind: "board",
+            boardSize: 19,
+            gameState: emptyGameState,
+            positionView: {
+                anchor: "top-left",
+                rows: 6,
+                columns: 8,
+            },
+        });
+
+        expect(getLocalRecord(record.id)).toMatchObject({
+            positionView: {
+                anchor: "top-left",
+                rows: 6,
+                columns: 8,
+            },
+        });
     });
 
     it("creates and stores a variation draft with parent metadata", () => {
@@ -298,6 +320,34 @@ describe("local game storage", () => {
         );
 
         expect(getLocalRecord("invalid-variation")).toBeNull();
+    });
+
+    it("rejects stored variation drafts with position views", () => {
+        window.localStorage.setItem(
+            "go-recorder:local-game:invalid-variation-position-view",
+            JSON.stringify({
+                recordKind: "draft",
+                draftKind: "variation",
+                id: "invalid-variation-position-view",
+                boardSize: 19,
+                gameState: emptyGameState,
+                blackPlayerName: null,
+                whitePlayerName: null,
+                handicap: 0,
+                createdAt: "2026-05-28T00:00:00.000Z",
+                updatedAt: "2026-05-28T00:00:00.000Z",
+                lastShareSlug: null,
+                parentShareSlug: "share123",
+                baseMoveCount: 1,
+                positionView: {
+                    anchor: "top-left",
+                    rows: 6,
+                    columns: 6,
+                },
+            })
+        );
+
+        expect(getLocalRecord("invalid-variation-position-view")).toBeNull();
     });
 
     it("saves local drafts while preserving draft metadata", () => {
