@@ -8,7 +8,10 @@ vi.mock("../lib/supabaseAdmin", () => ({
     supabaseAdmin: mockSupabaseAdmin,
 }));
 
-import Image from "../app/shares/[slug]/opengraph-image";
+import Image, {
+    getGoColumnLabel,
+    getGoRowLabel,
+} from "../app/shares/[slug]/opengraph-image";
 
 beforeEach(() => {
     mockSupabaseAdmin.from.mockReset();
@@ -29,6 +32,15 @@ function createEmptySignMap(boardSize: number) {
 }
 
 describe("/shares/[slug]/opengraph-image", () => {
+    it("formats board coordinate labels", () => {
+        expect(getGoColumnLabel(0)).toBe("A");
+        expect(getGoColumnLabel(7)).toBe("H");
+        expect(getGoColumnLabel(8)).toBe("J");
+        expect(getGoColumnLabel(18)).toBe("T");
+        expect(getGoRowLabel({ boardSize: 19, y: 0 })).toBe("19");
+        expect(getGoRowLabel({ boardSize: 19, y: 18 })).toBe("1");
+    });
+
     it("renders a generated preview image for a share", async () => {
         const query = createSelectResult({
             data: {

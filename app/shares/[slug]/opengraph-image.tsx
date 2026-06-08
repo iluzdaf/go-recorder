@@ -27,6 +27,21 @@ type ImageProps = {
 
 const SUCCESS_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const ERROR_CACHE_CONTROL = "no-store";
+const GO_COLUMN_LABELS = "ABCDEFGHJKLMNOPQRSTUVWXYZ";
+
+export function getGoColumnLabel(x: number) {
+    return GO_COLUMN_LABELS[x] ?? String(x + 1);
+}
+
+export function getGoRowLabel({
+    boardSize,
+    y,
+}: {
+    boardSize: number;
+    y: number;
+}) {
+    return String(boardSize - y);
+}
 
 function getStarPoints(boardSize: number) {
     if (boardSize === 19) {
@@ -129,6 +144,7 @@ export default async function Image({ params }: ImageProps) {
     const gridLeft = boardPadding + (gridSize - visibleGridWidth) / 2;
     const gridTop = boardPadding + (gridSize - visibleGridHeight) / 2;
     const stoneRadius = Math.max(10, gridStep * 0.42);
+    const coordinateFontSize = Math.max(16, Math.min(24, gridStep * 0.42));
     const blackPlayerName = getDisplayPlayerName(share.blackPlayerName);
     const whitePlayerName = getDisplayPlayerName(share.whitePlayerName);
     const hasPlayerNames = blackPlayerName !== null || whitePlayerName !== null;
@@ -192,12 +208,30 @@ export default async function Image({ params }: ImageProps) {
                     })}
                     {Array.from({ length: visibleColumns }, (_, columnIndex) => {
                         const offset = gridLeft + columnIndex * gridStep;
+                        const label = getGoColumnLabel(startX + columnIndex);
 
                         return (
                             <div
                                 key={`column-line-${columnIndex}`}
                                 style={{ display: "flex" }}
                             >
+                                <div
+                                    style={{
+                                        color: "#3f3f46",
+                                        display: "flex",
+                                        fontSize: coordinateFontSize,
+                                        fontWeight: 800,
+                                        justifyContent: "center",
+                                        left: offset - gridStep / 2,
+                                        letterSpacing: "0",
+                                        lineHeight: 1,
+                                        position: "absolute",
+                                        top: 7,
+                                        width: gridStep,
+                                    }}
+                                >
+                                    {label}
+                                </div>
                                 <div
                                     style={{
                                         background: "#52525b",
@@ -208,6 +242,77 @@ export default async function Image({ params }: ImageProps) {
                                         width: 2,
                                     }}
                                 />
+                                <div
+                                    style={{
+                                        color: "#3f3f46",
+                                        display: "flex",
+                                        fontSize: coordinateFontSize,
+                                        fontWeight: 800,
+                                        justifyContent: "center",
+                                        left: offset - gridStep / 2,
+                                        letterSpacing: "0",
+                                        lineHeight: 1,
+                                        position: "absolute",
+                                        top: boardPixelSize - coordinateFontSize - 7,
+                                        width: gridStep,
+                                    }}
+                                >
+                                    {label}
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {Array.from({ length: visibleRows }, (_, rowIndex) => {
+                        const offset = gridTop + rowIndex * gridStep;
+                        const label = getGoRowLabel({
+                            boardSize,
+                            y: startY + rowIndex,
+                        });
+
+                        return (
+                            <div
+                                key={`row-label-${rowIndex}`}
+                                style={{ display: "flex" }}
+                            >
+                                <div
+                                    style={{
+                                        alignItems: "center",
+                                        color: "#3f3f46",
+                                        display: "flex",
+                                        fontSize: coordinateFontSize,
+                                        fontWeight: 800,
+                                        height: coordinateFontSize,
+                                        justifyContent: "center",
+                                        left: 6,
+                                        letterSpacing: "0",
+                                        lineHeight: 1,
+                                        position: "absolute",
+                                        top: offset - coordinateFontSize / 2,
+                                        width: 26,
+                                    }}
+                                >
+                                    {label}
+                                </div>
+                                <div
+                                    style={{
+                                        alignItems: "center",
+                                        color: "#3f3f46",
+                                        display: "flex",
+                                        fontSize: coordinateFontSize,
+                                        fontWeight: 800,
+                                        height: coordinateFontSize,
+                                        justifyContent: "center",
+                                        left: boardPixelSize - 32,
+                                        letterSpacing: "0",
+                                        lineHeight: 1,
+                                        position: "absolute",
+                                        top: offset - coordinateFontSize / 2,
+                                        width: 26,
+                                    }}
+                                >
+                                    {label}
+                                </div>
                             </div>
                         );
                     })}
