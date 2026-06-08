@@ -1,10 +1,31 @@
 import type { BoardSize, GameState, Move } from "../components/types";
 import { playGameMove, replayGame } from "./gameReplay";
 
+const GO_COLUMN_LABELS = "ABCDEFGHJKLMNOPQRSTUVWXYZ";
+
 export type MoveNumberMarker = {
     type: "label";
     label: string;
 };
+
+export type CapturedVariationMoveCaptionEntry = {
+    label: string;
+    moveIndex: number;
+    x: number;
+    y: number;
+};
+
+export function getGoCoordinate({
+    boardSize,
+    x,
+    y,
+}: {
+    boardSize: BoardSize;
+    x: number;
+    y: number;
+}) {
+    return `${GO_COLUMN_LABELS[x] ?? String(x + 1)}${boardSize - y}`;
+}
 
 export function playVariationDraftMove({
     boardSize,
@@ -104,4 +125,42 @@ export function createVariationMoveNumberMarkerMap({
     }
 
     return markerMap;
+}
+
+export function getCapturedVariationMoveCaptionEntries({
+    baseMoveCount,
+    boardSize,
+    gameState,
+}: {
+    baseMoveCount: number;
+    boardSize: BoardSize;
+    gameState: GameState;
+}): CapturedVariationMoveCaptionEntry[] {
+    const replay = replayGame({
+        boardSize,
+        setupStones: gameState.setupStones,
+        moves: gameState.moves,
+    });
+
+    if (!replay.legal) return [];
+
+    return gameState.moves.flatMap((move, moveIndex) => {
+        if (moveIndex < baseMoveCount || move.type !== "play") return [];
+
+        const owner = replay.visibleStoneOwners[move.y]?.[move.x] ?? null;
+        if (owner?.type === "move" && owner.moveIndex === moveIndex) return [];
+
+        return [
+            {
+                label: `${moveIndex + 1} at ${getGoCoordinate({
+                    boardSize,
+                    x: move.x,
+                    y: move.y,
+                })}`,
+                moveIndex,
+                x: move.x,
+                y: move.y,
+            },
+        ];
+    });
 }

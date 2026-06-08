@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
     createVariationMoveNumberMarkerMap,
+    getCapturedVariationMoveCaptionEntries,
+    getGoCoordinate,
     playVariationDraftMove,
     undoVariationDraftMove,
 } from "../lib/variationDraft";
@@ -179,5 +181,75 @@ describe("createVariationMoveNumberMarkerMap", () => {
             type: "label",
             label: "2",
         });
+    });
+});
+
+describe("getGoCoordinate", () => {
+    it("formats coordinates with I skipped", () => {
+        expect(getGoCoordinate({ boardSize: 19, x: 7, y: 4 })).toBe("H15");
+        expect(getGoCoordinate({ boardSize: 19, x: 8, y: 4 })).toBe("J15");
+        expect(getGoCoordinate({ boardSize: 9, x: 1, y: 5 })).toBe("B4");
+    });
+});
+
+describe("getCapturedVariationMoveCaptionEntries", () => {
+    const capturingGameState = {
+        setupStones: [],
+        moves: [
+            { type: "play" as const, x: 8, y: 8, color: "B" as const },
+            { type: "play" as const, x: 1, y: 1, color: "W" as const },
+            { type: "play" as const, x: 0, y: 1, color: "B" as const },
+            { type: "play" as const, x: 7, y: 8, color: "W" as const },
+            { type: "play" as const, x: 1, y: 0, color: "B" as const },
+            { type: "play" as const, x: 8, y: 7, color: "W" as const },
+            { type: "play" as const, x: 2, y: 1, color: "B" as const },
+            { type: "play" as const, x: 7, y: 7, color: "W" as const },
+            { type: "play" as const, x: 1, y: 2, color: "B" as const },
+        ],
+        currentPlayer: "W" as const,
+    };
+
+    it("lists captured variation moves with move number and coordinate", () => {
+        expect(
+            getCapturedVariationMoveCaptionEntries({
+                baseMoveCount: 1,
+                boardSize: 9,
+                gameState: capturingGameState,
+            })
+        ).toEqual([
+            {
+                label: "2 at B8",
+                moveIndex: 1,
+                x: 1,
+                y: 1,
+            },
+        ]);
+    });
+
+    it("excludes moves before the variation base", () => {
+        expect(
+            getCapturedVariationMoveCaptionEntries({
+                baseMoveCount: 2,
+                boardSize: 9,
+                gameState: capturingGameState,
+            })
+        ).toEqual([]);
+    });
+
+    it("excludes visible variation moves", () => {
+        expect(
+            getCapturedVariationMoveCaptionEntries({
+                baseMoveCount: 0,
+                boardSize: 9,
+                gameState: {
+                    setupStones: [],
+                    moves: [
+                        { type: "play", x: 4, y: 4, color: "B" },
+                        { type: "play", x: 5, y: 4, color: "W" },
+                    ],
+                    currentPlayer: "B",
+                },
+            })
+        ).toEqual([]);
     });
 });

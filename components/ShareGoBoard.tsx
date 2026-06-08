@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type {
     ComponentType,
@@ -26,7 +26,9 @@ import {
     getVertexFromPositionViewPointer,
 } from "../lib/positionView";
 import {
+    getCapturedVariationMoveCaptionEntries,
     createVariationMoveNumberMarkerMap,
+    type CapturedVariationMoveCaptionEntry,
     type MoveNumberMarker,
 } from "../lib/variationDraft";
 import BoardStatusMessage from "./BoardStatusMessage";
@@ -46,6 +48,39 @@ type ShudanGobanProps = {
 };
 
 const BoardView = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
+
+export function CapturedVariationMoveCaption({
+    entries,
+    onCommit,
+    onPreview,
+    onRestorePreview,
+}: {
+    entries: CapturedVariationMoveCaptionEntry[];
+    onCommit: (moveIndex: number) => void;
+    onPreview: (moveIndex: number) => void;
+    onRestorePreview: () => void;
+}) {
+    if (entries.length === 0) return null;
+
+    return (
+        <div className="absolute left-1/2 top-4 z-10 flex w-[min(calc(100%-2rem),36rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white/95 p-2 text-zinc-950 shadow-lg dark:border-neutral-700 dark:bg-neutral-900/95 dark:text-white">
+            {entries.map((entry) => (
+                <button
+                    key={entry.moveIndex}
+                    type="button"
+                    className="inline-flex h-8 items-center justify-center rounded-full border border-zinc-200 bg-white px-2.5 text-xs font-semibold text-zinc-950 hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-950 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800 dark:focus-visible:outline-white"
+                    onBlur={onRestorePreview}
+                    onClick={() => onCommit(entry.moveIndex)}
+                    onFocus={() => onPreview(entry.moveIndex)}
+                    onPointerEnter={() => onPreview(entry.moveIndex)}
+                    onPointerLeave={onRestorePreview}
+                >
+                    {entry.label}
+                </button>
+            ))}
+        </div>
+    );
+}
 
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const { isDarkMode } = useTheme();
@@ -84,6 +119,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const [visibleMoveCount, setVisibleMoveCount] = useState(
         share.gameState.moves.length
     );
+    const captionPreviewMoveCountRef = useRef<number | null>(null);
 
     const visibleMoves = share.gameState.moves.slice(0, visibleMoveCount);
     const board = buildBoardFromGameState(
@@ -123,6 +159,15 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     if (share.draftKind !== "variation" && lastMove?.type === "play") {
         markerMap[lastMove.y][lastMove.x] = { type: "circle" };
     }
+    const capturedVariationCaptionEntries =
+        share.draftKind === "variation" &&
+        typeof share.baseMoveCount === "number"
+            ? getCapturedVariationMoveCaptionEntries({
+                  baseMoveCount: share.baseMoveCount,
+                  boardSize: share.boardSize,
+                  gameState: share.gameState,
+              })
+            : [];
 
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
 
@@ -255,22 +300,47 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     }, [closeShareMenu, handleDownloadSgf]);
 
     const handleJumpToStart = useCallback(() => {
+        captionPreviewMoveCountRef.current = null;
         setVisibleMoveCount(0);
     }, []);
 
     const handlePreviousMove = useCallback(() => {
+        captionPreviewMoveCountRef.current = null;
         setVisibleMoveCount((currentCount) => Math.max(0, currentCount - 1));
     }, []);
 
     const handleNextMove = useCallback(() => {
+        captionPreviewMoveCountRef.current = null;
         setVisibleMoveCount((currentCount) =>
             Math.min(share.gameState.moves.length, currentCount + 1)
         );
     }, [share.gameState.moves.length]);
 
     const handleJumpToEnd = useCallback(() => {
+        captionPreviewMoveCountRef.current = null;
         setVisibleMoveCount(share.gameState.moves.length);
     }, [share.gameState.moves.length]);
+
+    const handlePreviewCaptionMove = useCallback((moveIndex: number) => {
+        if (captionPreviewMoveCountRef.current === null) {
+            captionPreviewMoveCountRef.current = visibleMoveCount;
+        }
+
+        setVisibleMoveCount(moveIndex + 1);
+    }, [visibleMoveCount]);
+
+    const handleRestoreCaptionPreview = useCallback(() => {
+        const previousMoveCount = captionPreviewMoveCountRef.current;
+        if (previousMoveCount === null) return;
+
+        captionPreviewMoveCountRef.current = null;
+        setVisibleMoveCount(previousMoveCount);
+    }, []);
+
+    const handleCommitCaptionMove = useCallback((moveIndex: number) => {
+        captionPreviewMoveCountRef.current = null;
+        setVisibleMoveCount(moveIndex + 1);
+    }, []);
 
     return (
         <div
@@ -330,6 +400,14 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                             </button>
                         </div>
                     </div>
+                ) : null}
+                {!pendingVariationInput ? (
+                    <CapturedVariationMoveCaption
+                        entries={capturedVariationCaptionEntries}
+                        onCommit={handleCommitCaptionMove}
+                        onPreview={handlePreviewCaptionMove}
+                        onRestorePreview={handleRestoreCaptionPreview}
+                    />
                 ) : null}
                 <ShareBoardActionBar
                     anchor={actionBar.anchor}
