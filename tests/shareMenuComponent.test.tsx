@@ -28,6 +28,10 @@ describe("ShareMenu", () => {
     });
 
     it("anchors to the top of the viewport in compact header layouts", () => {
-        expect(renderShareMenu(true)).toContain("top-3");
+        const markup = renderShareMenu(true);
+
+        expect(markup).toContain("absolute");
+        expect(markup).toContain("right-4");
+        expect(markup).toContain("top-4");
     });
 });
