@@ -7,6 +7,7 @@ import {
 import { getFinalPositionFromGameState } from "../../../lib/shareFinalPosition";
 import { mapShareRowToShareRecord } from "../../../lib/shareView";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { createVariationMoveNumberMarkerMap } from "../../../lib/variationDraft";
 
 export const runtime = "nodejs";
 
@@ -117,6 +118,16 @@ export default async function Image({ params }: ImageProps) {
     const boardLeft = hasPlayerNames ? 80 : (size.width - boardPixelSize) / 2;
     const boardTop = (size.height - boardPixelSize) / 2;
     const shareDate = formatShareDate(share.createdAt);
+    const markerMap =
+        share.draftKind === "variation" &&
+        typeof share.baseMoveCount === "number"
+            ? createVariationMoveNumberMarkerMap({
+                  boardSize,
+                  moves: share.gameState.moves,
+                  signMap: finalPositionResult.finalPosition,
+                  startMoveIndex: share.baseMoveCount,
+              })
+            : null;
 
     return new ImageResponse(
         (
@@ -195,23 +206,34 @@ export default async function Image({ params }: ImageProps) {
                             const isBlack = sign === 1;
                             const left = boardPadding + x * gridStep - stoneRadius;
                             const top = boardPadding + y * gridStep - stoneRadius;
+                            const marker = markerMap?.[y]?.[x] ?? null;
 
                             return (
                                 <div
                                     key={`stone-${x}-${y}`}
                                     style={{
+                                        alignItems: "center",
                                         background: isBlack ? "#09090b" : "#fafafa",
                                         border: isBlack
                                             ? "1px solid #09090b"
                                             : "3px solid #18181b",
                                         borderRadius: "50%",
+                                        color: isBlack ? "#fafafa" : "#18181b",
+                                        display: "flex",
+                                        fontSize: Math.max(18, stoneRadius * 0.82),
+                                        fontWeight: 800,
                                         height: stoneRadius * 2,
+                                        justifyContent: "center",
+                                        letterSpacing: "0",
                                         left,
+                                        lineHeight: 1,
                                         position: "absolute",
                                         top,
                                         width: stoneRadius * 2,
                                     }}
-                                />
+                                >
+                                    {marker?.label ?? ""}
+                                </div>
                             );
                         })
                     )}

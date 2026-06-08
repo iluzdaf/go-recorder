@@ -109,6 +109,51 @@ describe("/shares/[slug]/opengraph-image", () => {
         expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0);
     });
 
+    it("renders variation move number previews", async () => {
+        const finalPosition = createEmptySignMap(9);
+        finalPosition[2][2] = 1;
+        finalPosition[3][3] = -1;
+
+        const query = createSelectResult({
+            data: {
+                slug: "share654",
+                source_kind: "draft",
+                draft_kind: "variation",
+                parent_share_slug: "parent123",
+                base_move_count: 1,
+                board_size: 9,
+                game_state: {
+                    setupStones: [],
+                    moves: [
+                        { type: "play", x: 2, y: 2, color: "B" },
+                        { type: "play", x: 3, y: 3, color: "W" },
+                    ],
+                    currentPlayer: "B",
+                },
+                final_position: finalPosition,
+                black_player_name: null,
+                white_player_name: null,
+                handicap: 0,
+                created_at: "2026-05-29T00:00:00.000Z",
+            },
+            error: null,
+        });
+
+        mockSupabaseAdmin.from.mockReturnValueOnce(query);
+
+        const response = await Image({
+            params: Promise.resolve({
+                slug: "share654",
+            }),
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Cache-Control")).toBe(
+            "public, max-age=31536000, immutable"
+        );
+        expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0);
+    });
+
     it("renders without text details when player names are missing", async () => {
         const query = createSelectResult({
             data: {
