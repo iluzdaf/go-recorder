@@ -58,6 +58,46 @@ export function getBoardCoordinatePadding(visibleDimension: number) {
     return 36;
 }
 
+export function getTopColumnCoordinateOffset({
+    coordinateFontSize,
+    gridTop,
+    stoneRadius,
+}: {
+    coordinateFontSize: number;
+    gridTop: number;
+    stoneRadius: number;
+}) {
+    const gap = Math.max(4, coordinateFontSize * 0.18);
+
+    return Math.max(4, gridTop - stoneRadius - coordinateFontSize - gap);
+}
+
+export function getBottomColumnCoordinateOffset({
+    coordinateFontSize,
+    gridTop,
+    stoneRadius,
+    visibleGridHeight,
+}: {
+    coordinateFontSize: number;
+    gridTop: number;
+    stoneRadius: number;
+    visibleGridHeight: number;
+}) {
+    const gap = Math.max(4, coordinateFontSize * 0.18);
+
+    return gridTop + visibleGridHeight + stoneRadius + gap;
+}
+
+export function getVariationCaptionTopOffset({
+    coordinateFontSize,
+    gridTop,
+}: {
+    coordinateFontSize: number;
+    gridTop: number;
+}) {
+    return gridTop + Math.max(8, coordinateFontSize * 0.45);
+}
+
 function getStarPoints(boardSize: number) {
     if (boardSize === 19) {
         return [3, 9, 15].flatMap((x) => [3, 9, 15].map((y) => [x, y]));
@@ -158,6 +198,21 @@ export default async function Image({ params }: ImageProps) {
     const stoneRadius = Math.max(10, gridStep * 0.42);
     const coordinateFontSize = getCoordinateFontSize(stoneRadius);
     const coordinateNudge = coordinateFontSize * 0.28;
+    const topColumnCoordinateOffset = getTopColumnCoordinateOffset({
+        coordinateFontSize,
+        gridTop,
+        stoneRadius,
+    });
+    const bottomColumnCoordinateOffset = getBottomColumnCoordinateOffset({
+        coordinateFontSize,
+        gridTop,
+        stoneRadius,
+        visibleGridHeight,
+    });
+    const variationCaptionTopOffset = getVariationCaptionTopOffset({
+        coordinateFontSize,
+        gridTop,
+    });
     const blackPlayerName = getDisplayPlayerName(share.blackPlayerName);
     const whitePlayerName = getDisplayPlayerName(share.whitePlayerName);
     const hasPlayerNames = blackPlayerName !== null || whitePlayerName !== null;
@@ -220,13 +275,13 @@ export default async function Image({ params }: ImageProps) {
                                 fontWeight: 800,
                                 gap: 12,
                                 justifyContent: "center",
-                                left: 44,
+                                left: gridLeft + 12,
                                 letterSpacing: "0",
                                 lineHeight: 1,
                                 padding: "9px 14px",
                                 position: "absolute",
-                                top: 0,
-                                width: boardPixelSize - 88,
+                                top: variationCaptionTopOffset,
+                                width: Math.max(220, visibleGridWidth - 24),
                                 zIndex: 5,
                             }}
                         >
@@ -245,6 +300,7 @@ export default async function Image({ params }: ImageProps) {
                                                 entry.color === "B"
                                                     ? "#18181b"
                                                     : "#fafafa",
+                                            alignItems: "center",
                                             border:
                                                 entry.color === "B"
                                                     ? "2px solid #18181b"
@@ -314,7 +370,7 @@ export default async function Image({ params }: ImageProps) {
                                         letterSpacing: "0",
                                         lineHeight: 1,
                                         position: "absolute",
-                                        top: 7,
+                                        top: topColumnCoordinateOffset,
                                         width: gridStep,
                                     }}
                                 >
@@ -344,7 +400,7 @@ export default async function Image({ params }: ImageProps) {
                                         letterSpacing: "0",
                                         lineHeight: 1,
                                         position: "absolute",
-                                        top: boardPixelSize - coordinateFontSize - 7,
+                                        top: bottomColumnCoordinateOffset,
                                         width: gridStep,
                                     }}
                                 >

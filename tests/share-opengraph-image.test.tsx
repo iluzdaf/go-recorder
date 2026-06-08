@@ -10,9 +10,12 @@ vi.mock("../lib/supabaseAdmin", () => ({
 
 import Image, {
     getBoardCoordinatePadding,
+    getBottomColumnCoordinateOffset,
     getCoordinateFontSize,
     getGoColumnLabel,
     getGoRowLabel,
+    getTopColumnCoordinateOffset,
+    getVariationCaptionTopOffset,
 } from "../app/shares/[slug]/opengraph-image";
 
 beforeEach(() => {
@@ -54,6 +57,33 @@ describe("/shares/[slug]/opengraph-image", () => {
         expect(getBoardCoordinatePadding(9)).toBe(76);
         expect(getBoardCoordinatePadding(13)).toBe(56);
         expect(getBoardCoordinatePadding(19)).toBe(36);
+    });
+
+    it("places column coordinates next to the visible grid", () => {
+        expect(
+            getTopColumnCoordinateOffset({
+                coordinateFontSize: 34,
+                gridTop: 76,
+                stoneRadius: 24,
+            })
+        ).toBeCloseTo(11.88);
+        expect(
+            getBottomColumnCoordinateOffset({
+                coordinateFontSize: 34,
+                gridTop: 76,
+                stoneRadius: 24,
+                visibleGridHeight: 408,
+            })
+        ).toBeCloseTo(514.12);
+    });
+
+    it("places variation captions inside the grid area", () => {
+        expect(
+            getVariationCaptionTopOffset({
+                coordinateFontSize: 16,
+                gridTop: 36,
+            })
+        ).toBe(44);
     });
 
     it("renders a generated preview image for a share", async () => {
