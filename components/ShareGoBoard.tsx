@@ -64,6 +64,16 @@ function MoveColorStone({
     );
 }
 
+export function getCaptionRestoreMoveCount({
+    committedMoveIndex,
+    totalMoveCount,
+}: {
+    committedMoveIndex: number | null;
+    totalMoveCount: number;
+}) {
+    return committedMoveIndex === null ? totalMoveCount : committedMoveIndex + 1;
+}
+
 type ShudanGobanProps = {
     vertexSize: number;
     signMap: number[][];
@@ -357,8 +367,12 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     }, []);
 
     const handleRestoreCaptionPreview = useCallback(() => {
-        captionCommittedMoveIndexRef.current = null;
-        setVisibleMoveCount(share.gameState.moves.length);
+        setVisibleMoveCount(
+            getCaptionRestoreMoveCount({
+                committedMoveIndex: captionCommittedMoveIndexRef.current,
+                totalMoveCount: share.gameState.moves.length,
+            })
+        );
     }, [share.gameState.moves.length]);
 
     const handleCommitCaptionMove = useCallback((moveIndex: number) => {

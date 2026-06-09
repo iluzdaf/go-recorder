@@ -1,7 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { CapturedVariationMoveCaption } from "../components/ShareGoBoard";
+import {
+    CapturedVariationMoveCaption,
+    getCaptionRestoreMoveCount,
+} from "../components/ShareGoBoard";
 
 describe("CapturedVariationMoveCaption", () => {
     it("renders compact top caption entries with move color", () => {
@@ -42,5 +45,20 @@ describe("CapturedVariationMoveCaption", () => {
                 />
             )
         ).toBe("");
+    });
+
+    it("restores hover previews to final unless a caption was clicked", () => {
+        expect(
+            getCaptionRestoreMoveCount({
+                committedMoveIndex: null,
+                totalMoveCount: 24,
+            })
+        ).toBe(24);
+        expect(
+            getCaptionRestoreMoveCount({
+                committedMoveIndex: 11,
+                totalMoveCount: 24,
+            })
+        ).toBe(12);
     });
 });
