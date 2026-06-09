@@ -9,18 +9,10 @@ vi.mock("../lib/supabaseAdmin", () => ({
 }));
 
 import Image, {
-    getBoardCoordinatePadding,
-    getBottomColumnCoordinateOffset,
-    getCoordinateFontSize,
-    getGoColumnLabel,
-    getGoRowLabel,
-    getLeftRowCoordinateOffset,
+    getBoardPreviewPadding,
     getPreviewBoardLayout,
     getPreviewBoardPixelSize,
-    getRightRowCoordinateOffset,
-    getRowCoordinateWidth,
-    getTopColumnCoordinateOffset,
-    shouldShowBoardCoordinates,
+    getVariationMarkerFontSize,
 } from "../app/shares/[slug]/opengraph-image";
 
 beforeEach(() => {
@@ -42,59 +34,16 @@ function createEmptySignMap(boardSize: number) {
 }
 
 describe("/shares/[slug]/opengraph-image", () => {
-    it("formats board coordinate labels", () => {
-        expect(getGoColumnLabel(0)).toBe("A");
-        expect(getGoColumnLabel(7)).toBe("H");
-        expect(getGoColumnLabel(8)).toBe("J");
-        expect(getGoColumnLabel(18)).toBe("T");
-        expect(getGoRowLabel({ boardSize: 19, y: 0 })).toBe("19");
-        expect(getGoRowLabel({ boardSize: 19, y: 18 })).toBe("1");
+    it("uses compact board padding without coordinates", () => {
+        expect(getBoardPreviewPadding(9)).toBe(22);
+        expect(getBoardPreviewPadding(13)).toBe(22);
+        expect(getBoardPreviewPadding(19)).toBe(15);
     });
 
-    it("scales board coordinate size from stone radius", () => {
-        expect(getCoordinateFontSize(10)).toBe(16);
-        expect(getCoordinateFontSize(28)).toBeCloseTo(25.2);
-        expect(getCoordinateFontSize(40)).toBe(34);
-    });
-
-    it("shows coordinates only for 9x9 and smaller previews", () => {
-        expect(shouldShowBoardCoordinates(9)).toBe(true);
-        expect(shouldShowBoardCoordinates(10)).toBe(false);
-        expect(shouldShowBoardCoordinates(13)).toBe(false);
-        expect(shouldShowBoardCoordinates(19)).toBe(false);
-    });
-
-    it("adds coordinate gutter only when coordinates are visible", () => {
-        expect(
-            getBoardCoordinatePadding({
-                showCoordinates: false,
-                visibleDimension: 19,
-            })
-        ).toBe(15);
-        expect(
-            getBoardCoordinatePadding({
-                showCoordinates: false,
-                visibleDimension: 13,
-            })
-        ).toBe(22);
-        expect(
-            getBoardCoordinatePadding({
-                showCoordinates: true,
-                visibleDimension: 6,
-            })
-        ).toBe(86);
-        expect(
-            getBoardCoordinatePadding({
-                showCoordinates: true,
-                visibleDimension: 9,
-            })
-        ).toBe(86);
-        expect(
-            getBoardCoordinatePadding({
-                showCoordinates: true,
-                visibleDimension: 13,
-            })
-        ).toBe(64);
+    it("scales variation move numbers for preview readability", () => {
+        expect(getVariationMarkerFontSize(10)).toBe(24);
+        expect(getVariationMarkerFontSize(28)).toBeCloseTo(29.4);
+        expect(getVariationMarkerFontSize(40)).toBe(34);
     });
 
     it("uses the available preview height for the board", () => {
@@ -104,7 +53,7 @@ describe("/shares/[slug]/opengraph-image", () => {
     it("sizes short boards by visible aspect ratio", () => {
         expect(
             getPreviewBoardLayout({
-                boardPadding: 86,
+                boardPadding: 22,
                 hasSidePanel: false,
                 visibleColumns: 9,
                 visibleRows: 6,
@@ -112,7 +61,7 @@ describe("/shares/[slug]/opengraph-image", () => {
         ).toMatchObject({
             boardHeight: 630,
             boardTop: 0,
-            boardWidth: 904.8,
+            boardWidth: 981.6,
         });
     });
 
@@ -129,46 +78,9 @@ describe("/shares/[slug]/opengraph-image", () => {
             boardLeft: 20,
             boardTop: 0,
             boardWidth: 630,
-            sidePanelLeft: 900,
-            sidePanelWidth: 280,
+            sidePanelLeft: 940,
+            sidePanelWidth: 240,
         });
-    });
-
-    it("places column coordinates next to the visible grid", () => {
-        expect(
-            getTopColumnCoordinateOffset({
-                coordinateFontSize: 34,
-                gridTop: 76,
-                stoneRadius: 24,
-            })
-        ).toBeCloseTo(11.88);
-        expect(
-            getBottomColumnCoordinateOffset({
-                coordinateFontSize: 34,
-                gridTop: 76,
-                stoneRadius: 24,
-                visibleGridHeight: 408,
-            })
-        ).toBeCloseTo(514.12);
-    });
-
-    it("places row coordinates next to the visible grid", () => {
-        expect(getRowCoordinateWidth(16)).toBe(28);
-        expect(
-            getLeftRowCoordinateOffset({
-                coordinateFontSize: 16,
-                gridLeft: 52,
-                stoneRadius: 12,
-            })
-        ).toBe(8);
-        expect(
-            getRightRowCoordinateOffset({
-                coordinateFontSize: 16,
-                gridLeft: 52,
-                stoneRadius: 12,
-                visibleGridWidth: 506,
-            })
-        ).toBe(574);
     });
 
     it("renders a generated preview image for a share", async () => {

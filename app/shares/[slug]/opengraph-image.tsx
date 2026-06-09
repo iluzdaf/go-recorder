@@ -5,10 +5,7 @@ import { getFinalPositionFromGameState } from "../../../lib/shareFinalPosition";
 import { getShareBoardPositionView } from "../../../lib/shareBoardView";
 import { mapShareRowToShareRecord } from "../../../lib/shareView";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
-import {
-    createVariationMoveNumberMarkerMap,
-    getCapturedVariationMoveCaptionEntries,
-} from "../../../lib/variationDraft";
+import { createVariationMoveNumberMarkerMap } from "../../../lib/variationDraft";
 import { getPositionViewRange } from "../../../lib/positionView";
 
 export const runtime = "nodejs";
@@ -28,45 +25,12 @@ type ImageProps = {
 
 const SUCCESS_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const ERROR_CACHE_CONTROL = "no-store";
-const GO_COLUMN_LABELS = "ABCDEFGHJKLMNOPQRSTUVWXYZ";
 const PREVIEW_MARGIN = 20;
 const SIDE_PANEL_GAP = 20;
-const SIDE_PANEL_WIDTH = 280;
+const SIDE_PANEL_WIDTH = 240;
 
-export function getGoColumnLabel(x: number) {
-    return GO_COLUMN_LABELS[x] ?? String(x + 1);
-}
-
-export function getGoRowLabel({
-    boardSize,
-    y,
-}: {
-    boardSize: number;
-    y: number;
-}) {
-    return String(boardSize - y);
-}
-
-export function getCoordinateFontSize(stoneRadius: number) {
-    return Math.max(16, Math.min(34, stoneRadius * 0.9));
-}
-
-export function shouldShowBoardCoordinates(visibleDimension: number) {
-    return visibleDimension <= 9;
-}
-
-export function getBoardCoordinatePadding({
-    showCoordinates,
-    visibleDimension,
-}: {
-    showCoordinates: boolean;
-    visibleDimension: number;
-}) {
-    if (!showCoordinates) return visibleDimension <= 13 ? 22 : 15;
-    if (visibleDimension <= 9) return 86;
-    if (visibleDimension <= 13) return 64;
-
-    return 56;
+export function getBoardPreviewPadding(visibleDimension: number) {
+    return visibleDimension <= 13 ? 22 : 15;
 }
 
 export function getPreviewBoardPixelSize() {
@@ -110,74 +74,8 @@ export function getPreviewBoardLayout({
     };
 }
 
-export function getTopColumnCoordinateOffset({
-    coordinateFontSize,
-    gridTop,
-    stoneRadius,
-}: {
-    coordinateFontSize: number;
-    gridTop: number;
-    stoneRadius: number;
-}) {
-    const gap = Math.max(4, coordinateFontSize * 0.18);
-
-    return Math.max(4, gridTop - stoneRadius - coordinateFontSize - gap);
-}
-
-export function getBottomColumnCoordinateOffset({
-    coordinateFontSize,
-    gridTop,
-    stoneRadius,
-    visibleGridHeight,
-}: {
-    coordinateFontSize: number;
-    gridTop: number;
-    stoneRadius: number;
-    visibleGridHeight: number;
-}) {
-    const gap = Math.max(4, coordinateFontSize * 0.18);
-
-    return gridTop + visibleGridHeight + stoneRadius + gap;
-}
-
-export function getRowCoordinateWidth(coordinateFontSize: number) {
-    return Math.max(28, coordinateFontSize * 1.4);
-}
-
-export function getLeftRowCoordinateOffset({
-    coordinateFontSize,
-    gridLeft,
-    stoneRadius,
-}: {
-    coordinateFontSize: number;
-    gridLeft: number;
-    stoneRadius: number;
-}) {
-    const gap = Math.max(4, coordinateFontSize * 0.18);
-
-    return Math.max(
-        4,
-        gridLeft -
-            stoneRadius -
-            gap -
-            getRowCoordinateWidth(coordinateFontSize)
-    );
-}
-
-export function getRightRowCoordinateOffset({
-    coordinateFontSize,
-    gridLeft,
-    stoneRadius,
-    visibleGridWidth,
-}: {
-    coordinateFontSize: number;
-    gridLeft: number;
-    stoneRadius: number;
-    visibleGridWidth: number;
-}) {
-    const gap = Math.max(4, coordinateFontSize * 0.18);
-
-    return gridLeft + visibleGridWidth + stoneRadius + gap;
+export function getVariationMarkerFontSize(stoneRadius: number) {
+    return Math.max(24, Math.min(34, stoneRadius * 1.05));
 }
 
 function getStarPoints(boardSize: number) {
@@ -260,16 +158,6 @@ export default async function Image({ params }: ImageProps) {
     }
 
     const boardSize = share.boardSize;
-    const capturedVariationCaptionEntries =
-        share.draftKind === "variation" &&
-        typeof share.baseMoveCount === "number"
-            ? getCapturedVariationMoveCaptionEntries({
-                  baseMoveCount: share.baseMoveCount,
-                  boardSize,
-                  gameState: share.gameState,
-              }).slice(0, 4)
-            : [];
-    const hasVariationCaption = capturedVariationCaptionEntries.length > 0;
     const positionRange = getPositionViewRange({
         boardSize,
         positionView: getShareBoardPositionView(share),
@@ -279,18 +167,13 @@ export default async function Image({ params }: ImageProps) {
     const startX = positionRange?.startX ?? 0;
     const startY = positionRange?.startY ?? 0;
     const maxVisibleDimension = Math.max(visibleRows, visibleColumns);
-    const showCoordinates = shouldShowBoardCoordinates(maxVisibleDimension);
-    const boardPadding = getBoardCoordinatePadding({
-        showCoordinates,
-        visibleDimension: maxVisibleDimension,
-    });
+    const boardPadding = getBoardPreviewPadding(maxVisibleDimension);
     const blackPlayerName = getDisplayPlayerName(share.blackPlayerName);
     const whitePlayerName = getDisplayPlayerName(share.whitePlayerName);
     const hasPlayerNames = blackPlayerName !== null || whitePlayerName !== null;
-    const hasSidePanel = hasPlayerNames || hasVariationCaption;
     const previewLayout = getPreviewBoardLayout({
         boardPadding,
-        hasSidePanel,
+        hasSidePanel: hasPlayerNames,
         visibleColumns,
         visibleRows,
     });
@@ -300,31 +183,7 @@ export default async function Image({ params }: ImageProps) {
     const gridLeft = boardPadding;
     const gridTop = boardPadding;
     const stoneRadius = Math.max(10, gridStep * 0.42);
-    const coordinateFontSize = getCoordinateFontSize(stoneRadius);
-    const coordinateNudge = coordinateFontSize * 0.28;
-    const topColumnCoordinateOffset = getTopColumnCoordinateOffset({
-        coordinateFontSize,
-        gridTop,
-        stoneRadius,
-    });
-    const bottomColumnCoordinateOffset = getBottomColumnCoordinateOffset({
-        coordinateFontSize,
-        gridTop,
-        stoneRadius,
-        visibleGridHeight,
-    });
-    const rowCoordinateWidth = getRowCoordinateWidth(coordinateFontSize);
-    const leftRowCoordinateOffset = getLeftRowCoordinateOffset({
-        coordinateFontSize,
-        gridLeft,
-        stoneRadius,
-    });
-    const rightRowCoordinateOffset = getRightRowCoordinateOffset({
-        coordinateFontSize,
-        gridLeft,
-        stoneRadius,
-        visibleGridWidth,
-    });
+    const variationMarkerFontSize = getVariationMarkerFontSize(stoneRadius);
     const markerMap =
         share.draftKind === "variation" &&
         typeof share.baseMoveCount === "number"
@@ -381,35 +240,12 @@ export default async function Image({ params }: ImageProps) {
                     })}
                     {Array.from({ length: visibleColumns }, (_, columnIndex) => {
                         const offset = gridLeft + columnIndex * gridStep;
-                        const label = getGoColumnLabel(startX + columnIndex);
 
                         return (
                             <div
                                 key={`column-line-${columnIndex}`}
                                 style={{ display: "flex" }}
                             >
-                                {showCoordinates && (
-                                    <div
-                                        style={{
-                                            color: "#3f3f46",
-                                            display: "flex",
-                                            fontSize: coordinateFontSize,
-                                            fontWeight: 800,
-                                            justifyContent: "center",
-                                            left:
-                                                offset -
-                                                gridStep / 2 +
-                                                coordinateNudge,
-                                            letterSpacing: "0",
-                                            lineHeight: 1,
-                                            position: "absolute",
-                                            top: topColumnCoordinateOffset,
-                                            width: gridStep,
-                                        }}
-                                    >
-                                        {label}
-                                    </div>
-                                )}
                                 <div
                                     style={{
                                         background: "#52525b",
@@ -420,92 +256,9 @@ export default async function Image({ params }: ImageProps) {
                                         width: 2,
                                     }}
                                 />
-                                {showCoordinates && (
-                                    <div
-                                        style={{
-                                            color: "#3f3f46",
-                                            display: "flex",
-                                            fontSize: coordinateFontSize,
-                                            fontWeight: 800,
-                                            justifyContent: "center",
-                                            left:
-                                                offset -
-                                                gridStep / 2 +
-                                                coordinateNudge,
-                                            letterSpacing: "0",
-                                            lineHeight: 1,
-                                            position: "absolute",
-                                            top: bottomColumnCoordinateOffset,
-                                            width: gridStep,
-                                        }}
-                                    >
-                                        {label}
-                                    </div>
-                                )}
                             </div>
                         );
                     })}
-
-                    {showCoordinates &&
-                        Array.from({ length: visibleRows }, (_, rowIndex) => {
-                            const offset = gridTop + rowIndex * gridStep;
-                            const label = getGoRowLabel({
-                                boardSize,
-                                y: startY + rowIndex,
-                            });
-
-                            return (
-                                <div
-                                    key={`row-label-${rowIndex}`}
-                                    style={{ display: "flex" }}
-                                >
-                                    <div
-                                        style={{
-                                            alignItems: "center",
-                                            color: "#3f3f46",
-                                            display: "flex",
-                                            fontSize: coordinateFontSize,
-                                            fontWeight: 800,
-                                            height: coordinateFontSize,
-                                            justifyContent: "center",
-                                            left: leftRowCoordinateOffset,
-                                            letterSpacing: "0",
-                                            lineHeight: 1,
-                                            position: "absolute",
-                                            top:
-                                                offset -
-                                                coordinateFontSize / 2 +
-                                                coordinateNudge,
-                                            width: rowCoordinateWidth,
-                                        }}
-                                    >
-                                        {label}
-                                    </div>
-                                    <div
-                                        style={{
-                                            alignItems: "center",
-                                            color: "#3f3f46",
-                                            display: "flex",
-                                            fontSize: coordinateFontSize,
-                                            fontWeight: 800,
-                                            height: coordinateFontSize,
-                                            justifyContent: "center",
-                                            left: rightRowCoordinateOffset,
-                                            letterSpacing: "0",
-                                            lineHeight: 1,
-                                            position: "absolute",
-                                            top:
-                                                offset -
-                                                coordinateFontSize / 2 +
-                                                coordinateNudge,
-                                            width: rowCoordinateWidth,
-                                        }}
-                                    >
-                                        {label}
-                                    </div>
-                                </div>
-                            );
-                        })}
 
                     {getStarPoints(boardSize).map(([x, y]) => {
                         if (
@@ -564,7 +317,7 @@ export default async function Image({ params }: ImageProps) {
                                         borderRadius: "50%",
                                         color: isBlack ? "#fafafa" : "#18181b",
                                         display: "flex",
-                                        fontSize: Math.max(18, stoneRadius * 0.82),
+                                        fontSize: variationMarkerFontSize,
                                         fontWeight: 800,
                                         height: stoneRadius * 2,
                                         justifyContent: "center",
@@ -583,15 +336,18 @@ export default async function Image({ params }: ImageProps) {
                     )}
                 </div>
 
-                {hasSidePanel && (
+                {hasPlayerNames && (
                     <div
                         style={{
+                            alignItems: "center",
                             display: "flex",
                             flexDirection: "column",
                             gap: 14,
+                            justifyContent: "center",
                             left: previewLayout.sidePanelLeft,
                             position: "absolute",
-                            top: 154,
+                            top: 0,
+                            height: size.height,
                             width: previewLayout.sidePanelWidth,
                         }}
                     >
@@ -653,65 +409,6 @@ export default async function Image({ params }: ImageProps) {
                                 >
                                     {whitePlayerName}
                                 </span>
-                            </div>
-                        )}
-                        {capturedVariationCaptionEntries.length > 0 && (
-                            <div
-                                style={{
-                                    display: "flex",
-                                    flexWrap: "wrap",
-                                    gap: 8,
-                                    marginTop: hasPlayerNames ? 8 : 0,
-                                }}
-                            >
-                                {capturedVariationCaptionEntries.map((entry) => (
-                                    <div
-                                        key={entry.moveIndex}
-                                        style={{
-                                            alignItems: "center",
-                                            background: "rgba(250, 250, 250, 0.94)",
-                                            border: "2px solid #d4d4d8",
-                                            borderRadius: 14,
-                                            color: "#18181b",
-                                            display: "flex",
-                                            fontSize: 42,
-                                            fontWeight: 800,
-                                            gap: 10,
-                                            letterSpacing: "0",
-                                            lineHeight: 1,
-                                            padding: "9px 12px",
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                alignItems: "center",
-                                                background:
-                                                    entry.color === "B"
-                                                        ? "#18181b"
-                                                        : "#fafafa",
-                                                border:
-                                                    entry.color === "B"
-                                                        ? "2px solid #18181b"
-                                                        : "3px solid #18181b",
-                                                borderRadius: "50%",
-                                                color:
-                                                    entry.color === "B"
-                                                        ? "#fafafa"
-                                                        : "#18181b",
-                                                display: "flex",
-                                                fontSize: 16,
-                                                fontWeight: 900,
-                                                height: 30,
-                                                justifyContent: "center",
-                                                lineHeight: 1,
-                                                width: 30,
-                                            }}
-                                        >
-                                            {entry.moveNumber}
-                                        </div>
-                                        <span>{entry.coordinate}</span>
-                                    </div>
-                                ))}
                             </div>
                         )}
                     </div>
