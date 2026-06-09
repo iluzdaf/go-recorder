@@ -30,7 +30,10 @@ const SIDE_PANEL_GAP = 20;
 const SIDE_PANEL_WIDTH = 240;
 
 export function getBoardPreviewPadding(visibleDimension: number) {
-    return visibleDimension <= 13 ? 22 : 15;
+    const visibleIntervals = Math.max(1, visibleDimension - 1);
+    const scale = size.height / (visibleIntervals + 0.84);
+
+    return Math.ceil(scale * 0.42);
 }
 
 export function getPreviewBoardPixelSize() {
