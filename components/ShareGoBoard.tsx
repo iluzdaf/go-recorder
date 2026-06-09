@@ -150,7 +150,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const [visibleMoveCount, setVisibleMoveCount] = useState(
         share.gameState.moves.length
     );
-    const captionPreviewMoveCountRef = useRef<number | null>(null);
     const captionCommittedMoveIndexRef = useRef<number | null>(null);
 
     const visibleMoves = share.gameState.moves.slice(0, visibleMoveCount);
@@ -332,19 +331,16 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     }, [closeShareMenu, handleDownloadSgf]);
 
     const handleJumpToStart = useCallback(() => {
-        captionPreviewMoveCountRef.current = null;
         captionCommittedMoveIndexRef.current = null;
         setVisibleMoveCount(0);
     }, []);
 
     const handlePreviousMove = useCallback(() => {
-        captionPreviewMoveCountRef.current = null;
         captionCommittedMoveIndexRef.current = null;
         setVisibleMoveCount((currentCount) => Math.max(0, currentCount - 1));
     }, []);
 
     const handleNextMove = useCallback(() => {
-        captionPreviewMoveCountRef.current = null;
         captionCommittedMoveIndexRef.current = null;
         setVisibleMoveCount((currentCount) =>
             Math.min(share.gameState.moves.length, currentCount + 1)
@@ -352,26 +348,18 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     }, [share.gameState.moves.length]);
 
     const handleJumpToEnd = useCallback(() => {
-        captionPreviewMoveCountRef.current = null;
         captionCommittedMoveIndexRef.current = null;
         setVisibleMoveCount(share.gameState.moves.length);
     }, [share.gameState.moves.length]);
 
     const handlePreviewCaptionMove = useCallback((moveIndex: number) => {
-        if (captionPreviewMoveCountRef.current === null) {
-            captionPreviewMoveCountRef.current = visibleMoveCount;
-        }
-
         setVisibleMoveCount(moveIndex + 1);
-    }, [visibleMoveCount]);
+    }, []);
 
     const handleRestoreCaptionPreview = useCallback(() => {
-        const previousMoveCount = captionPreviewMoveCountRef.current;
-        if (previousMoveCount === null) return;
-
-        captionPreviewMoveCountRef.current = null;
-        setVisibleMoveCount(previousMoveCount);
-    }, []);
+        captionCommittedMoveIndexRef.current = null;
+        setVisibleMoveCount(share.gameState.moves.length);
+    }, [share.gameState.moves.length]);
 
     const handleCommitCaptionMove = useCallback((moveIndex: number) => {
         const targetMoveCount = moveIndex + 1;
@@ -380,13 +368,11 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
             captionCommittedMoveIndexRef.current === moveIndex &&
             visibleMoveCount === targetMoveCount
         ) {
-            captionPreviewMoveCountRef.current = null;
             captionCommittedMoveIndexRef.current = null;
             setVisibleMoveCount(share.gameState.moves.length);
             return;
         }
 
-        captionPreviewMoveCountRef.current = null;
         captionCommittedMoveIndexRef.current = moveIndex;
         setVisibleMoveCount(targetMoveCount);
     }, [share.gameState.moves.length, visibleMoveCount]);
