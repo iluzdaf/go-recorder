@@ -29,6 +29,9 @@ type ImageProps = {
 const SUCCESS_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const ERROR_CACHE_CONTROL = "no-store";
 const GO_COLUMN_LABELS = "ABCDEFGHJKLMNOPQRSTUVWXYZ";
+const PREVIEW_MARGIN = 20;
+const SIDE_PANEL_GAP = 20;
+const SIDE_PANEL_WIDTH = 280;
 
 export function getGoColumnLabel(x: number) {
     return GO_COLUMN_LABELS[x] ?? String(x + 1);
@@ -68,6 +71,43 @@ export function getBoardCoordinatePadding({
 
 export function getPreviewBoardPixelSize() {
     return size.height;
+}
+
+export function getPreviewBoardLayout({
+    boardPadding,
+    hasSidePanel,
+    visibleColumns,
+    visibleRows,
+}: {
+    boardPadding: number;
+    hasSidePanel: boolean;
+    visibleColumns: number;
+    visibleRows: number;
+}) {
+    const availableWidth = hasSidePanel
+        ? size.width - PREVIEW_MARGIN * 2 - SIDE_PANEL_GAP - SIDE_PANEL_WIDTH
+        : size.width - PREVIEW_MARGIN * 2;
+    const availableHeight = size.height;
+    const gridColumns = Math.max(1, visibleColumns - 1);
+    const gridRows = Math.max(1, visibleRows - 1);
+    const gridStep = Math.min(
+        (availableWidth - boardPadding * 2) / gridColumns,
+        (availableHeight - boardPadding * 2) / gridRows
+    );
+    const boardWidth = gridColumns * gridStep + boardPadding * 2;
+    const boardHeight = gridRows * gridStep + boardPadding * 2;
+
+    return {
+        boardHeight,
+        boardLeft: hasSidePanel
+            ? PREVIEW_MARGIN
+            : (size.width - boardWidth) / 2,
+        boardTop: (size.height - boardHeight) / 2,
+        boardWidth,
+        gridStep,
+        sidePanelLeft: size.width - PREVIEW_MARGIN - SIDE_PANEL_WIDTH,
+        sidePanelWidth: SIDE_PANEL_WIDTH,
+    };
 }
 
 export function getTopColumnCoordinateOffset({
@@ -230,7 +270,6 @@ export default async function Image({ params }: ImageProps) {
               }).slice(0, 4)
             : [];
     const hasVariationCaption = capturedVariationCaptionEntries.length > 0;
-    const boardPixelSize = getPreviewBoardPixelSize();
     const positionRange = getPositionViewRange({
         boardSize,
         positionView: getShareBoardPositionView(share),
@@ -245,12 +284,21 @@ export default async function Image({ params }: ImageProps) {
         showCoordinates,
         visibleDimension: maxVisibleDimension,
     });
-    const gridSize = boardPixelSize - boardPadding * 2;
-    const gridStep = gridSize / (maxVisibleDimension - 1);
+    const blackPlayerName = getDisplayPlayerName(share.blackPlayerName);
+    const whitePlayerName = getDisplayPlayerName(share.whitePlayerName);
+    const hasPlayerNames = blackPlayerName !== null || whitePlayerName !== null;
+    const hasSidePanel = hasPlayerNames || hasVariationCaption;
+    const previewLayout = getPreviewBoardLayout({
+        boardPadding,
+        hasSidePanel,
+        visibleColumns,
+        visibleRows,
+    });
+    const gridStep = previewLayout.gridStep;
     const visibleGridWidth = (visibleColumns - 1) * gridStep;
     const visibleGridHeight = (visibleRows - 1) * gridStep;
-    const gridLeft = boardPadding + (gridSize - visibleGridWidth) / 2;
-    const gridTop = boardPadding + (gridSize - visibleGridHeight) / 2;
+    const gridLeft = boardPadding;
+    const gridTop = boardPadding;
     const stoneRadius = Math.max(10, gridStep * 0.42);
     const coordinateFontSize = getCoordinateFontSize(stoneRadius);
     const coordinateNudge = coordinateFontSize * 0.28;
@@ -277,12 +325,6 @@ export default async function Image({ params }: ImageProps) {
         stoneRadius,
         visibleGridWidth,
     });
-    const blackPlayerName = getDisplayPlayerName(share.blackPlayerName);
-    const whitePlayerName = getDisplayPlayerName(share.whitePlayerName);
-    const hasPlayerNames = blackPlayerName !== null || whitePlayerName !== null;
-    const hasSidePanel = hasPlayerNames || hasVariationCaption;
-    const boardLeft = hasSidePanel ? 20 : (size.width - boardPixelSize) / 2;
-    const boardTop = (size.height - boardPixelSize) / 2;
     const markerMap =
         share.draftKind === "variation" &&
         typeof share.baseMoveCount === "number"
@@ -309,11 +351,11 @@ export default async function Image({ params }: ImageProps) {
                     style={{
                         background: "#f4f4f5",
                         display: "flex",
-                        height: boardPixelSize,
-                        left: boardLeft,
+                        height: previewLayout.boardHeight,
+                        left: previewLayout.boardLeft,
                         position: "absolute",
-                        top: boardTop,
-                        width: boardPixelSize,
+                        top: previewLayout.boardTop,
+                        width: previewLayout.boardWidth,
                     }}
                 >
                     {Array.from({ length: visibleRows }, (_, rowIndex) => {
@@ -547,10 +589,10 @@ export default async function Image({ params }: ImageProps) {
                             display: "flex",
                             flexDirection: "column",
                             gap: 14,
-                            left: 690,
+                            left: previewLayout.sidePanelLeft,
                             position: "absolute",
                             top: 154,
-                            width: 280,
+                            width: previewLayout.sidePanelWidth,
                         }}
                     >
                         {blackPlayerName && (

@@ -15,6 +15,7 @@ import Image, {
     getGoColumnLabel,
     getGoRowLabel,
     getLeftRowCoordinateOffset,
+    getPreviewBoardLayout,
     getPreviewBoardPixelSize,
     getRightRowCoordinateOffset,
     getRowCoordinateWidth,
@@ -98,6 +99,39 @@ describe("/shares/[slug]/opengraph-image", () => {
 
     it("uses the available preview height for the board", () => {
         expect(getPreviewBoardPixelSize()).toBe(630);
+    });
+
+    it("sizes short boards by visible aspect ratio", () => {
+        expect(
+            getPreviewBoardLayout({
+                boardPadding: 86,
+                hasSidePanel: false,
+                visibleColumns: 9,
+                visibleRows: 6,
+            })
+        ).toMatchObject({
+            boardHeight: 630,
+            boardTop: 0,
+            boardWidth: 904.8,
+        });
+    });
+
+    it("reserves only a compact side rail when side content exists", () => {
+        expect(
+            getPreviewBoardLayout({
+                boardPadding: 15,
+                hasSidePanel: true,
+                visibleColumns: 19,
+                visibleRows: 19,
+            })
+        ).toMatchObject({
+            boardHeight: 630,
+            boardLeft: 20,
+            boardTop: 0,
+            boardWidth: 630,
+            sidePanelLeft: 900,
+            sidePanelWidth: 280,
+        });
     });
 
     it("places column coordinates next to the visible grid", () => {
