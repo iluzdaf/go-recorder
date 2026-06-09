@@ -88,14 +88,6 @@ export function getBottomColumnCoordinateOffset({
     return gridTop + visibleGridHeight + stoneRadius + gap;
 }
 
-export function getVariationCaptionTopOffset({
-    boardTop,
-}: {
-    boardTop: number;
-}) {
-    return Math.max(16, boardTop - 52);
-}
-
 function getStarPoints(boardSize: number) {
     if (boardSize === 19) {
         return [3, 9, 15].flatMap((x) => [3, 9, 15].map((y) => [x, y]));
@@ -186,7 +178,7 @@ export default async function Image({ params }: ImageProps) {
               }).slice(0, 4)
             : [];
     const hasVariationCaption = capturedVariationCaptionEntries.length > 0;
-    const boardPixelSize = hasVariationCaption ? 500 : 560;
+    const boardPixelSize = 560;
     const positionRange = getPositionViewRange({
         boardSize,
         positionView: getShareBoardPositionView(share),
@@ -220,11 +212,9 @@ export default async function Image({ params }: ImageProps) {
     const blackPlayerName = getDisplayPlayerName(share.blackPlayerName);
     const whitePlayerName = getDisplayPlayerName(share.whitePlayerName);
     const hasPlayerNames = blackPlayerName !== null || whitePlayerName !== null;
-    const boardLeft = hasPlayerNames ? 80 : (size.width - boardPixelSize) / 2;
+    const hasSidePanel = hasPlayerNames || hasVariationCaption;
+    const boardLeft = hasSidePanel ? 80 : (size.width - boardPixelSize) / 2;
     const boardTop = (size.height - boardPixelSize) / 2;
-    const variationCaptionTopOffset = getVariationCaptionTopOffset({
-        boardTop,
-    });
     const shareDate = formatShareDate(share.createdAt);
     const markerMap =
         share.draftKind === "variation" &&
@@ -248,70 +238,6 @@ export default async function Image({ params }: ImageProps) {
                     width: "100%",
                 }}
             >
-                {capturedVariationCaptionEntries.length > 0 && (
-                    <div
-                        style={{
-                            alignItems: "center",
-                            background: "rgba(250, 250, 250, 0.94)",
-                            border: "2px solid #d4d4d8",
-                            borderRadius: 14,
-                            color: "#18181b",
-                            display: "flex",
-                            fontSize: 22,
-                            fontWeight: 800,
-                            gap: 12,
-                            justifyContent: "center",
-                            left: boardLeft + gridLeft + 12,
-                            letterSpacing: "0",
-                            lineHeight: 1,
-                            padding: "9px 14px",
-                            position: "absolute",
-                            top: variationCaptionTopOffset,
-                            width: Math.max(220, visibleGridWidth - 24),
-                            zIndex: 5,
-                        }}
-                    >
-                        {capturedVariationCaptionEntries.map((entry) => (
-                            <div
-                                key={entry.moveIndex}
-                                style={{
-                                    alignItems: "center",
-                                    display: "flex",
-                                    gap: 6,
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        alignItems: "center",
-                                        background:
-                                            entry.color === "B"
-                                                ? "#18181b"
-                                                : "#fafafa",
-                                        border:
-                                            entry.color === "B"
-                                                ? "2px solid #18181b"
-                                                : "3px solid #18181b",
-                                        borderRadius: "50%",
-                                        color:
-                                            entry.color === "B"
-                                                ? "#fafafa"
-                                                : "#18181b",
-                                        display: "flex",
-                                        fontSize: 12,
-                                        fontWeight: 900,
-                                        height: 18,
-                                        justifyContent: "center",
-                                        lineHeight: 1,
-                                        width: 18,
-                                    }}
-                                >
-                                    {entry.moveNumber}
-                                </div>
-                                <span>{entry.coordinate}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
                 <div
                     style={{
                         background: "#f4f4f5",
@@ -543,7 +469,7 @@ export default async function Image({ params }: ImageProps) {
                     )}
                 </div>
 
-                {hasPlayerNames && (
+                {hasSidePanel && (
                     <div
                         style={{
                             display: "flex",
@@ -626,6 +552,65 @@ export default async function Image({ params }: ImageProps) {
                                 >
                                     {whitePlayerName}
                                 </span>
+                            </div>
+                        )}
+                        {capturedVariationCaptionEntries.length > 0 && (
+                            <div
+                                style={{
+                                    display: "flex",
+                                    flexWrap: "wrap",
+                                    gap: 12,
+                                    marginTop: hasPlayerNames ? 12 : 0,
+                                }}
+                            >
+                                {capturedVariationCaptionEntries.map((entry) => (
+                                    <div
+                                        key={entry.moveIndex}
+                                        style={{
+                                            alignItems: "center",
+                                            background: "rgba(250, 250, 250, 0.94)",
+                                            border: "2px solid #d4d4d8",
+                                            borderRadius: 14,
+                                            color: "#18181b",
+                                            display: "flex",
+                                            fontSize: 28,
+                                            fontWeight: 800,
+                                            gap: 8,
+                                            letterSpacing: "0",
+                                            lineHeight: 1,
+                                            padding: "9px 12px",
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                alignItems: "center",
+                                                background:
+                                                    entry.color === "B"
+                                                        ? "#18181b"
+                                                        : "#fafafa",
+                                                border:
+                                                    entry.color === "B"
+                                                        ? "2px solid #18181b"
+                                                        : "3px solid #18181b",
+                                                borderRadius: "50%",
+                                                color:
+                                                    entry.color === "B"
+                                                        ? "#fafafa"
+                                                        : "#18181b",
+                                                display: "flex",
+                                                fontSize: 14,
+                                                fontWeight: 900,
+                                                height: 24,
+                                                justifyContent: "center",
+                                                lineHeight: 1,
+                                                width: 24,
+                                            }}
+                                        >
+                                            {entry.moveNumber}
+                                        </div>
+                                        <span>{entry.coordinate}</span>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>

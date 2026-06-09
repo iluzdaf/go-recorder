@@ -15,7 +15,6 @@ import Image, {
     getGoColumnLabel,
     getGoRowLabel,
     getTopColumnCoordinateOffset,
-    getVariationCaptionTopOffset,
 } from "../app/shares/[slug]/opengraph-image";
 
 beforeEach(() => {
@@ -75,19 +74,6 @@ describe("/shares/[slug]/opengraph-image", () => {
                 visibleGridHeight: 408,
             })
         ).toBeCloseTo(514.12);
-    });
-
-    it("places variation captions above the board", () => {
-        expect(
-            getVariationCaptionTopOffset({
-                boardTop: 65,
-            })
-        ).toBe(16);
-        expect(
-            getVariationCaptionTopOffset({
-                boardTop: 92,
-            })
-        ).toBe(40);
     });
 
     it("renders a generated preview image for a share", async () => {
