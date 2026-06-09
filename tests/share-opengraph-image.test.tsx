@@ -19,6 +19,7 @@ import Image, {
     getRightRowCoordinateOffset,
     getRowCoordinateWidth,
     getTopColumnCoordinateOffset,
+    shouldShowBoardCoordinates,
 } from "../app/shares/[slug]/opengraph-image";
 
 beforeEach(() => {
@@ -55,11 +56,37 @@ describe("/shares/[slug]/opengraph-image", () => {
         expect(getCoordinateFontSize(40)).toBe(34);
     });
 
-    it("adds more coordinate gutter for smaller visible board views", () => {
-        expect(getBoardCoordinatePadding(6)).toBe(76);
-        expect(getBoardCoordinatePadding(9)).toBe(76);
-        expect(getBoardCoordinatePadding(13)).toBe(64);
-        expect(getBoardCoordinatePadding(19)).toBe(56);
+    it("hides coordinates for full 19x19 previews", () => {
+        expect(shouldShowBoardCoordinates(13)).toBe(true);
+        expect(shouldShowBoardCoordinates(18)).toBe(true);
+        expect(shouldShowBoardCoordinates(19)).toBe(false);
+    });
+
+    it("adds coordinate gutter only when coordinates are visible", () => {
+        expect(
+            getBoardCoordinatePadding({
+                showCoordinates: false,
+                visibleDimension: 19,
+            })
+        ).toBe(18);
+        expect(
+            getBoardCoordinatePadding({
+                showCoordinates: true,
+                visibleDimension: 6,
+            })
+        ).toBe(86);
+        expect(
+            getBoardCoordinatePadding({
+                showCoordinates: true,
+                visibleDimension: 9,
+            })
+        ).toBe(86);
+        expect(
+            getBoardCoordinatePadding({
+                showCoordinates: true,
+                visibleDimension: 13,
+            })
+        ).toBe(64);
     });
 
     it("uses the available preview height for the board", () => {

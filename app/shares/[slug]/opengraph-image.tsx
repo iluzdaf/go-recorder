@@ -48,8 +48,19 @@ export function getCoordinateFontSize(stoneRadius: number) {
     return Math.max(16, Math.min(34, stoneRadius * 0.9));
 }
 
-export function getBoardCoordinatePadding(visibleDimension: number) {
-    if (visibleDimension <= 9) return 76;
+export function shouldShowBoardCoordinates(visibleDimension: number) {
+    return visibleDimension < 19;
+}
+
+export function getBoardCoordinatePadding({
+    showCoordinates,
+    visibleDimension,
+}: {
+    showCoordinates: boolean;
+    visibleDimension: number;
+}) {
+    if (!showCoordinates) return 18;
+    if (visibleDimension <= 9) return 86;
     if (visibleDimension <= 13) return 64;
 
     return 56;
@@ -229,7 +240,11 @@ export default async function Image({ params }: ImageProps) {
     const startX = positionRange?.startX ?? 0;
     const startY = positionRange?.startY ?? 0;
     const maxVisibleDimension = Math.max(visibleRows, visibleColumns);
-    const boardPadding = getBoardCoordinatePadding(maxVisibleDimension);
+    const showCoordinates = shouldShowBoardCoordinates(maxVisibleDimension);
+    const boardPadding = getBoardCoordinatePadding({
+        showCoordinates,
+        visibleDimension: maxVisibleDimension,
+    });
     const gridSize = boardPixelSize - boardPadding * 2;
     const gridStep = gridSize / (maxVisibleDimension - 1);
     const visibleGridWidth = (visibleColumns - 1) * gridStep;
@@ -266,7 +281,7 @@ export default async function Image({ params }: ImageProps) {
     const whitePlayerName = getDisplayPlayerName(share.whitePlayerName);
     const hasPlayerNames = blackPlayerName !== null || whitePlayerName !== null;
     const hasSidePanel = hasPlayerNames || hasVariationCaption;
-    const boardLeft = hasSidePanel ? 40 : (size.width - boardPixelSize) / 2;
+    const boardLeft = hasSidePanel ? 20 : (size.width - boardPixelSize) / 2;
     const boardTop = (size.height - boardPixelSize) / 2;
     const markerMap =
         share.draftKind === "variation" &&
@@ -331,26 +346,28 @@ export default async function Image({ params }: ImageProps) {
                                 key={`column-line-${columnIndex}`}
                                 style={{ display: "flex" }}
                             >
-                                <div
-                                    style={{
-                                        color: "#3f3f46",
-                                        display: "flex",
-                                        fontSize: coordinateFontSize,
-                                        fontWeight: 800,
-                                        justifyContent: "center",
-                                        left:
-                                            offset -
-                                            gridStep / 2 +
-                                            coordinateNudge,
-                                        letterSpacing: "0",
-                                        lineHeight: 1,
-                                        position: "absolute",
-                                        top: topColumnCoordinateOffset,
-                                        width: gridStep,
-                                    }}
-                                >
-                                    {label}
-                                </div>
+                                {showCoordinates && (
+                                    <div
+                                        style={{
+                                            color: "#3f3f46",
+                                            display: "flex",
+                                            fontSize: coordinateFontSize,
+                                            fontWeight: 800,
+                                            justifyContent: "center",
+                                            left:
+                                                offset -
+                                                gridStep / 2 +
+                                                coordinateNudge,
+                                            letterSpacing: "0",
+                                            lineHeight: 1,
+                                            position: "absolute",
+                                            top: topColumnCoordinateOffset,
+                                            width: gridStep,
+                                        }}
+                                    >
+                                        {label}
+                                    </div>
+                                )}
                                 <div
                                     style={{
                                         background: "#52525b",
@@ -361,31 +378,33 @@ export default async function Image({ params }: ImageProps) {
                                         width: 2,
                                     }}
                                 />
-                                <div
-                                    style={{
-                                        color: "#3f3f46",
-                                        display: "flex",
-                                        fontSize: coordinateFontSize,
-                                        fontWeight: 800,
-                                        justifyContent: "center",
-                                        left:
-                                            offset -
-                                            gridStep / 2 +
-                                            coordinateNudge,
-                                        letterSpacing: "0",
-                                        lineHeight: 1,
-                                        position: "absolute",
-                                        top: bottomColumnCoordinateOffset,
-                                        width: gridStep,
-                                    }}
-                                >
-                                    {label}
-                                </div>
+                                {showCoordinates && (
+                                    <div
+                                        style={{
+                                            color: "#3f3f46",
+                                            display: "flex",
+                                            fontSize: coordinateFontSize,
+                                            fontWeight: 800,
+                                            justifyContent: "center",
+                                            left:
+                                                offset -
+                                                gridStep / 2 +
+                                                coordinateNudge,
+                                            letterSpacing: "0",
+                                            lineHeight: 1,
+                                            position: "absolute",
+                                            top: bottomColumnCoordinateOffset,
+                                            width: gridStep,
+                                        }}
+                                    >
+                                        {label}
+                                    </div>
+                                )}
                             </div>
                         );
                     })}
 
-                    {Array.from({ length: visibleRows }, (_, rowIndex) => {
+                    {showCoordinates && Array.from({ length: visibleRows }, (_, rowIndex) => {
                         const offset = gridTop + rowIndex * gridStep;
                         const label = getGoRowLabel({
                             boardSize,
@@ -527,10 +546,10 @@ export default async function Image({ params }: ImageProps) {
                             display: "flex",
                             flexDirection: "column",
                             gap: 14,
-                            left: 710,
+                            left: 690,
                             position: "absolute",
                             top: 154,
-                            width: 340,
+                            width: 280,
                         }}
                     >
                         {blackPlayerName && (
@@ -553,7 +572,7 @@ export default async function Image({ params }: ImageProps) {
                                 <span
                                     style={{
                                         color: "#18181b",
-                                        fontSize: 46,
+                                        fontSize: 42,
                                         fontWeight: 800,
                                         letterSpacing: "0",
                                         lineHeight: 1,
@@ -583,7 +602,7 @@ export default async function Image({ params }: ImageProps) {
                                 <span
                                     style={{
                                         color: "#18181b",
-                                        fontSize: 46,
+                                        fontSize: 42,
                                         fontWeight: 800,
                                         letterSpacing: "0",
                                         lineHeight: 1,
