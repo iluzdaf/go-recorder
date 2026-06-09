@@ -56,9 +56,10 @@ describe("/shares/[slug]/opengraph-image", () => {
         expect(getCoordinateFontSize(40)).toBe(34);
     });
 
-    it("hides coordinates for full 19x19 previews", () => {
-        expect(shouldShowBoardCoordinates(13)).toBe(true);
-        expect(shouldShowBoardCoordinates(18)).toBe(true);
+    it("shows coordinates only for 9x9 and smaller previews", () => {
+        expect(shouldShowBoardCoordinates(9)).toBe(true);
+        expect(shouldShowBoardCoordinates(10)).toBe(false);
+        expect(shouldShowBoardCoordinates(13)).toBe(false);
         expect(shouldShowBoardCoordinates(19)).toBe(false);
     });
 
@@ -68,7 +69,13 @@ describe("/shares/[slug]/opengraph-image", () => {
                 showCoordinates: false,
                 visibleDimension: 19,
             })
-        ).toBe(18);
+        ).toBe(15);
+        expect(
+            getBoardCoordinatePadding({
+                showCoordinates: false,
+                visibleDimension: 13,
+            })
+        ).toBe(22);
         expect(
             getBoardCoordinatePadding({
                 showCoordinates: true,

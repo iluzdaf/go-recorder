@@ -49,7 +49,7 @@ export function getCoordinateFontSize(stoneRadius: number) {
 }
 
 export function shouldShowBoardCoordinates(visibleDimension: number) {
-    return visibleDimension < 19;
+    return visibleDimension <= 9;
 }
 
 export function getBoardCoordinatePadding({
@@ -59,7 +59,7 @@ export function getBoardCoordinatePadding({
     showCoordinates: boolean;
     visibleDimension: number;
 }) {
-    if (!showCoordinates) return 18;
+    if (!showCoordinates) return visibleDimension <= 13 ? 22 : 15;
     if (visibleDimension <= 9) return 86;
     if (visibleDimension <= 13) return 64;
 
@@ -404,65 +404,66 @@ export default async function Image({ params }: ImageProps) {
                         );
                     })}
 
-                    {showCoordinates && Array.from({ length: visibleRows }, (_, rowIndex) => {
-                        const offset = gridTop + rowIndex * gridStep;
-                        const label = getGoRowLabel({
-                            boardSize,
-                            y: startY + rowIndex,
-                        });
+                    {showCoordinates &&
+                        Array.from({ length: visibleRows }, (_, rowIndex) => {
+                            const offset = gridTop + rowIndex * gridStep;
+                            const label = getGoRowLabel({
+                                boardSize,
+                                y: startY + rowIndex,
+                            });
 
-                        return (
-                            <div
-                                key={`row-label-${rowIndex}`}
-                                style={{ display: "flex" }}
-                            >
+                            return (
                                 <div
-                                    style={{
-                                        alignItems: "center",
-                                        color: "#3f3f46",
-                                        display: "flex",
-                                        fontSize: coordinateFontSize,
-                                        fontWeight: 800,
-                                        height: coordinateFontSize,
-                                        justifyContent: "center",
-                                        left: leftRowCoordinateOffset,
-                                        letterSpacing: "0",
-                                        lineHeight: 1,
-                                        position: "absolute",
-                                        top:
-                                            offset -
-                                            coordinateFontSize / 2 +
-                                            coordinateNudge,
-                                        width: rowCoordinateWidth,
-                                    }}
+                                    key={`row-label-${rowIndex}`}
+                                    style={{ display: "flex" }}
                                 >
-                                    {label}
+                                    <div
+                                        style={{
+                                            alignItems: "center",
+                                            color: "#3f3f46",
+                                            display: "flex",
+                                            fontSize: coordinateFontSize,
+                                            fontWeight: 800,
+                                            height: coordinateFontSize,
+                                            justifyContent: "center",
+                                            left: leftRowCoordinateOffset,
+                                            letterSpacing: "0",
+                                            lineHeight: 1,
+                                            position: "absolute",
+                                            top:
+                                                offset -
+                                                coordinateFontSize / 2 +
+                                                coordinateNudge,
+                                            width: rowCoordinateWidth,
+                                        }}
+                                    >
+                                        {label}
+                                    </div>
+                                    <div
+                                        style={{
+                                            alignItems: "center",
+                                            color: "#3f3f46",
+                                            display: "flex",
+                                            fontSize: coordinateFontSize,
+                                            fontWeight: 800,
+                                            height: coordinateFontSize,
+                                            justifyContent: "center",
+                                            left: rightRowCoordinateOffset,
+                                            letterSpacing: "0",
+                                            lineHeight: 1,
+                                            position: "absolute",
+                                            top:
+                                                offset -
+                                                coordinateFontSize / 2 +
+                                                coordinateNudge,
+                                            width: rowCoordinateWidth,
+                                        }}
+                                    >
+                                        {label}
+                                    </div>
                                 </div>
-                                <div
-                                    style={{
-                                        alignItems: "center",
-                                        color: "#3f3f46",
-                                        display: "flex",
-                                        fontSize: coordinateFontSize,
-                                        fontWeight: 800,
-                                        height: coordinateFontSize,
-                                        justifyContent: "center",
-                                        left: rightRowCoordinateOffset,
-                                        letterSpacing: "0",
-                                        lineHeight: 1,
-                                        position: "absolute",
-                                        top:
-                                            offset -
-                                            coordinateFontSize / 2 +
-                                            coordinateNudge,
-                                        width: rowCoordinateWidth,
-                                    }}
-                                >
-                                    {label}
-                                </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
 
                     {getStarPoints(boardSize).map(([x, y]) => {
                         if (
@@ -631,12 +632,12 @@ export default async function Image({ params }: ImageProps) {
                                             borderRadius: 14,
                                             color: "#18181b",
                                             display: "flex",
-                                            fontSize: 22,
+                                            fontSize: 42,
                                             fontWeight: 800,
-                                            gap: 6,
+                                            gap: 10,
                                             letterSpacing: "0",
                                             lineHeight: 1,
-                                            padding: "7px 10px",
+                                            padding: "9px 12px",
                                         }}
                                     >
                                         <div
@@ -656,12 +657,12 @@ export default async function Image({ params }: ImageProps) {
                                                         ? "#fafafa"
                                                         : "#18181b",
                                                 display: "flex",
-                                                fontSize: 12,
+                                                fontSize: 16,
                                                 fontWeight: 900,
-                                                height: 20,
+                                                height: 30,
                                                 justifyContent: "center",
                                                 lineHeight: 1,
-                                                width: 20,
+                                                width: 30,
                                             }}
                                         >
                                             {entry.moveNumber}
