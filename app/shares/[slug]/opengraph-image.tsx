@@ -1,9 +1,6 @@
 import { ImageResponse } from "next/og";
 
-import {
-    formatShareDate,
-    getDisplayPlayerName,
-} from "../../../lib/sharePresentation";
+import { getDisplayPlayerName } from "../../../lib/sharePresentation";
 import { getFinalPositionFromGameState } from "../../../lib/shareFinalPosition";
 import { getShareBoardPositionView } from "../../../lib/shareBoardView";
 import { mapShareRowToShareRecord } from "../../../lib/shareView";
@@ -55,11 +52,11 @@ export function getBoardCoordinatePadding(visibleDimension: number) {
     if (visibleDimension <= 9) return 76;
     if (visibleDimension <= 13) return 64;
 
-    return 52;
+    return 56;
 }
 
 export function getPreviewBoardPixelSize() {
-    return 610;
+    return size.height;
 }
 
 export function getTopColumnCoordinateOffset({
@@ -269,9 +266,8 @@ export default async function Image({ params }: ImageProps) {
     const whitePlayerName = getDisplayPlayerName(share.whitePlayerName);
     const hasPlayerNames = blackPlayerName !== null || whitePlayerName !== null;
     const hasSidePanel = hasPlayerNames || hasVariationCaption;
-    const boardLeft = hasSidePanel ? 60 : (size.width - boardPixelSize) / 2;
+    const boardLeft = hasSidePanel ? 40 : (size.width - boardPixelSize) / 2;
     const boardTop = (size.height - boardPixelSize) / 2;
-    const shareDate = formatShareDate(share.createdAt);
     const markerMap =
         share.draftKind === "variation" &&
         typeof share.baseMoveCount === "number"
@@ -530,32 +526,19 @@ export default async function Image({ params }: ImageProps) {
                         style={{
                             display: "flex",
                             flexDirection: "column",
-                            gap: 18,
-                            left: 700,
+                            gap: 14,
+                            left: 710,
                             position: "absolute",
-                            top: 132,
-                            width: 360,
+                            top: 154,
+                            width: 340,
                         }}
                     >
-                        {shareDate && (
-                            <span
-                                style={{
-                                    color: "#52525b",
-                                    fontSize: 28,
-                                    fontWeight: 700,
-                                    letterSpacing: "0",
-                                    lineHeight: 1,
-                                }}
-                            >
-                                {shareDate}
-                            </span>
-                        )}
                         {blackPlayerName && (
                             <div
                                 style={{
                                     alignItems: "center",
                                     display: "flex",
-                                    gap: 20,
+                                    gap: 14,
                                 }}
                             >
                                 <div
@@ -563,14 +546,14 @@ export default async function Image({ params }: ImageProps) {
                                         background: "#09090b",
                                         border: "1px solid #09090b",
                                         borderRadius: "50%",
-                                        height: 40,
-                                        width: 40,
+                                        height: 30,
+                                        width: 30,
                                     }}
                                 />
                                 <span
                                     style={{
                                         color: "#18181b",
-                                        fontSize: 62,
+                                        fontSize: 46,
                                         fontWeight: 800,
                                         letterSpacing: "0",
                                         lineHeight: 1,
@@ -585,7 +568,7 @@ export default async function Image({ params }: ImageProps) {
                                 style={{
                                     alignItems: "center",
                                     display: "flex",
-                                    gap: 20,
+                                    gap: 14,
                                 }}
                             >
                                 <div
@@ -593,14 +576,14 @@ export default async function Image({ params }: ImageProps) {
                                         background: "#fafafa",
                                         border: "3px solid #18181b",
                                         borderRadius: "50%",
-                                        height: 40,
-                                        width: 40,
+                                        height: 30,
+                                        width: 30,
                                     }}
                                 />
                                 <span
                                     style={{
                                         color: "#18181b",
-                                        fontSize: 62,
+                                        fontSize: 46,
                                         fontWeight: 800,
                                         letterSpacing: "0",
                                         lineHeight: 1,
@@ -615,8 +598,8 @@ export default async function Image({ params }: ImageProps) {
                                 style={{
                                     display: "flex",
                                     flexWrap: "wrap",
-                                    gap: 12,
-                                    marginTop: hasPlayerNames ? 12 : 0,
+                                    gap: 8,
+                                    marginTop: hasPlayerNames ? 8 : 0,
                                 }}
                             >
                                 {capturedVariationCaptionEntries.map((entry) => (
@@ -629,12 +612,12 @@ export default async function Image({ params }: ImageProps) {
                                             borderRadius: 14,
                                             color: "#18181b",
                                             display: "flex",
-                                            fontSize: 28,
+                                            fontSize: 22,
                                             fontWeight: 800,
-                                            gap: 8,
+                                            gap: 6,
                                             letterSpacing: "0",
                                             lineHeight: 1,
-                                            padding: "9px 12px",
+                                            padding: "7px 10px",
                                         }}
                                     >
                                         <div
@@ -654,12 +637,12 @@ export default async function Image({ params }: ImageProps) {
                                                         ? "#fafafa"
                                                         : "#18181b",
                                                 display: "flex",
-                                                fontSize: 14,
+                                                fontSize: 12,
                                                 fontWeight: 900,
-                                                height: 24,
+                                                height: 20,
                                                 justifyContent: "center",
                                                 lineHeight: 1,
-                                                width: 24,
+                                                width: 20,
                                             }}
                                         >
                                             {entry.moveNumber}

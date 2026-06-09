@@ -59,11 +59,11 @@ describe("/shares/[slug]/opengraph-image", () => {
         expect(getBoardCoordinatePadding(6)).toBe(76);
         expect(getBoardCoordinatePadding(9)).toBe(76);
         expect(getBoardCoordinatePadding(13)).toBe(64);
-        expect(getBoardCoordinatePadding(19)).toBe(52);
+        expect(getBoardCoordinatePadding(19)).toBe(56);
     });
 
     it("uses the available preview height for the board", () => {
-        expect(getPreviewBoardPixelSize()).toBe(610);
+        expect(getPreviewBoardPixelSize()).toBe(630);
     });
 
     it("places column coordinates next to the visible grid", () => {
