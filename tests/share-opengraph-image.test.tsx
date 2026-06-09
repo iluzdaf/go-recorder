@@ -35,9 +35,9 @@ function createEmptySignMap(boardSize: number) {
 
 describe("/shares/[slug]/opengraph-image", () => {
     it("uses compact board padding without coordinates", () => {
-        expect(getBoardPreviewPadding(9)).toBe(30);
-        expect(getBoardPreviewPadding(13)).toBe(21);
-        expect(getBoardPreviewPadding(19)).toBe(15);
+        expect(getBoardPreviewPadding(9)).toBe(32);
+        expect(getBoardPreviewPadding(13)).toBe(23);
+        expect(getBoardPreviewPadding(19)).toBe(17);
     });
 
     it("scales variation move numbers for preview readability", () => {
@@ -53,7 +53,7 @@ describe("/shares/[slug]/opengraph-image", () => {
     it("sizes short boards by visible aspect ratio", () => {
         expect(
             getPreviewBoardLayout({
-                boardPadding: 30,
+                boardPadding: 32,
                 hasSidePanel: false,
                 visibleColumns: 9,
                 visibleRows: 6,
@@ -61,14 +61,14 @@ describe("/shares/[slug]/opengraph-image", () => {
         ).toMatchObject({
             boardHeight: 630,
             boardTop: 0,
-            boardWidth: 972,
+            boardWidth: 969.6,
         });
     });
 
     it("reserves only a compact side rail when side content exists", () => {
         expect(
             getPreviewBoardLayout({
-                boardPadding: 15,
+                boardPadding: 17,
                 hasSidePanel: true,
                 visibleColumns: 19,
                 visibleRows: 19,

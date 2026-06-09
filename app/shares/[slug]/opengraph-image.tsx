@@ -26,6 +26,7 @@ type ImageProps = {
 const SUCCESS_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const ERROR_CACHE_CONTROL = "no-store";
 const PREVIEW_MARGIN = 20;
+const STONE_EDGE_GAP = 2;
 const SIDE_PANEL_GAP = 20;
 const SIDE_PANEL_WIDTH = 240;
 
@@ -33,7 +34,7 @@ export function getBoardPreviewPadding(visibleDimension: number) {
     const visibleIntervals = Math.max(1, visibleDimension - 1);
     const scale = size.height / (visibleIntervals + 0.84);
 
-    return Math.ceil(scale * 0.42);
+    return Math.ceil(scale * 0.42 + STONE_EDGE_GAP);
 }
 
 export function getPreviewBoardPixelSize() {
