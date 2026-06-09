@@ -53,9 +53,13 @@ export function getCoordinateFontSize(stoneRadius: number) {
 
 export function getBoardCoordinatePadding(visibleDimension: number) {
     if (visibleDimension <= 9) return 76;
-    if (visibleDimension <= 13) return 56;
+    if (visibleDimension <= 13) return 64;
 
-    return 36;
+    return 52;
+}
+
+export function getPreviewBoardPixelSize() {
+    return 610;
 }
 
 export function getTopColumnCoordinateOffset({
@@ -86,6 +90,46 @@ export function getBottomColumnCoordinateOffset({
     const gap = Math.max(4, coordinateFontSize * 0.18);
 
     return gridTop + visibleGridHeight + stoneRadius + gap;
+}
+
+export function getRowCoordinateWidth(coordinateFontSize: number) {
+    return Math.max(28, coordinateFontSize * 1.4);
+}
+
+export function getLeftRowCoordinateOffset({
+    coordinateFontSize,
+    gridLeft,
+    stoneRadius,
+}: {
+    coordinateFontSize: number;
+    gridLeft: number;
+    stoneRadius: number;
+}) {
+    const gap = Math.max(4, coordinateFontSize * 0.18);
+
+    return Math.max(
+        4,
+        gridLeft -
+            stoneRadius -
+            gap -
+            getRowCoordinateWidth(coordinateFontSize)
+    );
+}
+
+export function getRightRowCoordinateOffset({
+    coordinateFontSize,
+    gridLeft,
+    stoneRadius,
+    visibleGridWidth,
+}: {
+    coordinateFontSize: number;
+    gridLeft: number;
+    stoneRadius: number;
+    visibleGridWidth: number;
+}) {
+    const gap = Math.max(4, coordinateFontSize * 0.18);
+
+    return gridLeft + visibleGridWidth + stoneRadius + gap;
 }
 
 function getStarPoints(boardSize: number) {
@@ -178,7 +222,7 @@ export default async function Image({ params }: ImageProps) {
               }).slice(0, 4)
             : [];
     const hasVariationCaption = capturedVariationCaptionEntries.length > 0;
-    const boardPixelSize = 560;
+    const boardPixelSize = getPreviewBoardPixelSize();
     const positionRange = getPositionViewRange({
         boardSize,
         positionView: getShareBoardPositionView(share),
@@ -209,11 +253,23 @@ export default async function Image({ params }: ImageProps) {
         stoneRadius,
         visibleGridHeight,
     });
+    const rowCoordinateWidth = getRowCoordinateWidth(coordinateFontSize);
+    const leftRowCoordinateOffset = getLeftRowCoordinateOffset({
+        coordinateFontSize,
+        gridLeft,
+        stoneRadius,
+    });
+    const rightRowCoordinateOffset = getRightRowCoordinateOffset({
+        coordinateFontSize,
+        gridLeft,
+        stoneRadius,
+        visibleGridWidth,
+    });
     const blackPlayerName = getDisplayPlayerName(share.blackPlayerName);
     const whitePlayerName = getDisplayPlayerName(share.whitePlayerName);
     const hasPlayerNames = blackPlayerName !== null || whitePlayerName !== null;
     const hasSidePanel = hasPlayerNames || hasVariationCaption;
-    const boardLeft = hasSidePanel ? 80 : (size.width - boardPixelSize) / 2;
+    const boardLeft = hasSidePanel ? 60 : (size.width - boardPixelSize) / 2;
     const boardTop = (size.height - boardPixelSize) / 2;
     const shareDate = formatShareDate(share.createdAt);
     const markerMap =
@@ -354,7 +410,7 @@ export default async function Image({ params }: ImageProps) {
                                         fontWeight: 800,
                                         height: coordinateFontSize,
                                         justifyContent: "center",
-                                        left: 6,
+                                        left: leftRowCoordinateOffset,
                                         letterSpacing: "0",
                                         lineHeight: 1,
                                         position: "absolute",
@@ -362,7 +418,7 @@ export default async function Image({ params }: ImageProps) {
                                             offset -
                                             coordinateFontSize / 2 +
                                             coordinateNudge,
-                                        width: 26,
+                                        width: rowCoordinateWidth,
                                     }}
                                 >
                                     {label}
@@ -376,7 +432,7 @@ export default async function Image({ params }: ImageProps) {
                                         fontWeight: 800,
                                         height: coordinateFontSize,
                                         justifyContent: "center",
-                                        left: boardPixelSize - 32,
+                                        left: rightRowCoordinateOffset,
                                         letterSpacing: "0",
                                         lineHeight: 1,
                                         position: "absolute",
@@ -384,7 +440,7 @@ export default async function Image({ params }: ImageProps) {
                                             offset -
                                             coordinateFontSize / 2 +
                                             coordinateNudge,
-                                        width: 26,
+                                        width: rowCoordinateWidth,
                                     }}
                                 >
                                     {label}

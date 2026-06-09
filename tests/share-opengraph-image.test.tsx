@@ -14,6 +14,10 @@ import Image, {
     getCoordinateFontSize,
     getGoColumnLabel,
     getGoRowLabel,
+    getLeftRowCoordinateOffset,
+    getPreviewBoardPixelSize,
+    getRightRowCoordinateOffset,
+    getRowCoordinateWidth,
     getTopColumnCoordinateOffset,
 } from "../app/shares/[slug]/opengraph-image";
 
@@ -54,8 +58,12 @@ describe("/shares/[slug]/opengraph-image", () => {
     it("adds more coordinate gutter for smaller visible board views", () => {
         expect(getBoardCoordinatePadding(6)).toBe(76);
         expect(getBoardCoordinatePadding(9)).toBe(76);
-        expect(getBoardCoordinatePadding(13)).toBe(56);
-        expect(getBoardCoordinatePadding(19)).toBe(36);
+        expect(getBoardCoordinatePadding(13)).toBe(64);
+        expect(getBoardCoordinatePadding(19)).toBe(52);
+    });
+
+    it("uses the available preview height for the board", () => {
+        expect(getPreviewBoardPixelSize()).toBe(610);
     });
 
     it("places column coordinates next to the visible grid", () => {
@@ -74,6 +82,25 @@ describe("/shares/[slug]/opengraph-image", () => {
                 visibleGridHeight: 408,
             })
         ).toBeCloseTo(514.12);
+    });
+
+    it("places row coordinates next to the visible grid", () => {
+        expect(getRowCoordinateWidth(16)).toBe(28);
+        expect(
+            getLeftRowCoordinateOffset({
+                coordinateFontSize: 16,
+                gridLeft: 52,
+                stoneRadius: 12,
+            })
+        ).toBe(8);
+        expect(
+            getRightRowCoordinateOffset({
+                coordinateFontSize: 16,
+                gridLeft: 52,
+                stoneRadius: 12,
+                visibleGridWidth: 506,
+            })
+        ).toBe(574);
     });
 
     it("renders a generated preview image for a share", async () => {
