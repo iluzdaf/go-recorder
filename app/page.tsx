@@ -125,6 +125,47 @@ export default function Home() {
           >
             {isCreatingGame ? t("recording") : t("recordGame")}
           </button>
+
+          {recentGames.length > 0 && (
+            <div className="flex flex-col gap-2 border-t border-zinc-200 pt-4 dark:border-neutral-700">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                  {t("recentGames")}
+                </span>
+                <Link
+                  href="/games"
+                  className="text-sm text-sky-700 hover:underline dark:text-sky-400"
+                >
+                  {t("showMoreGames")}
+                </Link>
+              </div>
+              <ul className="flex flex-col">
+                {recentGames.map((game) => (
+                  <li key={game.id}>
+                    <Link
+                      href={`/games/${game.id}`}
+                      aria-label={getGameTitle(game)}
+                      className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-zinc-50 dark:hover:bg-neutral-750"
+                    >
+                      <GameBoardThumbnail game={game} />
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="truncate text-sm font-medium">
+                          {getGameTitle(game)}
+                        </span>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {game.boardSize}×{game.boardSize}
+                          {" · "}
+                          {game.gameState.moves.length} {t("moves")}
+                          {" · "}
+                          {new Date(game.updatedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </form>
 
         <section className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
@@ -137,47 +178,6 @@ export default function Home() {
             {isCreatingDraft ? t("creatingDraft") : t("createDraft")}
           </button>
         </section>
-
-        {recentGames.length > 0 && (
-          <section className="flex flex-col gap-3 sm:col-span-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
-                {t("recentGames")}
-              </h2>
-              <Link
-                href="/games"
-                className="text-sm text-sky-700 hover:underline dark:text-sky-400"
-              >
-                {t("showMoreGames")}
-              </Link>
-            </div>
-            <ul className="flex flex-col gap-2">
-              {recentGames.map((game) => (
-                <li key={game.id}>
-                  <Link
-                    href={`/games/${game.id}`}
-                    aria-label={getGameTitle(game)}
-                    className="flex items-center gap-3 overflow-hidden rounded-xl border border-zinc-300 bg-white px-4 py-3 shadow-sm hover:bg-zinc-50 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-750"
-                  >
-                    <GameBoardThumbnail game={game} />
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="truncate font-medium">
-                        {getGameTitle(game)}
-                      </span>
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {game.boardSize}×{game.boardSize}
-                        {" · "}
-                        {game.gameState.moves.length} {t("moves")}
-                        {" · "}
-                        {new Date(game.updatedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
       </div>
     </main>
   );
