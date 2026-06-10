@@ -60,5 +60,11 @@
     "stoneCorrectionFailed": "That stone edit could not be applied.",
     "changelog": "Changelog",
     "closeChangelog": "Close changelog",
-    "version": "Version"
+    "version": "Version",
+    "games": "Games",
+    "noGames": "No game recordings yet.",
+    "deleteGame": "Delete game",
+    "continueRecording": "Continue",
+    "unnamedGame": "Unnamed game",
+    "moves": "moves"
 }

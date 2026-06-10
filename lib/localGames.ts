@@ -228,6 +228,40 @@ export function saveLocalGame(record: LocalGameRecord) {
     return updatedRecord;
 }
 
+export function getAllLocalGames(): LocalGameRecord[] {
+    const storage = getLocalStorage();
+    const games: LocalGameRecord[] = [];
+
+    for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
+
+        if (!key?.startsWith(LOCAL_GAME_STORAGE_KEY_PREFIX)) continue;
+
+        const raw = storage.getItem(key);
+
+        if (raw === null) continue;
+
+        try {
+            const parsed: unknown = JSON.parse(raw);
+
+            if (isLocalGameRecord(parsed)) {
+                games.push(parsed);
+            }
+        } catch {
+            // skip malformed entries
+        }
+    }
+
+    return games.sort(
+        (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+}
+
+export function deleteLocalRecord(id: string) {
+    getLocalStorage().removeItem(getStorageKey(id));
+}
+
 export function saveLocalRecord(record: LocalEditableRecord) {
     const updatedRecord: LocalEditableRecord = {
         ...record,
