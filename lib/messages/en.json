@@ -70,5 +70,13 @@
     "unnamedGame": "Unnamed game",
     "moves": "moves",
     "recentGames": "Recent games",
-    "showMoreGames": "Show all"
+    "showMoreGames": "Show all",
+    "drafts": "Drafts",
+    "noDrafts": "No drafts yet.",
+    "deleteDraft": "Delete draft",
+    "editDraft": "Edit draft",
+    "draft": "Draft",
+    "variation": "Variation",
+    "recentDrafts": "Recent drafts",
+    "showMoreDrafts": "Show all"
 }
