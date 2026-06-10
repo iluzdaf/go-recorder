@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 import type { LocalGameRecord } from "@/lib/localGames";
 import { getAllLocalGames, deleteLocalRecord } from "@/lib/localGames";
 import { getFinalPositionFromGameState } from "@/lib/shareFinalPosition";
@@ -116,15 +116,25 @@ function getGameTitle(game: LocalGameRecord) {
 export default function GamesPage() {
     const [games, setGames] = useState<LocalGameRecord[]>([]);
     const [loaded, setLoaded] = useState(false);
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     useEffect(() => {
         setGames(getAllLocalGames());
         setLoaded(true);
     }, []);
 
-    function handleDelete(id: string) {
+    function handleDeleteRequest(id: string) {
+        setPendingDeleteId(id);
+    }
+
+    function handleDeleteConfirm(id: string) {
         deleteLocalRecord(id);
         setGames((prev) => prev.filter((g) => g.id !== id));
+        setPendingDeleteId(null);
+    }
+
+    function handleDeleteCancel() {
+        setPendingDeleteId(null);
     }
 
     if (!loaded) return null;
@@ -171,15 +181,38 @@ export default function GamesPage() {
                                 />
                             </Link>
                             <div className="flex items-center border-l border-zinc-200 px-2 dark:border-neutral-700">
-                                <button
-                                    type="button"
-                                    aria-label={t("deleteGame")}
-                                    title={t("deleteGame")}
-                                    onClick={() => handleDelete(game.id)}
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-red-600 dark:text-zinc-500 dark:hover:bg-neutral-700 dark:hover:text-red-400"
-                                >
-                                    <Trash2 size={15} />
-                                </button>
+                                {pendingDeleteId === game.id ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            aria-label={t("confirmDelete")}
+                                            title={t("confirmDelete")}
+                                            onClick={() => handleDeleteConfirm(game.id)}
+                                            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                                        >
+                                            <Trash2 size={15} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            aria-label={t("cancelDelete")}
+                                            title={t("cancelDelete")}
+                                            onClick={handleDeleteCancel}
+                                            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-100 dark:text-zinc-500 dark:hover:bg-neutral-700"
+                                        >
+                                            <X size={15} />
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        aria-label={t("deleteGame")}
+                                        title={t("deleteGame")}
+                                        onClick={() => handleDeleteRequest(game.id)}
+                                        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-red-600 dark:text-zinc-500 dark:hover:bg-neutral-700 dark:hover:text-red-400"
+                                    >
+                                        <Trash2 size={15} />
+                                    </button>
+                                )}
                             </div>
                         </li>
                     ))}

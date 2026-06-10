@@ -64,6 +64,8 @@
     "games": "Games",
     "noGames": "No game recordings yet.",
     "deleteGame": "Delete game",
+    "confirmDelete": "Confirm delete",
+    "cancelDelete": "Cancel delete",
     "editGame": "Edit game",
     "unnamedGame": "Unnamed game",
     "moves": "moves"
