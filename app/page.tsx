@@ -1,14 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { BoardSize } from "@/components/types";
-import { createLocalDraft, createLocalGame } from "@/lib/localGames";
+import { createLocalDraft, createLocalGame, getAllLocalGames } from "@/lib/localGames";
+import type { LocalGameRecord } from "@/lib/localGames";
 import {
     createDefaultLocalBoardDraftInput,
     createLocalGameInputFromForm,
 } from "@/lib/localGameSetup";
+import { GameBoardThumbnail, getGameTitle } from "@/components/GameListItem";
 import { t } from "@/lib/i18n";
+
+const RECENT_GAME_LIMIT = 3;
 
 export default function Home() {
   const router = useRouter();
@@ -19,6 +24,11 @@ export default function Home() {
   const [handicap, setHandicap] = useState(0);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
+  const [recentGames, setRecentGames] = useState<LocalGameRecord[]>([]);
+
+  useEffect(() => {
+    setRecentGames(getAllLocalGames().slice(0, RECENT_GAME_LIMIT));
+  }, []);
 
   function handleRecordGame(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -127,6 +137,47 @@ export default function Home() {
             {isCreatingDraft ? t("creatingDraft") : t("createDraft")}
           </button>
         </section>
+
+        {recentGames.length > 0 && (
+          <section className="flex flex-col gap-3 sm:col-span-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+                {t("recentGames")}
+              </h2>
+              <Link
+                href="/games"
+                className="text-sm text-sky-700 hover:underline dark:text-sky-400"
+              >
+                {t("showMoreGames")}
+              </Link>
+            </div>
+            <ul className="flex flex-col gap-2">
+              {recentGames.map((game) => (
+                <li key={game.id}>
+                  <Link
+                    href={`/games/${game.id}`}
+                    aria-label={getGameTitle(game)}
+                    className="flex items-center gap-3 overflow-hidden rounded-xl border border-zinc-300 bg-white px-4 py-3 shadow-sm hover:bg-zinc-50 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-750"
+                  >
+                    <GameBoardThumbnail game={game} />
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="truncate font-medium">
+                        {getGameTitle(game)}
+                      </span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {game.boardSize}×{game.boardSize}
+                        {" · "}
+                        {game.gameState.moves.length} {t("moves")}
+                        {" · "}
+                        {new Date(game.updatedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </main>
   );

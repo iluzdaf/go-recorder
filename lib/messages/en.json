@@ -68,5 +68,7 @@
     "cancelDelete": "Cancel delete",
     "editGame": "Edit game",
     "unnamedGame": "Unnamed game",
-    "moves": "moves"
+    "moves": "moves",
+    "recentGames": "Recent games",
+    "showMoreGames": "Show all"
 }
