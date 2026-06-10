@@ -64,7 +64,7 @@
     "games": "Games",
     "noGames": "No game recordings yet.",
     "deleteGame": "Delete game",
-    "continueRecording": "Continue",
+    "editGame": "Edit game",
     "unnamedGame": "Unnamed game",
     "moves": "moves"
 }
