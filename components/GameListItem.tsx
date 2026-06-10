@@ -1,17 +1,20 @@
 import type { LocalDraftRecord, LocalGameRecord } from "@/lib/localGames";
 import { getFinalPositionFromGameState } from "@/lib/shareFinalPosition";
 import { getPositionViewRange } from "@/lib/positionView";
-import type { PositionView } from "@/components/types";
+import { createVariationMoveNumberMarkerMap } from "@/lib/variationDraft";
+import type { DraftKind, PositionView } from "@/components/types";
 import { t } from "@/lib/i18n";
 
 type BoardPreviewRecord = {
     boardSize: LocalGameRecord["boardSize"];
     gameState: LocalGameRecord["gameState"];
     positionView?: PositionView | null;
+    draftKind?: DraftKind | null;
+    baseMoveCount?: number | null;
 };
 
-const THUMB_SIZE = 80;
-const THUMB_PAD = 5;
+const THUMB_SIZE = 160;
+const THUMB_PAD = 6;
 
 function getStarPoints(boardSize: number): [number, number][] {
     if (boardSize === 19) {
@@ -39,7 +42,7 @@ export function getDraftTitle(draft: LocalDraftRecord) {
     if (black) return black;
     if (white) return white;
 
-    return t("unnamedDraft");
+    return t("draft");
 }
 
 export function getGameTitle(game: LocalGameRecord) {
@@ -74,13 +77,26 @@ export function GameBoardThumbnail({ game }: { game: BoardPreviewRecord }) {
     const renderedHeight = (visibleRows - 1) * step;
     const ox = THUMB_PAD + (gridSize - renderedWidth) / 2;
     const oy = THUMB_PAD + (gridSize - renderedHeight) / 2;
-    const stoneR = Math.max(1.5, step * 0.44);
+    const stoneR = Math.max(2, step * 0.44);
+    const fontSize = Math.max(6, stoneR * 0.95);
 
     const result = getFinalPositionFromGameState({
         boardSize: n,
         gameState: game.gameState,
     });
     const signMap = result.ok ? result.finalPosition : null;
+
+    const markerMap =
+        game.draftKind === "variation" &&
+        typeof game.baseMoveCount === "number" &&
+        signMap
+            ? createVariationMoveNumberMarkerMap({
+                  boardSize: n,
+                  moves: game.gameState.moves,
+                  signMap,
+                  startMoveIndex: game.baseMoveCount,
+              })
+            : null;
 
     return (
         <svg
@@ -125,7 +141,7 @@ export function GameBoardThumbnail({ game }: { game: BoardPreviewRecord }) {
                         key={`star-${x}-${y}`}
                         cx={ox + (x - startX) * step}
                         cy={oy + (y - startY) * step}
-                        r={1.2}
+                        r={1.5}
                         className="fill-zinc-500 dark:fill-zinc-400"
                     />
                 );
@@ -136,19 +152,37 @@ export function GameBoardThumbnail({ game }: { game: BoardPreviewRecord }) {
                     if (x < startX || x >= startX + visibleColumns) return null;
                     if (y < startY || y >= startY + visibleRows) return null;
                     const isBlack = sign === 1;
+                    const cx = ox + (x - startX) * step;
+                    const cy = oy + (y - startY) * step;
+                    const marker = markerMap?.[y]?.[x] ?? null;
                     return (
-                        <circle
-                            key={`s-${x}-${y}`}
-                            cx={ox + (x - startX) * step}
-                            cy={oy + (y - startY) * step}
-                            r={stoneR}
-                            className={
-                                isBlack
-                                    ? "fill-zinc-900 dark:fill-zinc-950"
-                                    : "fill-white stroke-zinc-800 dark:stroke-zinc-300"
-                            }
-                            strokeWidth={isBlack ? 0 : 0.5}
-                        />
+                        <g key={`s-${x}-${y}`}>
+                            <circle
+                                cx={cx}
+                                cy={cy}
+                                r={stoneR}
+                                className={
+                                    isBlack
+                                        ? "fill-zinc-900 dark:fill-zinc-950"
+                                        : "fill-white stroke-zinc-800 dark:stroke-zinc-300"
+                                }
+                                strokeWidth={isBlack ? 0 : 0.7}
+                            />
+                            {marker && (
+                                <text
+                                    x={cx}
+                                    y={cy}
+                                    textAnchor="middle"
+                                    dominantBaseline="central"
+                                    fontSize={fontSize}
+                                    fontWeight={800}
+                                    fill={isBlack ? "white" : "#18181b"}
+                                    className="select-none"
+                                >
+                                    {marker.label}
+                                </text>
+                            )}
+                        </g>
                     );
                 })
             )}
