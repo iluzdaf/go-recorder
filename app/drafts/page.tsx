@@ -60,11 +60,6 @@ export default function DraftsPage() {
                                         {getDraftTitle(draft)}
                                     </span>
                                     <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                                        {draft.boardSize}×{draft.boardSize}
-                                        {" · "}
-                                        {draft.gameState.moves.length}{" "}
-                                        {t("moves")}
-                                        {" · "}
                                         {new Date(
                                             draft.updatedAt
                                         ).toLocaleDateString()}
