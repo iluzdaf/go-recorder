@@ -258,6 +258,36 @@ export function getAllLocalGames(): LocalGameRecord[] {
     );
 }
 
+export function getAllLocalDrafts(): LocalDraftRecord[] {
+    const storage = getLocalStorage();
+    const drafts: LocalDraftRecord[] = [];
+
+    for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
+
+        if (!key?.startsWith(LOCAL_GAME_STORAGE_KEY_PREFIX)) continue;
+
+        const raw = storage.getItem(key);
+
+        if (raw === null) continue;
+
+        try {
+            const parsed: unknown = JSON.parse(raw);
+
+            if (isLocalDraftRecord(parsed)) {
+                drafts.push(parsed);
+            }
+        } catch {
+            // skip malformed entries
+        }
+    }
+
+    return drafts.sort(
+        (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+}
+
 export function deleteLocalRecord(id: string) {
     getLocalStorage().removeItem(getStorageKey(id));
 }

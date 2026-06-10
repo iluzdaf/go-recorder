@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { BoardSize } from "@/components/types";
-import { createLocalDraft, createLocalGame, getAllLocalGames } from "@/lib/localGames";
-import type { LocalGameRecord } from "@/lib/localGames";
+import { createLocalDraft, createLocalGame, getAllLocalDrafts, getAllLocalGames } from "@/lib/localGames";
+import type { LocalDraftRecord, LocalGameRecord } from "@/lib/localGames";
 import {
     createDefaultLocalBoardDraftInput,
     createLocalGameInputFromForm,
 } from "@/lib/localGameSetup";
-import { GameBoardThumbnail, getGameTitle } from "@/components/GameListItem";
+import { GameBoardThumbnail, getDraftTitle, getGameTitle } from "@/components/GameListItem";
 import { t } from "@/lib/i18n";
 
 const RECENT_GAME_LIMIT = 3;
@@ -25,9 +25,11 @@ export default function Home() {
   const [isCreatingGame, setIsCreatingGame] = useState(false);
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
   const [recentGames, setRecentGames] = useState<LocalGameRecord[]>([]);
+  const [recentDrafts, setRecentDrafts] = useState<LocalDraftRecord[]>([]);
 
   useEffect(() => {
     setRecentGames(getAllLocalGames().slice(0, RECENT_GAME_LIMIT));
+    setRecentDrafts(getAllLocalDrafts().slice(0, RECENT_GAME_LIMIT));
   }, []);
 
   function handleRecordGame(event: React.FormEvent<HTMLFormElement>) {
@@ -177,6 +179,47 @@ export default function Home() {
           >
             {isCreatingDraft ? t("creatingDraft") : t("createDraft")}
           </button>
+
+          {recentDrafts.length > 0 && (
+            <div className="flex flex-col gap-2 border-t border-zinc-200 pt-4 dark:border-neutral-700">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                  {t("recentDrafts")}
+                </span>
+                <Link
+                  href="/drafts"
+                  className="text-sm text-sky-700 hover:underline dark:text-sky-400"
+                >
+                  {t("showMoreDrafts")}
+                </Link>
+              </div>
+              <ul className="flex flex-col">
+                {recentDrafts.map((draft) => (
+                  <li key={draft.id}>
+                    <Link
+                      href={`/drafts/${draft.id}`}
+                      aria-label={getDraftTitle(draft)}
+                      className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-zinc-50 dark:hover:bg-neutral-750"
+                    >
+                      <GameBoardThumbnail game={draft} />
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="truncate text-sm font-medium">
+                          {getDraftTitle(draft)}
+                        </span>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {draft.boardSize}×{draft.boardSize}
+                          {" · "}
+                          {draft.gameState.moves.length} {t("moves")}
+                          {" · "}
+                          {new Date(draft.updatedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       </div>
     </main>

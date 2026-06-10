@@ -1,6 +1,8 @@
-import type { LocalGameRecord } from "@/lib/localGames";
+import type { LocalDraftRecord, LocalGameRecord } from "@/lib/localGames";
 import { getFinalPositionFromGameState } from "@/lib/shareFinalPosition";
 import { t } from "@/lib/i18n";
+
+type BoardPreviewRecord = { boardSize: LocalGameRecord["boardSize"]; gameState: LocalGameRecord["gameState"] };
 
 const THUMB_SIZE = 80;
 const THUMB_PAD = 5;
@@ -21,6 +23,19 @@ function getStarPoints(boardSize: number): [number, number][] {
     );
 }
 
+export function getDraftTitle(draft: LocalDraftRecord) {
+    if (draft.draftKind === "variation") return t("variation");
+
+    const black = draft.blackPlayerName?.trim();
+    const white = draft.whitePlayerName?.trim();
+
+    if (black && white) return `${black} vs ${white}`;
+    if (black) return black;
+    if (white) return white;
+
+    return t("unnamedDraft");
+}
+
 export function getGameTitle(game: LocalGameRecord) {
     const black = game.blackPlayerName?.trim();
     const white = game.whitePlayerName?.trim();
@@ -32,7 +47,7 @@ export function getGameTitle(game: LocalGameRecord) {
     return t("unnamedGame");
 }
 
-export function GameBoardThumbnail({ game }: { game: LocalGameRecord }) {
+export function GameBoardThumbnail({ game }: { game: BoardPreviewRecord }) {
     const n = game.boardSize;
     const gridSize = THUMB_SIZE - THUMB_PAD * 2;
     const step = gridSize / (n - 1);
