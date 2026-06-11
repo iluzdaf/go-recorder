@@ -331,6 +331,13 @@ export default function GoBoard({ id }: GoBoardProps) {
                   return null;
               }
 
+              type PlayMoveWithNext = {
+                  move: { type: "play"; x: number; y: number; color: Stone };
+                  nextX: number;
+                  nextY: number;
+              };
+              const playMoves: PlayMoveWithNext[] = [];
+
               for (const moveIndex of selectedMoveIndexes) {
                   const move = gameState.moves[moveIndex];
 
@@ -343,7 +350,14 @@ export default function GoBoard({ id }: GoBoardProps) {
                       return null;
                   }
 
+                  playMoves.push({ move, nextX, nextY });
+              }
+
+              for (const { move } of playMoves) {
                   previewSignMap[move.y][move.x] = 0;
+              }
+
+              for (const { move, nextX, nextY } of playMoves) {
                   previewSignMap[nextY][nextX] = stoneToSign(move.color);
                   previewVertices.push([nextX, nextY]);
               }
