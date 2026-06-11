@@ -1,0 +1,45 @@
+name: Feedback
+description: Capture raw product feedback for triage into an actionable task.
+title: "[Feedback]: "
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for rough feedback, bugs, usability friction, or feature ideas. An agent can triage it into an implementation-ready task or ask clarifying questions.
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Feedback
+      description: Describe what you noticed, expected, or want changed.
+      placeholder: The correction handle feels hard to use on small boards because...
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Add page, route, device, browser, screenshots, share links, or prior discussion if relevant.
+      placeholder: /games/[slug], mobile Safari, compact board...
+    validations:
+      required: false
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      description: Pick the closest level. Triage can adjust it later.
+      options:
+        - Blocks core use
+        - Confusing or error-prone
+        - Quality-of-life improvement
+        - Nice to have
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Desired outcome
+      description: Optional. Describe what "better" would look like.
+      placeholder: I should be able to...
+    validations:
+      required: false
