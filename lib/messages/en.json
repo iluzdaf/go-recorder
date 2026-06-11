@@ -55,6 +55,7 @@
     "createVariationPrompt": "Create a variation from this move?",
     "cancel": "Cancel",
     "invalidShareInput": "Invalid share input",
+    "illegalGroupsOnBoard": "Unable to create share link. Position has groups with no liberties.",
     "stoneCorrectionIllegal": "That stone edit is not legal.",
     "stoneCorrectionChangesCaptures": "That stone edit changes later captures.",
     "stoneCorrectionFailed": "That stone edit could not be applied.",
