@@ -21,7 +21,7 @@ import {
     type BoardDraftStrokeMode,
 } from "../lib/boardDraft";
 import { getLivePositionViewGridMetrics } from "../lib/boardGeometry";
-import { canShareDraft } from "../lib/draftSharing";
+import { canShareDraft, getIllegalBoardGroupVertices } from "../lib/draftSharing";
 import { t } from "../lib/i18n";
 import { saveLocalEditableRecord } from "../lib/localEditableSave";
 import { getLocalRecord } from "../lib/localGames";
@@ -48,6 +48,7 @@ type ShudanGobanProps = {
     signMap: number[][];
     markerMap: (null | { type: "circle" } | MoveNumberMarker)[][];
     showCoordinates: boolean;
+    selectedVertices?: [number, number][];
     rangeX?: [number, number];
     rangeY?: [number, number];
 };
@@ -578,6 +579,14 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             return;
         }
 
+        if (currentDraft.draftKind === "board") {
+            const illegal = getIllegalBoardGroupVertices(currentDraft);
+            if (illegal.length > 0) {
+                setEditableShareError(t("illegalGroupsOnBoard"));
+                return;
+            }
+        }
+
         setEditableShareCreating(t("creatingShare"));
 
         try {
@@ -658,6 +667,10 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         draft.baseMoveCount !== null &&
         draft.gameState.moves.length > draft.baseMoveCount;
     const canShareCurrentDraft = canShareDraft(draft);
+    const illegalVertices =
+        draft.draftKind === "board"
+            ? getIllegalBoardGroupVertices(draft)
+            : [];
     const positionRange = getPositionViewRange({
         boardSize: draft.boardSize,
         positionView: draft.positionView ?? null,
@@ -667,8 +680,8 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         <div
             className={
                 isDarkMode
-                    ? "goban-theme-dark relative m-0 flex h-full touch-none flex-col overflow-hidden overscroll-none bg-neutral-900 p-0 text-white"
-                    : "goban-theme-light relative m-0 flex h-full touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
+                    ? "draft-board goban-theme-dark relative m-0 flex h-full touch-none flex-col overflow-hidden overscroll-none bg-neutral-900 p-0 text-white"
+                    : "draft-board goban-theme-light relative m-0 flex h-full touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
             }
         >
             <div
@@ -752,6 +765,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                         vertexSize={vertexSize}
                         signMap={signMap}
                         markerMap={markerMap}
+                        selectedVertices={illegalVertices}
                         rangeX={positionRange?.rangeX}
                         rangeY={positionRange?.rangeY}
                         showCoordinates
