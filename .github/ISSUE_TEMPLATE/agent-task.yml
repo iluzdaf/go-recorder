@@ -64,6 +64,17 @@ body:
     validations:
       required: false
   - type: textarea
+    id: implementation_plan
+    attributes:
+      label: Implementation plan
+      description: Break the task into small ordered steps for human approval before implementation. Each step should become one commit unless the human reviewer approves a different structure.
+      placeholder: |
+        1. Add ...
+        2. Update ...
+        3. Verify ...
+    validations:
+      required: false
+  - type: textarea
     id: verification
     attributes:
       label: Verification
