@@ -7,6 +7,8 @@ This workflow turns rough feedback into prioritized implementation tasks, then r
 - `needs-triage`: raw feedback that has not been converted into an actionable task.
 - `needs-clarification`: triage found open questions that must be answered before implementation.
 - `ready-for-agent`: the task has enough detail for an implementation agent to start.
+- `needs-plan`: an agent has claimed the task and must propose an implementation plan before editing code.
+- `needs-plan-approval`: a plan has been proposed and is waiting for human approval.
 - `in-progress`: an agent has claimed the task and is implementing it.
 - `needs-review`: implementation is complete and ready for a separate review pass.
 - `smoke-test-ready`: review is complete and the PR has a manual smoke test checklist.
@@ -36,6 +38,7 @@ Triage output should include:
 - Acceptance criteria: concrete conditions for completion.
 - Constraints: repo workflow, design, copy, Supabase, or compatibility limits.
 - Relevant files: likely starting points, stated as guidance rather than certainty.
+- Implementation plan draft: optional starter steps when the path is obvious.
 - Verification: non-visual checks expected from the implementation agent.
 - Smoke test draft: manual checks that a reviewer can refine.
 
@@ -63,6 +66,32 @@ Prioritize ready tasks by impact, confidence, and size:
 
 Prefer small, independently mergeable tasks. Split broad feedback when one PR would mix unrelated behavior.
 
+## Planning And Approval
+
+Before implementation starts, the assigned agent should write a plan and wait for approval when the task is non-trivial, broad, or could be implemented multiple ways.
+
+The plan should:
+
+- Break the work into small ordered steps.
+- Keep each step narrow enough to become one focused commit.
+- Identify likely files and test targets.
+- Call out risks, tradeoffs, and any user decisions still needed.
+- Avoid local visual testing unless the user explicitly asks for it.
+
+If the plan exposes unclear requirements, the agent should:
+
+- Add or keep the `needs-clarification` label.
+- Ask concise questions before editing code.
+- Update the plan after the answers are clear.
+
+When the plan is approved, the implementation agent should:
+
+- Move the task from `needs-plan-approval` to `in-progress`.
+- Copy the approved plan into the PR description.
+- Use one commit per plan step unless a step is too small to stand alone or the PR explains the exception.
+
+Implementation must not start until the human reviewer approves the plan, except for tiny mechanical changes where the user explicitly skips planning.
+
 ## Implementation Agent
 
 An implementation agent may pick up an issue labeled `ready-for-agent`.
@@ -72,10 +101,12 @@ Required workflow:
 1. Switch to `main`.
 2. Pull latest remote changes.
 3. Create a feature branch using the `codex/` prefix unless instructed otherwise.
-4. Implement a minimal, focused diff.
-5. Run relevant non-visual checks.
-6. Open a PR linked to the task.
-7. Move the task to `needs-review`.
+4. Write an implementation plan and mark the task `needs-plan-approval` when the task is non-trivial.
+5. Wait for human approval before editing code.
+6. Implement the approved plan as focused commits, with one commit per plan step by default.
+7. Run relevant non-visual checks.
+8. Open a PR linked to the task and include the approved plan in the PR description.
+9. Move the task to `needs-review`.
 
 Repo-specific rules:
 
