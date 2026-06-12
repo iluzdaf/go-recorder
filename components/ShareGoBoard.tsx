@@ -9,7 +9,12 @@ import type {
 
 import type { ShareRecord } from "./types";
 import { downloadSgf } from "./sgf";
-import { useHeaderStatus, useHeaderVisibility, useTheme } from "./AppShell";
+import {
+    useBoardDisplaySettings,
+    useHeaderStatus,
+    useHeaderVisibility,
+    useTheme,
+} from "./AppShell";
 import { getLivePositionViewGridMetrics } from "../lib/boardGeometry";
 import { t } from "../lib/i18n";
 import {
@@ -125,6 +130,7 @@ export function CapturedVariationMoveCaption({
 
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const { isDarkMode } = useTheme();
+    const { showBoardCoordinates } = useBoardDisplaySettings();
     const { setHeaderStatus } = useHeaderStatus();
     const { isOverlayHeader } = useHeaderVisibility();
     const positionView = getShareBoardPositionView(share);
@@ -139,6 +145,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     } = useBoardGeometry({
         boardSize: displayBoardSize,
         measureGrid: true,
+        showCoordinates: showBoardCoordinates,
     });
     const actionBar = useActionBarDrag();
     const [shareStatus, setShareStatus] = useState<string | null>(null);
@@ -490,7 +497,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                         markerMap={markerMap}
                         rangeX={positionRange?.rangeX}
                         rangeY={positionRange?.rangeY}
-                        showCoordinates
+                        showCoordinates={showBoardCoordinates}
                     />
                 </div>
             </div>

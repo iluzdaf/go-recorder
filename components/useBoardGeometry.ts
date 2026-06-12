@@ -11,11 +11,13 @@ import {
 type UseBoardGeometryOptions = {
     boardSize: number;
     measureGrid?: boolean;
+    showCoordinates?: boolean;
 };
 
 export default function useBoardGeometry({
     boardSize,
     measureGrid = false,
+    showCoordinates = true,
 }: UseBoardGeometryOptions) {
     const boardAreaRef = useRef<HTMLDivElement | null>(null);
     const gobanWrapperRef = useRef<HTMLDivElement | null>(null);
@@ -61,6 +63,7 @@ export default function useBoardGeometry({
             const { width, height } = boardArea.getBoundingClientRect();
             const nextVertexSize = getBoardVertexSize({
                 boardSize,
+                showCoordinates,
                 width,
                 height,
             });
@@ -102,7 +105,7 @@ export default function useBoardGeometry({
                 window.cancelAnimationFrame(animationFrameId);
             }
         };
-    }, [boardSize, measureGrid]);
+    }, [boardSize, measureGrid, showCoordinates]);
 
     return {
         boardAreaRef,

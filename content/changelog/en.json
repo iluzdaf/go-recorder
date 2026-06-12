@@ -7,6 +7,10 @@
             {
                 "id": "drafts-and-variations",
                 "text": "Add drafts and variations."
+            },
+            {
+                "id": "board-display-settings",
+                "text": "Add board display settings."
             }
         ]
     },

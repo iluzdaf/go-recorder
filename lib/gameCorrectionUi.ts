@@ -1,4 +1,8 @@
 import type { BoardSize, GameState, Move, Stone } from "../components/types";
+import {
+    BOARD_EDGE_GUTTER_PX,
+    COORDINATE_LABEL_GUTTER_VERTICES,
+} from "./boardGeometry";
 import { validateMoveEdits } from "./gameEdits";
 import type { StoneOwner } from "./gameReplay";
 
@@ -329,6 +333,19 @@ export function shouldUsePlacementZoom({
     cellSize: number;
 }) {
     return cellSize < PLACEMENT_ZOOM_MAX_CELL_SIZE_PX;
+}
+
+export function getPlacementZoomOverlayOffset({
+    showCoordinates,
+    zoomCellSize,
+}: {
+    showCoordinates: boolean;
+    zoomCellSize: number;
+}) {
+    return showCoordinates
+        ? -(zoomCellSize * (COORDINATE_LABEL_GUTTER_VERTICES / 2) +
+              BOARD_EDGE_GUTTER_PX)
+        : -BOARD_EDGE_GUTTER_PX;
 }
 
 export function toggleCorrectionSelection({
