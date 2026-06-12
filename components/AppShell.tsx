@@ -12,7 +12,16 @@ import {
     useState,
     useSyncExternalStore,
 } from "react";
-import { Expand, Home, Menu, Minimize2, Moon, Sun, X } from "lucide-react";
+import {
+    Expand,
+    Home,
+    Menu,
+    Minimize2,
+    Moon,
+    Settings,
+    Sun,
+    X,
+} from "lucide-react";
 import ChangelogReleaseList from "./ChangelogReleaseList";
 import { t } from "../lib/i18n";
 
@@ -37,7 +46,13 @@ type HeaderVisibilityContextValue = {
     setIsHeaderExpanded: (nextIsHeaderExpanded: boolean) => void;
 };
 
+type BoardDisplaySettingsContextValue = {
+    showBoardCoordinates: boolean;
+    setShowBoardCoordinates: (nextShowBoardCoordinates: boolean) => void;
+};
+
 const THEME_STORAGE_KEY = "go-recorder:theme";
+const BOARD_COORDINATES_STORAGE_KEY = "go-recorder:show-board-coordinates";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 const HeaderActionsContext = createContext<HeaderActionsContextValue | null>(
@@ -49,8 +64,13 @@ const HeaderStatusContext = createContext<HeaderStatusContextValue | null>(
 const HeaderVisibilityContext = createContext<HeaderVisibilityContextValue | null>(
     null
 );
+const BoardDisplaySettingsContext =
+    createContext<BoardDisplaySettingsContextValue | null>(null);
 const themeListeners = new Set<() => void>();
+const boardDisplaySettingsListeners = new Set<() => void>();
 const THEME_CHANGE_EVENT = "go-recorder:theme-change";
+const BOARD_DISPLAY_SETTINGS_CHANGE_EVENT =
+    "go-recorder:board-display-settings-change";
 const SHORT_VIEWPORT_QUERY = "(max-height: 640px)";
 
 function getSystemTheme() {
@@ -86,6 +106,36 @@ export function shouldUseOverlayHeader({
                 pathname?.startsWith("/drafts/") ||
                 pathname?.startsWith("/shares/"))
     );
+}
+
+export function getChangelogDialogClassName({
+    alignToViewportTop,
+}: {
+    alignToViewportTop: boolean;
+}) {
+    return alignToViewportTop
+        ? "absolute right-4 top-4 z-[60] max-h-[min(36rem,calc(100vh-2rem))] w-[min(28rem,calc(100vw-2rem))] overflow-auto rounded-lg border border-zinc-200 bg-zinc-100 p-3 text-zinc-950 shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+        : "fixed right-4 top-16 z-[60] max-h-[min(36rem,calc(100vh-5rem))] w-[min(28rem,calc(100vw-2rem))] overflow-auto rounded-lg border border-zinc-200 bg-zinc-100 p-3 text-zinc-950 shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-white";
+}
+
+export function getSettingsDialogClassName({
+    alignToViewportTop,
+}: {
+    alignToViewportTop: boolean;
+}) {
+    return alignToViewportTop
+        ? "absolute right-4 top-4 z-[60] max-h-[calc(100vh-2rem)] w-[min(24rem,calc(100vw-2rem))] overflow-auto rounded-lg border border-zinc-200 bg-zinc-100 p-3 text-zinc-950 shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+        : "fixed right-4 top-16 z-[60] max-h-[calc(100vh-5rem)] w-[min(24rem,calc(100vw-2rem))] overflow-auto rounded-lg border border-zinc-200 bg-zinc-100 p-3 text-zinc-950 shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-white";
+}
+
+export function shouldAnchorHeaderDialogsToViewportTop({
+    isHeaderVisible,
+    usesOverlayHeader,
+}: {
+    isHeaderVisible: boolean;
+    usesOverlayHeader: boolean;
+}) {
+    return usesOverlayHeader && !isHeaderVisible;
 }
 
 function getIsFullscreenSupported() {
@@ -204,11 +254,48 @@ function setThemeInStorage(isDarkMode: boolean) {
     setThemePreferenceInStorage(isDarkMode ? "dark" : "light");
 }
 
+export function resolveShowBoardCoordinatesPreference(
+    storedPreference: string | null
+) {
+    return storedPreference !== "false";
+}
+
+function getShowBoardCoordinatesFromStorage() {
+    return resolveShowBoardCoordinatesPreference(
+        window.localStorage.getItem(BOARD_COORDINATES_STORAGE_KEY)
+    );
+}
+
+function notifyBoardDisplaySettingsListeners() {
+    for (const listener of boardDisplaySettingsListeners) {
+        listener();
+    }
+}
+
+function setShowBoardCoordinatesInStorage(nextShowBoardCoordinates: boolean) {
+    window.localStorage.setItem(
+        BOARD_COORDINATES_STORAGE_KEY,
+        String(nextShowBoardCoordinates)
+    );
+    notifyBoardDisplaySettingsListeners();
+    window.dispatchEvent(new Event(BOARD_DISPLAY_SETTINGS_CHANGE_EVENT));
+}
+
 export function useTheme() {
     const value = useContext(ThemeContext);
 
     if (!value) {
         throw new Error("useTheme must be used within AppShell");
+    }
+
+    return value;
+}
+
+export function useBoardDisplaySettings() {
+    const value = useContext(BoardDisplaySettingsContext);
+
+    if (!value) {
+        throw new Error("useBoardDisplaySettings must be used within AppShell");
     }
 
     return value;
@@ -256,9 +343,12 @@ export default function AppShell({
     const [headerStatus, setHeaderStatus] = useState<React.ReactNode>(null);
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
     const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(() => getIsFullscreen());
     const changelogButtonRef = useRef<HTMLButtonElement | null>(null);
     const changelogMenuRef = useRef<HTMLDivElement | null>(null);
+    const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
+    const settingsMenuRef = useRef<HTMLDivElement | null>(null);
     const isFullscreenSupported = useSyncExternalStore(
         () => () => {},
         getIsFullscreenSupported,
@@ -315,6 +405,44 @@ export default function AppShell({
         },
             () => true
     );
+    const showBoardCoordinates = useSyncExternalStore(
+        (onStoreChange) => {
+            boardDisplaySettingsListeners.add(onStoreChange);
+
+            const handleStorage = (event: StorageEvent) => {
+                if (event.key === BOARD_COORDINATES_STORAGE_KEY) {
+                    onStoreChange();
+                }
+            };
+
+            const handleBoardDisplaySettingsChange = () => {
+                onStoreChange();
+            };
+
+            window.addEventListener("storage", handleStorage);
+            window.addEventListener(
+                BOARD_DISPLAY_SETTINGS_CHANGE_EVENT,
+                handleBoardDisplaySettingsChange
+            );
+
+            return () => {
+                boardDisplaySettingsListeners.delete(onStoreChange);
+                window.removeEventListener("storage", handleStorage);
+                window.removeEventListener(
+                    BOARD_DISPLAY_SETTINGS_CHANGE_EVENT,
+                    handleBoardDisplaySettingsChange
+                );
+            };
+        },
+        () => {
+            if (typeof window === "undefined") {
+                return true;
+            }
+
+            return getShowBoardCoordinatesFromStorage();
+        },
+        () => true
+    );
 
     useEffect(() => {
         const handleFullscreenChange = () => {
@@ -368,6 +496,16 @@ export default function AppShell({
 
     const toggleChangelog = useCallback(() => {
         setIsChangelogOpen((nextIsChangelogOpen) => !nextIsChangelogOpen);
+        setIsSettingsOpen(false);
+    }, []);
+
+    const closeSettings = useCallback(() => {
+        setIsSettingsOpen(false);
+    }, []);
+
+    const toggleSettings = useCallback(() => {
+        setIsSettingsOpen((nextIsSettingsOpen) => !nextIsSettingsOpen);
+        setIsChangelogOpen(false);
     }, []);
 
     useEffect(() => {
@@ -399,12 +537,46 @@ export default function AppShell({
         };
     }, [closeChangelog, isChangelogOpen]);
 
+    useEffect(() => {
+        if (!isSettingsOpen) return;
+
+        const handlePointerDown = (event: PointerEvent) => {
+            if (
+                settingsButtonRef.current?.contains(event.target as Node) ||
+                settingsMenuRef.current?.contains(event.target as Node)
+            ) {
+                return;
+            }
+
+            closeSettings();
+        };
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                closeSettings();
+            }
+        };
+
+        document.addEventListener("pointerdown", handlePointerDown);
+        document.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            document.removeEventListener("pointerdown", handlePointerDown);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [closeSettings, isSettingsOpen]);
+
     const usesOverlayHeader = shouldUseOverlayHeader({
         isShortViewport,
         pathname,
     });
     const isHeaderVisible =
         !usesOverlayHeader || isHeaderExpanded || Boolean(headerStatus);
+    const areHeaderDialogsAnchoredToViewportTop =
+        shouldAnchorHeaderDialogsToViewportTop({
+            isHeaderVisible,
+            usesOverlayHeader,
+        });
 
     const contextValue = useMemo(
         () => ({
@@ -412,6 +584,13 @@ export default function AppShell({
             setIsDarkMode: setThemeInStorage,
         }),
         [isDarkMode]
+    );
+    const boardDisplaySettingsContextValue = useMemo(
+        () => ({
+            showBoardCoordinates,
+            setShowBoardCoordinates: setShowBoardCoordinatesInStorage,
+        }),
+        [showBoardCoordinates]
     );
     const headerActionsContextValue = useMemo(
         () => ({ setHeaderActions }),
@@ -424,6 +603,9 @@ export default function AppShell({
 
     return (
         <ThemeContext.Provider value={contextValue}>
+            <BoardDisplaySettingsContext.Provider
+                value={boardDisplaySettingsContextValue}
+            >
             <HeaderActionsContext.Provider value={headerActionsContextValue}>
                 <HeaderStatusContext.Provider value={headerStatusContextValue}>
                     <HeaderVisibilityContext.Provider
@@ -486,42 +668,18 @@ export default function AppShell({
                             </button>
 
                             <button
+                                ref={settingsButtonRef}
                                 type="button"
                                 className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
-                                aria-label={isDarkMode ? t("switchToLightMode") : t("switchToDarkMode")}
-                                title={isDarkMode ? t("lightMode") : t("darkMode")}
-                                onClick={() => {
-                                    setThemeInStorage(!isDarkMode);
-                                }}
+                                aria-label={t("settings")}
+                                aria-controls="settings-menu"
+                                aria-expanded={isSettingsOpen}
+                                aria-haspopup="dialog"
+                                title={t("settings")}
+                                onClick={toggleSettings}
                             >
-                                {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                                <Settings size={18} />
                             </button>
-
-                            {isFullscreenSupported ? (
-                                <button
-                                    type="button"
-                                    className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
-                                    aria-label={
-                                        isFullscreen
-                                            ? t("exitFullscreen")
-                                            : t("enterFullscreen")
-                                    }
-                                    title={
-                                        isFullscreen
-                                            ? t("exitFullscreen")
-                                            : t("enterFullscreen")
-                                    }
-                                    onClick={() => {
-                                        void toggleFullscreen();
-                                    }}
-                                >
-                                    {isFullscreen ? (
-                                        <Minimize2 size={18} />
-                                    ) : (
-                                        <Expand size={18} />
-                                    )}
-                                </button>
-                            ) : null}
 
                             {usesOverlayHeader ? (
                                 <button
@@ -541,23 +699,120 @@ export default function AppShell({
                     <div
                         id="changelog-menu"
                         ref={changelogMenuRef}
-                        className="fixed right-4 top-16 z-[60] max-h-[min(36rem,calc(100vh-5rem))] w-[min(28rem,calc(100vw-2rem))] overflow-auto rounded-lg border border-zinc-200 bg-zinc-100 p-3 text-zinc-950 shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                        className={getChangelogDialogClassName({
+                            alignToViewportTop:
+                                areHeaderDialogsAnchoredToViewportTop,
+                        })}
                     >
-                        <div className="mb-3 flex items-center justify-between gap-3">
+                        <div className="mb-3">
                             <p className="text-sm font-semibold">
                                 {t("changelog")}
                             </p>
-                            <button
-                                type="button"
-                                className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md hover:bg-zinc-200 dark:hover:bg-neutral-800"
-                                aria-label={t("closeChangelog")}
-                                title={t("closeChangelog")}
-                                onClick={closeChangelog}
-                            >
-                                <X size={16} />
-                            </button>
                         </div>
                         <ChangelogReleaseList />
+                    </div>
+                ) : null}
+                {isSettingsOpen ? (
+                    <div
+                        id="settings-menu"
+                        ref={settingsMenuRef}
+                        role="dialog"
+                        aria-modal="false"
+                        aria-labelledby="settings-menu-title"
+                        className={getSettingsDialogClassName({
+                            alignToViewportTop:
+                                areHeaderDialogsAnchoredToViewportTop,
+                        })}
+                    >
+                        <div className="mb-3">
+                            <p
+                                id="settings-menu-title"
+                                className="text-sm font-semibold"
+                            >
+                                {t("settings")}
+                            </p>
+                        </div>
+
+                        <div className="grid gap-3">
+                            <div className="rounded-md border border-zinc-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-950">
+                                <p className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
+                                    {t("displaySettings")}
+                                </p>
+                                <div className="mt-3 grid gap-2">
+                                    <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900">
+                                        <span>{t("boardCoordinates")}</span>
+                                        <input
+                                            type="checkbox"
+                                            className="h-5 w-5 accent-zinc-950 dark:accent-white"
+                                            checked={showBoardCoordinates}
+                                            aria-label={t("showBoardCoordinates")}
+                                            onChange={(event) => {
+                                                setShowBoardCoordinatesInStorage(
+                                                    event.target.checked
+                                                );
+                                            }}
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="rounded-md border border-zinc-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-950">
+                                <p className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
+                                    {t("appSettings")}
+                                </p>
+                                <div className="mt-3 grid gap-2">
+                                    <button
+                                        type="button"
+                                        className="inline-flex min-h-11 items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                                        aria-label={
+                                            isDarkMode
+                                                ? t("switchToLightMode")
+                                                : t("switchToDarkMode")
+                                        }
+                                        onClick={() => {
+                                            setThemeInStorage(!isDarkMode);
+                                        }}
+                                    >
+                                        <span>
+                                            {isDarkMode
+                                                ? t("lightMode")
+                                                : t("darkMode")}
+                                        </span>
+                                        {isDarkMode ? (
+                                            <Sun size={18} />
+                                        ) : (
+                                            <Moon size={18} />
+                                        )}
+                                    </button>
+
+                                    {isFullscreenSupported ? (
+                                        <button
+                                            type="button"
+                                            className="inline-flex min-h-11 items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                                            aria-label={
+                                                isFullscreen
+                                                    ? t("exitFullscreen")
+                                                    : t("enterFullscreen")
+                                            }
+                                            onClick={() => {
+                                                void toggleFullscreen();
+                                            }}
+                                        >
+                                            <span>
+                                                {isFullscreen
+                                                    ? t("exitFullscreen")
+                                                    : t("enterFullscreen")}
+                                            </span>
+                                            {isFullscreen ? (
+                                                <Minimize2 size={18} />
+                                            ) : (
+                                                <Expand size={18} />
+                                            )}
+                                        </button>
+                                    ) : null}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 ) : null}
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -566,6 +821,7 @@ export default function AppShell({
                     </HeaderVisibilityContext.Provider>
                 </HeaderStatusContext.Provider>
             </HeaderActionsContext.Provider>
+            </BoardDisplaySettingsContext.Provider>
         </ThemeContext.Provider>
     );
 }

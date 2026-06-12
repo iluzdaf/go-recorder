@@ -8,6 +8,7 @@ import {
     getCorrectionPreviewStones,
     getCorrectionTapAction,
     getEditableMoveIndexAtVertex,
+    getPlacementZoomOverlayOffset,
     getPlacementZoomWindow,
     getPreviewStone,
     getSelectedMoveVertices,
@@ -611,6 +612,21 @@ describe("game correction UI helpers", () => {
     it("uses placement zoom only when stones are rendered compactly", () => {
         expect(shouldUsePlacementZoom({ cellSize: 18 })).toBe(true);
         expect(shouldUsePlacementZoom({ cellSize: 24 })).toBe(false);
+    });
+
+    it("offsets placement zoom by coordinate labels and fixed board-edge gutter", () => {
+        expect(
+            getPlacementZoomOverlayOffset({
+                showCoordinates: true,
+                zoomCellSize: 32,
+            })
+        ).toBe(-34);
+        expect(
+            getPlacementZoomOverlayOffset({
+                showCoordinates: false,
+                zoomCellSize: 32,
+            })
+        ).toBe(-2);
     });
 
     it("maps zoomed placement pointer positions back to full-board vertices", () => {

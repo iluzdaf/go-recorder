@@ -1,6 +1,10 @@
 # Smoke Test Checklists
 
-Use these as starting points. Review agents should tailor them to the PR.
+- Use these as starting points.
+- Tailor the list to the PR.
+- Include the tailored list in `Smoke Tests For Reviewer`.
+- Run these against the preview deployment or relevant environment.
+- Do not use these as a reason for agents to visually test locally.
 
 ## Recording Flow
 
@@ -17,6 +21,35 @@ Use these as starting points. Review agents should tailor them to the PR.
 - Confirm the correction control appears in the expected location.
 - Apply and cancel correction flows as appropriate.
 - Confirm normal recording still works after closing correction mode.
+
+## Board Display Settings
+
+- Open a recording board.
+- Open Settings from the header.
+- Toggle board coordinates off.
+- Confirm the recording board uses the reclaimed space.
+- Confirm edge placement still works with touch or pointer input.
+- Toggle board coordinates on.
+- Confirm coordinates are visible and not clipped.
+- Open a draft board.
+- Confirm the same coordinate setting applies.
+- Open a share board.
+- Confirm the same coordinate setting applies.
+- Rotate the device or resize the viewport.
+- Confirm the board and coordinate setting remain stable.
+
+## Header Popovers
+
+- Open the changelog popover from the header.
+- Open the settings popover from the header.
+- Confirm each popover is positioned below the visible header.
+- Collapse the overlay header when available.
+- Open each popover again.
+- Confirm each popover is positioned near the top of the viewport.
+- Rotate the device or resize the viewport.
+- Confirm each popover remains reachable.
+- Confirm outside click closes each popover.
+- Confirm Escape closes each popover when keyboard input is available.
 
 ## Draft Board
 

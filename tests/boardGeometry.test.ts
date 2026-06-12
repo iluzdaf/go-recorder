@@ -11,7 +11,7 @@ describe("board geometry helpers", () => {
     it("sizes vertices from the smaller available board dimension", () => {
         expect(
             getBoardVertexSize({ boardSize: 19, width: 520, height: 420 })
-        ).toBe(20);
+        ).toBeCloseTo((420 - 4) / 21);
     });
 
     it("keeps a minimum touch-friendly vertex size", () => {
@@ -23,7 +23,56 @@ describe("board geometry helpers", () => {
     it("accounts for board size when sizing vertices", () => {
         expect(
             getBoardVertexSize({ boardSize: 9, width: 320, height: 320 })
-        ).toBe(30);
+        ).toBeCloseTo((320 - 4) / 11);
+    });
+
+    it("uses reclaimed coordinate label space when coordinates are hidden", () => {
+        const withCoordinates = getBoardVertexSize({
+            boardSize: 19,
+            showCoordinates: true,
+            width: 416,
+            height: 416,
+        });
+        const withoutCoordinates = getBoardVertexSize({
+            boardSize: 19,
+            showCoordinates: false,
+            width: 416,
+            height: 416,
+        });
+
+        expect(withCoordinates).toBeCloseTo((416 - 4) / 21);
+        expect(withoutCoordinates).toBeCloseTo((416 - 4) / 19);
+        expect(withoutCoordinates).toBeGreaterThan(withCoordinates);
+    });
+
+    it("does not reserve outer layout padding when coordinates are hidden", () => {
+        expect(
+            getBoardVertexSize({
+                boardSize: 19,
+                showCoordinates: false,
+                width: 399,
+                height: 399,
+            })
+        ).toBeCloseTo((399 - 4) / 19);
+        expect(
+            getBoardVertexSize({
+                boardSize: 19,
+                showCoordinates: true,
+                width: 399,
+                height: 399,
+            })
+        ).toBeCloseTo((399 - 4) / 21);
+    });
+
+    it("does not reserve outer layout padding when coordinates are visible", () => {
+        expect(
+            getBoardVertexSize({
+                boardSize: 19,
+                showCoordinates: true,
+                width: 416,
+                height: 416,
+            })
+        ).toBeCloseTo((416 - 4) / 21);
     });
 
     it("creates default grid metrics from board size and vertex size", () => {

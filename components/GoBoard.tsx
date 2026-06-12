@@ -21,7 +21,12 @@ import { saveLocalEditableRecord } from "../lib/localEditableSave";
 import { createLoadedLocalGame } from "../lib/localGameView";
 import { createShareFromLocalGame } from "../lib/shareClient";
 import { formatMoveEditError, t } from "../lib/i18n";
-import { useHeaderStatus, useHeaderVisibility, useTheme } from "./AppShell";
+import {
+    useBoardDisplaySettings,
+    useHeaderStatus,
+    useHeaderVisibility,
+    useTheme,
+} from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
 import RecorderActionBar from "./RecorderActionBar";
 import ShareMenu from "./ShareMenu";
@@ -38,6 +43,7 @@ import {
     getCorrectionTapAction,
     getEditableMoveIndexAtVertex,
     getPlacementZoomWindow,
+    getPlacementZoomOverlayOffset,
     getVertexFromPlacementZoomPointer,
     getSelectedMoveVertices,
     getStoneCorrectionHandleAnchor,
@@ -104,6 +110,7 @@ function getActionBarStorageKey(id: string) {
 export default function GoBoard({ id }: GoBoardProps) {
     const [size, setSize] = useState<BoardSize>(19);
     const { isDarkMode } = useTheme();
+    const { showBoardCoordinates } = useBoardDisplaySettings();
     const { setHeaderStatus } = useHeaderStatus();
     const { isOverlayHeader } = useHeaderVisibility();
     const hasLoadedGameRef = useRef(false);
@@ -187,6 +194,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     } = useBoardGeometry({
         boardSize: size,
         measureGrid: true,
+        showCoordinates: showBoardCoordinates,
     });
 
     useEffect(() => {
@@ -437,6 +445,10 @@ export default function GoBoard({ id }: GoBoardProps) {
     const placementZoomVertexSize = placementZoomWindow
         ? gridMetrics.boardSizePx / placementZoomWindow.size
         : vertexSize;
+    const placementZoomOffset = getPlacementZoomOverlayOffset({
+        showCoordinates: showBoardCoordinates,
+        zoomCellSize: placementZoomVertexSize,
+    });
     const placementZoomRangeX: [number, number] | undefined = placementZoomWindow
         ? [
               placementZoomWindow.startX,
@@ -1306,15 +1318,15 @@ export default function GoBoard({ id }: GoBoardProps) {
                         markerMap={boardMarkerMap}
                         selectedVertices={renderSelectedVertices}
                         dimmedVertices={renderDimmedVertices}
-                        showCoordinates
+                        showCoordinates={showBoardCoordinates}
                     />
                         {placementZoomWindow ? (
                             <div
                                 aria-hidden="true"
                                 className={placementZoomClassName}
                                 style={{
-                                    left: gridMetrics.left - placementZoomVertexSize,
-                                    top: gridMetrics.top - placementZoomVertexSize,
+                                    left: gridMetrics.left + placementZoomOffset,
+                                    top: gridMetrics.top + placementZoomOffset,
                                 }}
                             >
                                 <BoardView
@@ -1325,7 +1337,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                                     dimmedVertices={renderDimmedVertices}
                                     rangeX={placementZoomRangeX}
                                     rangeY={placementZoomRangeY}
-                                    showCoordinates
+                                    showCoordinates={showBoardCoordinates}
                                 />
                             </div>
                         ) : null}

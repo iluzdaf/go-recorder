@@ -1,9 +1,9 @@
 import type { BoardGridGeometry } from "./gameCorrectionUi";
 import type { PositionViewGridGeometry } from "./positionView";
 
-export const BOARD_PADDING_PX = 16;
 export const MIN_VERTEX_SIZE_PX = 16;
-export const COORDINATE_GUTTER_VERTICES = 1;
+export const BOARD_EDGE_GUTTER_PX = 2;
+export const COORDINATE_LABEL_GUTTER_VERTICES = 2;
 
 export type BoardGridMetrics = {
     left: number;
@@ -19,6 +19,7 @@ export type LiveBoardGridMetrics = {
 
 type GetBoardVertexSizeOptions = {
     boardSize: number;
+    showCoordinates?: boolean;
     width: number;
     height: number;
 };
@@ -38,15 +39,18 @@ type GetLivePositionViewGridMetricsOptions = {
 
 export function getBoardVertexSize({
     boardSize,
+    showCoordinates = true,
     width,
     height,
 }: GetBoardVertexSizeOptions) {
-    const availableSize = Math.max(0, Math.min(width, height) - BOARD_PADDING_PX);
+    const availableSize = Math.max(0, Math.min(width, height));
+    const displaySize = showCoordinates
+        ? boardSize + COORDINATE_LABEL_GUTTER_VERTICES
+        : boardSize;
+    const nextVertexSize =
+        Math.max(0, availableSize - BOARD_EDGE_GUTTER_PX * 2) / displaySize;
 
-    return Math.max(
-        MIN_VERTEX_SIZE_PX,
-        Math.floor(availableSize / (boardSize + COORDINATE_GUTTER_VERTICES))
-    );
+    return Math.max(MIN_VERTEX_SIZE_PX, nextVertexSize);
 }
 
 export function createDefaultBoardGridMetrics(
