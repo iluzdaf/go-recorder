@@ -6,13 +6,15 @@ This workflow turns rough feedback into prioritized implementation tasks, then r
 
 - `needs-triage`: raw feedback that has not been converted into an actionable task.
 - `needs-clarification`: triage found open questions that must be answered before implementation.
-- `ready-for-agent`: the task has enough detail for an implementation agent to start.
+- `ready-for-agent`: triage is complete and the task has enough detail for an implementation agent to start.
 - `needs-plan`: an agent has claimed the task and must propose an implementation plan before editing code.
 - `needs-plan-approval`: a plan has been proposed and is waiting for human approval.
 - `in-progress`: an agent has claimed the task and is implementing it.
 - `needs-review`: implementation is complete and ready for a separate review pass.
 - `smoke-test-ready`: review is complete and the PR has a manual smoke test checklist.
 - `blocked`: work cannot continue without a decision, credential, external service, or dependency.
+
+Default task flow: `needs-triage` -> `ready-for-agent` -> `needs-plan` -> `needs-plan-approval` -> `in-progress` -> `needs-review` -> `smoke-test-ready`.
 
 ## Feedback Intake
 
@@ -68,7 +70,7 @@ Prefer small, independently mergeable tasks. Split broad feedback when one PR wo
 
 ## Planning And Approval
 
-Before implementation starts, the assigned agent should write a plan and wait for approval when the task is non-trivial, broad, or could be implemented multiple ways.
+Before implementation starts, an agent may pick up an issue labeled `ready-for-agent` and move it to `needs-plan`. The assigned agent should write a plan and wait for approval when the task is non-trivial, broad, or could be implemented multiple ways.
 
 The plan should:
 
@@ -101,12 +103,13 @@ Required workflow:
 1. Switch to `main`.
 2. Pull latest remote changes.
 3. Create a feature branch using the `codex/` prefix unless instructed otherwise.
-4. Write an implementation plan and mark the task `needs-plan-approval` when the task is non-trivial.
-5. Wait for human approval before editing code.
-6. Implement the approved plan as focused commits, with one commit per plan step by default.
-7. Run relevant non-visual checks.
-8. Open a PR linked to the task and include the approved plan in the PR description.
-9. Move the task to `needs-review`.
+4. Move the task from `ready-for-agent` to `needs-plan`.
+5. Write an implementation plan and move the task from `needs-plan` to `needs-plan-approval` when the task is non-trivial.
+6. Wait for human approval before editing code.
+7. Implement the approved plan as focused commits, with one commit per plan step by default.
+8. Run relevant non-visual checks.
+9. Open a PR linked to the task and include the approved plan in the PR description.
+10. Move the task to `needs-review`.
 
 Repo-specific rules:
 
