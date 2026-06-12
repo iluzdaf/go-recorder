@@ -61,13 +61,23 @@ export async function createShareFromLocalRecord({
     localRecord,
     sourceKind = "game",
 }: CreateShareFromLocalRecordInput): Promise<CreateShareResponse> {
-    const response = await fetch("/api/shares", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(toCreateShareInput({ localRecord, sourceKind })),
-    });
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        throw new Error(t("offlineShareUnavailable"));
+    }
+
+    let response: Response;
+
+    try {
+        response = await fetch("/api/shares", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(toCreateShareInput({ localRecord, sourceKind })),
+        });
+    } catch {
+        throw new Error(t("shareNetworkError"));
+    }
 
     if (!response.ok) {
         const body = (await response.json().catch(() => null)) as

@@ -4,6 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import ShareMenu from "../components/ShareMenu";
 
+vi.mock("next/navigation", () => ({
+    useRouter: () => ({
+        push: vi.fn(),
+    }),
+}));
+
 function renderShareMenu({
     alignToViewportTop,
     mode = "chooser",
@@ -65,5 +71,17 @@ describe("ShareMenu", () => {
         expect(markup).toContain("w-[min(24rem,calc(100vw-2rem))]");
         expect(markup).toContain("flex flex-col gap-2");
         expect(markup).toContain("h-48 w-48");
+    });
+
+    it("opens share pages in the same app window", () => {
+        const markup = renderShareMenu({
+            alignToViewportTop: false,
+            mode: "created",
+            sharePath: "/shares/share123",
+        });
+
+        expect(markup).toContain("Go to share page");
+        expect(markup).toContain("<button");
+        expect(markup).not.toContain('target="_blank"');
     });
 });

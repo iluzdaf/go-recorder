@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
 import type {
@@ -16,6 +17,7 @@ import {
     useTheme,
 } from "./AppShell";
 import { getLivePositionViewGridMetrics } from "../lib/boardGeometry";
+import { navigateWithinApp } from "../lib/fullscreenNavigation";
 import { t } from "../lib/i18n";
 import {
     createLocalDraft,
@@ -129,6 +131,7 @@ export function CapturedVariationMoveCaption({
 }
 
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
+    const router = useRouter();
     const { isDarkMode } = useTheme();
     const { showBoardCoordinates } = useBoardDisplaySettings();
     const { setHeaderStatus } = useHeaderStatus();
@@ -339,8 +342,11 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
 
         const draft = createLocalDraft(pendingVariationInput);
         setPendingVariationInput(null);
-        window.open(`/drafts/${draft.id}`, "_blank", "noopener,noreferrer");
-    }, [pendingVariationInput]);
+        navigateWithinApp({
+            path: `/drafts/${draft.id}`,
+            push: router.push,
+        });
+    }, [pendingVariationInput, router.push]);
 
     const handleDownloadSgfFromShareMenu = useCallback(() => {
         handleDownloadSgf();

@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import type { BoardSize } from "@/components/types";
 import { createLocalDraft, createLocalGame, getAllLocalDrafts, getAllLocalGames } from "@/lib/localGames";
 import type { LocalDraftRecord, LocalGameRecord } from "@/lib/localGames";
@@ -11,13 +10,13 @@ import {
     createLocalGameInputFromForm,
 } from "@/lib/localGameSetup";
 import { GameBoardThumbnail, getDraftTitle, getGameTitle } from "@/components/GameListItem";
+import { navigateWithinApp } from "@/lib/fullscreenNavigation";
 import { t } from "@/lib/i18n";
 
 const RECENT_GAME_LIMIT = 3;
 
 export default function Home() {
   const router = useRouter();
-
   const [boardSize, setBoardSize] = useState<BoardSize>(19);
   const [blackPlayerName, setBlackPlayerName] = useState("");
   const [whitePlayerName, setWhitePlayerName] = useState("");
@@ -28,8 +27,12 @@ export default function Home() {
   const [recentDrafts, setRecentDrafts] = useState<LocalDraftRecord[]>([]);
 
   useEffect(() => {
-    setRecentGames(getAllLocalGames().slice(0, RECENT_GAME_LIMIT));
-    setRecentDrafts(getAllLocalDrafts().slice(0, RECENT_GAME_LIMIT));
+    const timeoutId = window.setTimeout(() => {
+      setRecentGames(getAllLocalGames().slice(0, RECENT_GAME_LIMIT));
+      setRecentDrafts(getAllLocalDrafts().slice(0, RECENT_GAME_LIMIT));
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   function handleRecordGame(event: React.FormEvent<HTMLFormElement>) {
@@ -44,7 +47,10 @@ export default function Home() {
         handicap,
     }));
 
-    router.push(`/games/${game.id}`);
+    navigateWithinApp({
+        path: `/games/${game.id}`,
+        push: router.push,
+    });
   }
 
   function handleCreateDraft() {
@@ -52,7 +58,10 @@ export default function Home() {
 
     const draft = createLocalDraft(createDefaultLocalBoardDraftInput());
 
-    router.push(`/drafts/${draft.id}`);
+    navigateWithinApp({
+        path: `/drafts/${draft.id}`,
+        push: router.push,
+    });
   }
 
   return (
@@ -134,20 +143,32 @@ export default function Home() {
                 <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
                   {t("recentGames")}
                 </span>
-                <Link
-                  href="/games"
+                <button
+                  type="button"
                   className="text-sm text-sky-700 hover:underline dark:text-sky-400"
+                  onClick={() => {
+                    navigateWithinApp({
+                      path: "/games",
+                      push: router.push,
+                    });
+                  }}
                 >
                   {t("showMoreGames")}
-                </Link>
+                </button>
               </div>
               <ul className="flex flex-col">
                 {recentGames.map((game) => (
                   <li key={game.id}>
-                    <Link
-                      href={`/games/${game.id}`}
+                    <button
+                      type="button"
                       aria-label={getGameTitle(game)}
-                      className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-zinc-50 dark:hover:bg-neutral-750"
+                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-zinc-50 dark:hover:bg-neutral-750"
+                      onClick={() => {
+                        navigateWithinApp({
+                          path: `/games/${game.id}`,
+                          push: router.push,
+                        });
+                      }}
                     >
                       <GameBoardThumbnail game={game} />
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -162,7 +183,7 @@ export default function Home() {
                           {new Date(game.updatedAt).toLocaleDateString()}
                         </span>
                       </div>
-                    </Link>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -186,20 +207,32 @@ export default function Home() {
                 <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
                   {t("recentDrafts")}
                 </span>
-                <Link
-                  href="/drafts"
+                <button
+                  type="button"
                   className="text-sm text-sky-700 hover:underline dark:text-sky-400"
+                  onClick={() => {
+                    navigateWithinApp({
+                      path: "/drafts",
+                      push: router.push,
+                    });
+                  }}
                 >
                   {t("showMoreDrafts")}
-                </Link>
+                </button>
               </div>
               <ul className="flex flex-col">
                 {recentDrafts.map((draft) => (
                   <li key={draft.id}>
-                    <Link
-                      href={`/drafts/${draft.id}`}
+                    <button
+                      type="button"
                       aria-label={getDraftTitle(draft)}
-                      className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-zinc-50 dark:hover:bg-neutral-750"
+                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-zinc-50 dark:hover:bg-neutral-750"
+                      onClick={() => {
+                        navigateWithinApp({
+                          path: `/drafts/${draft.id}`,
+                          push: router.push,
+                        });
+                      }}
                     >
                       <GameBoardThumbnail game={draft} />
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -210,7 +243,7 @@ export default function Home() {
                           {new Date(draft.updatedAt).toLocaleDateString()}
                         </span>
                       </div>
-                    </Link>
+                    </button>
                   </li>
                 ))}
               </ul>

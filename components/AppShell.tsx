@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
     createContext,
     useContext,
@@ -13,6 +13,7 @@ import {
     useSyncExternalStore,
 } from "react";
 import {
+    ChevronLeft,
     Expand,
     Home,
     Menu,
@@ -24,6 +25,7 @@ import {
 } from "lucide-react";
 import ChangelogReleaseList from "./ChangelogReleaseList";
 import { t } from "../lib/i18n";
+import { navigateWithinApp } from "../lib/fullscreenNavigation";
 
 type ThemeContextValue = {
     isDarkMode: boolean;
@@ -72,6 +74,12 @@ const THEME_CHANGE_EVENT = "go-recorder:theme-change";
 const BOARD_DISPLAY_SETTINGS_CHANGE_EVENT =
     "go-recorder:board-display-settings-change";
 const SHORT_VIEWPORT_QUERY = "(max-height: 640px)";
+const APP_NAVIGATION_STORAGE_KEY = "go-recorder:app-navigation";
+
+type AppNavigationState = {
+    entries: string[];
+    index: number;
+};
 
 function getSystemTheme() {
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -91,6 +99,121 @@ function getIsShortViewport() {
     if (typeof window === "undefined") return false;
 
     return window.matchMedia(SHORT_VIEWPORT_QUERY).matches;
+}
+
+function normalizeAppPath(pathname: string | null | undefined) {
+    if (!pathname?.startsWith("/")) return "/";
+
+    return pathname;
+}
+
+function normalizeAppNavigationState(
+    value: unknown
+): AppNavigationState {
+    if (
+        typeof value !== "object" ||
+        value === null ||
+        !Array.isArray((value as Partial<AppNavigationState>).entries)
+    ) {
+        return { entries: [], index: -1 };
+    }
+
+    const entries = (value as Partial<AppNavigationState>).entries?.filter(
+        (entry): entry is string => typeof entry === "string" && entry.startsWith("/")
+    ) ?? [];
+    const index = (value as Partial<AppNavigationState>).index;
+
+    if (typeof index !== "number" || !Number.isInteger(index)) {
+        return { entries, index: entries.length - 1 };
+    }
+
+    return {
+        entries,
+        index: Math.min(Math.max(index, -1), entries.length - 1),
+    };
+}
+
+export function updateAppNavigationStateForPath({
+    pathname,
+    state,
+}: {
+    pathname: string | null | undefined;
+    state: AppNavigationState;
+}): AppNavigationState {
+    const nextPath = normalizeAppPath(pathname);
+    const normalizedState = normalizeAppNavigationState(state);
+
+    if (nextPath === "/") {
+        return { entries: ["/"], index: 0 };
+    }
+
+    const currentPath = normalizedState.entries[normalizedState.index];
+
+    if (currentPath === nextPath) {
+        return normalizedState;
+    }
+
+    const existingPathIndex = normalizedState.entries.lastIndexOf(nextPath);
+
+    if (existingPathIndex >= 0) {
+        return {
+            entries: normalizedState.entries,
+            index: existingPathIndex,
+        };
+    }
+
+    return {
+        entries: [
+            ...normalizedState.entries.slice(0, normalizedState.index + 1),
+            nextPath,
+        ],
+        index: normalizedState.index + 1,
+    };
+}
+
+export function getAppNavigationTargets(state: AppNavigationState) {
+    const normalizedState = normalizeAppNavigationState(state);
+    const backPath =
+        normalizedState.index > 0
+            ? normalizedState.entries[normalizedState.index - 1]
+            : null;
+
+    return {
+        backPath: backPath ?? null,
+    };
+}
+
+function getAppNavigationBackPath(state: AppNavigationState) {
+    const normalizedState = normalizeAppNavigationState(state);
+    const nextIndex = normalizedState.index - 1;
+
+    if (nextIndex < 0 || nextIndex >= normalizedState.entries.length) {
+        return null;
+    }
+
+    return normalizedState.entries[nextIndex] ?? null;
+}
+
+function readAppNavigationState() {
+    if (typeof window === "undefined") return { entries: [], index: -1 };
+
+    try {
+        return normalizeAppNavigationState(
+            JSON.parse(
+                window.sessionStorage.getItem(APP_NAVIGATION_STORAGE_KEY) ??
+                    "null"
+            )
+        );
+    } catch {
+        return { entries: [], index: -1 };
+    }
+}
+
+function writeAppNavigationState(state: AppNavigationState) {
+    window.sessionStorage.setItem(
+        APP_NAVIGATION_STORAGE_KEY,
+        JSON.stringify(normalizeAppNavigationState(state))
+    );
 }
 
 export function shouldUseOverlayHeader({
@@ -339,12 +462,15 @@ export default function AppShell({
     appVersion: string;
 }>) {
     const pathname = usePathname();
+    const router = useRouter();
     const [headerActions, setHeaderActions] = useState<React.ReactNode>(null);
     const [headerStatus, setHeaderStatus] = useState<React.ReactNode>(null);
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
     const [isChangelogOpen, setIsChangelogOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(() => getIsFullscreen());
+    const [appNavigationState, setAppNavigationState] =
+        useState<AppNavigationState>(() => ({ entries: [], index: -1 }));
     const changelogButtonRef = useRef<HTMLButtonElement | null>(null);
     const changelogMenuRef = useRef<HTMLDivElement | null>(null);
     const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -475,6 +601,21 @@ export default function AppShell({
         document.body.classList.toggle("dark", isDarkMode);
     }, [isDarkMode]);
 
+    useEffect(() => {
+        const nextState = updateAppNavigationStateForPath({
+            pathname,
+            state: readAppNavigationState(),
+        });
+
+        writeAppNavigationState(nextState);
+
+        const timeoutId = window.setTimeout(() => {
+            setAppNavigationState(nextState);
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [pathname]);
+
     const toggleFullscreen = useCallback(async () => {
         if (typeof document === "undefined") return;
 
@@ -489,6 +630,25 @@ export default function AppShell({
             setIsFullscreen(getIsFullscreen());
         }
     }, []);
+
+    const handleNavigateBack = useCallback(() => {
+        const currentState = readAppNavigationState();
+        const targetPath = getAppNavigationBackPath(currentState);
+
+        if (!targetPath) return;
+
+        const nextState = {
+            entries: currentState.entries,
+            index: currentState.index - 1,
+        };
+
+        writeAppNavigationState(nextState);
+        setAppNavigationState(nextState);
+        navigateWithinApp({
+            path: targetPath,
+            push: router.push,
+        });
+    }, [router.push]);
 
     const closeChangelog = useCallback(() => {
         setIsChangelogOpen(false);
@@ -577,6 +737,7 @@ export default function AppShell({
             isHeaderVisible,
             usesOverlayHeader,
         });
+    const { backPath } = getAppNavigationTargets(appNavigationState);
 
     const contextValue = useMemo(
         () => ({
@@ -636,14 +797,31 @@ export default function AppShell({
                         }
                     >
                         <div className="flex shrink-0 items-center gap-1.5">
-                            <Link
-                                href="/"
+                            <button
+                                type="button"
                                 className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
                                 aria-label={t("home")}
                                 title={t("home")}
+                                onClick={() => {
+                                    navigateWithinApp({
+                                        path: "/",
+                                        push: router.push,
+                                    });
+                                }}
                             >
                                 <Home size={18} />
-                            </Link>
+                            </button>
+                            {backPath ? (
+                                <button
+                                    type="button"
+                                    className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
+                                    aria-label={t("goBack")}
+                                    title={t("goBack")}
+                                    onClick={handleNavigateBack}
+                                >
+                                    <ChevronLeft size={18} />
+                                </button>
+                            ) : null}
 
                         </div>
 
@@ -709,7 +887,14 @@ export default function AppShell({
                                 {t("changelog")}
                             </p>
                         </div>
-                        <ChangelogReleaseList />
+                        <ChangelogReleaseList limit={2} />
+                        <Link
+                            href="/changelog"
+                            className="mt-3 inline-flex text-sm font-semibold text-zinc-700 underline underline-offset-4 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
+                            onClick={() => setIsChangelogOpen(false)}
+                        >
+                            {t("showMoreChangelog")}
+                        </Link>
                     </div>
                 ) : null}
                 {isSettingsOpen ? (

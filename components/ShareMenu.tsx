@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { Copy, Download, Link2, SquareArrowOutUpRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Copy, Download, Link2 } from "lucide-react";
 import type { RefObject } from "react";
 
+import { navigateWithinApp } from "../lib/fullscreenNavigation";
 import { t } from "../lib/i18n";
 
 export type ShareMenuMode = "chooser" | "created";
@@ -38,6 +39,7 @@ export default function ShareMenu({
     showSharePageLink = true,
     sharePath,
 }: ShareMenuProps) {
+    const router = useRouter();
     const createdSharePath = mode === "created" ? sharePath : null;
     const hasCreatedShare = createdSharePath !== null;
 
@@ -87,15 +89,21 @@ export default function ShareMenu({
                                 <span>{t("copyLink")}</span>
                             </button>
                             {showSharePageLink ? (
-                                <Link
-                                    href={createdSharePath}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                <button
+                                    type="button"
                                     className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                    onClick={() => {
+                                        navigateWithinApp({
+                                            path: createdSharePath,
+                                            push: router.push,
+                                        });
+                                    }}
+                                    aria-label={t("goToSharePage")}
+                                    title={t("goToSharePage")}
                                 >
-                                    <SquareArrowOutUpRight size={16} />
+                                    <Link2 size={16} />
                                     <span>{t("goToSharePage")}</span>
-                                </Link>
+                                </button>
                             ) : null}
                         </>
                     ) : (

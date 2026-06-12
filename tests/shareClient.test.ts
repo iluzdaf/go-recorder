@@ -50,6 +50,9 @@ const localDraft: LocalDraftRecord = {
 
 beforeEach(() => {
     mockFetch.mockReset();
+    vi.stubGlobal("navigator", {
+        onLine: true,
+    });
 });
 
 describe("toCreateShareInput", () => {
@@ -243,5 +246,25 @@ describe("createShareFromLocalGame", () => {
         await expect(
             createShareFromLocalGame({ localGame })
         ).rejects.toThrow(t("failedToCreateShare"));
+    });
+
+    it("throws an offline-specific error without posting when offline", async () => {
+        vi.stubGlobal("navigator", {
+            onLine: false,
+        });
+
+        await expect(
+            createShareFromLocalGame({ localGame })
+        ).rejects.toThrow(t("offlineShareUnavailable"));
+
+        expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("throws a network-specific error when the share request cannot be reached", async () => {
+        mockFetch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+        await expect(
+            createShareFromLocalGame({ localGame })
+        ).rejects.toThrow(t("shareNetworkError"));
     });
 });

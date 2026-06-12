@@ -90,6 +90,7 @@ export default function useEditableShareMenuController({
 
     const finishCreated = useCallback(
         (nextShareSlug: string) => {
+            void cacheCreatedSharePage(`/shares/${nextShareSlug}`);
             setShareSlug(nextShareSlug);
             setMode("created");
             openBase();
@@ -160,4 +161,25 @@ export default function useEditableShareMenuController({
             triggerRef,
         ]
     );
+}
+
+async function cacheCreatedSharePage(sharePath: string) {
+    if (
+        typeof navigator === "undefined" ||
+        !("serviceWorker" in navigator)
+    ) {
+        return;
+    }
+
+    try {
+        await import("@/components/ShareGoBoard");
+        const registration = await navigator.serviceWorker.ready;
+
+        registration.active?.postMessage({
+            type: "CACHE_SHARE_PAGE",
+            sharePath,
+        });
+    } catch {
+        // Share links still work online even if offline caching is unavailable.
+    }
 }
