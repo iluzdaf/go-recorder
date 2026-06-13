@@ -1078,7 +1078,7 @@ export default function AppShell({
                         </div>
                     </div>
                 ) : null}
-                <div className={`flex min-h-0 flex-1 flex-col overflow-hidden${usesOverlayHeader ? " pt-14" : ""}`}>
+                <div className={`flex min-h-0 flex-1 flex-col overflow-hidden${usesOverlayHeader && isHeaderVisible ? " pt-14" : ""}`}>
                     {children}
                 </div>
                     </HeaderVisibilityContext.Provider>
