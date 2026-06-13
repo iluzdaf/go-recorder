@@ -92,9 +92,11 @@ function subscribeToShortViewport(onStoreChange: () => void) {
     const shortViewportQuery = window.matchMedia(SHORT_VIEWPORT_QUERY);
 
     shortViewportQuery.addEventListener("change", onStoreChange);
+    window.addEventListener("resize", onStoreChange);
 
     return () => {
         shortViewportQuery.removeEventListener("change", onStoreChange);
+        window.removeEventListener("resize", onStoreChange);
     };
 }
 
