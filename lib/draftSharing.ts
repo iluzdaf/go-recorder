@@ -12,7 +12,7 @@ export function getIllegalBoardGroupVertices(
         gameState: { setupStones },
     } = draft;
     const signMap: (0 | 1 | -1)[][] = Array.from({ length: boardSize }, () =>
-        Array.from({ length: boardSize }, () => 0 as 0)
+        Array.from({ length: boardSize }, () => 0 as const)
     );
     for (const s of setupStones) {
         signMap[s.y][s.x] = s.color === "B" ? 1 : -1;
