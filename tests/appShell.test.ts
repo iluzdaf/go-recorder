@@ -5,6 +5,7 @@ import {
     getChangelogDialogClassName,
     getSettingsDialogClassName,
     resolveShowBoardCoordinatesPreference,
+    resolveTwoStepPlacementPreference,
     shouldAnchorHeaderDialogsToViewportTop,
     shouldUseOverlayHeader,
     updateAppNavigationStateForPath,
@@ -78,6 +79,18 @@ describe("resolveShowBoardCoordinatesPreference", () => {
         expect(resolveShowBoardCoordinatesPreference("false")).toBe(false);
         expect(resolveShowBoardCoordinatesPreference("true")).toBe(true);
         expect(resolveShowBoardCoordinatesPreference("unexpected")).toBe(true);
+    });
+});
+
+describe("resolveTwoStepPlacementPreference", () => {
+    it("defaults to off", () => {
+        expect(resolveTwoStepPlacementPreference(null)).toBe(false);
+    });
+
+    it("enables only when stored preference is true", () => {
+        expect(resolveTwoStepPlacementPreference("true")).toBe(true);
+        expect(resolveTwoStepPlacementPreference("false")).toBe(false);
+        expect(resolveTwoStepPlacementPreference("unexpected")).toBe(false);
     });
 });
 

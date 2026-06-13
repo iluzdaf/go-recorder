@@ -51,10 +51,13 @@ type HeaderVisibilityContextValue = {
 type BoardDisplaySettingsContextValue = {
     showBoardCoordinates: boolean;
     setShowBoardCoordinates: (nextShowBoardCoordinates: boolean) => void;
+    twoStepPlacement: boolean;
+    setTwoStepPlacement: (nextTwoStepPlacement: boolean) => void;
 };
 
 const THEME_STORAGE_KEY = "go-recorder:theme";
 const BOARD_COORDINATES_STORAGE_KEY = "go-recorder:show-board-coordinates";
+const BOARD_TWO_STEP_PLACEMENT_STORAGE_KEY = "go-recorder:two-step-placement";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 const HeaderActionsContext = createContext<HeaderActionsContextValue | null>(
@@ -389,6 +392,18 @@ function getShowBoardCoordinatesFromStorage() {
     );
 }
 
+export function resolveTwoStepPlacementPreference(
+    storedPreference: string | null
+) {
+    return storedPreference === "true";
+}
+
+function getTwoStepPlacementFromStorage() {
+    return resolveTwoStepPlacementPreference(
+        window.localStorage.getItem(BOARD_TWO_STEP_PLACEMENT_STORAGE_KEY)
+    );
+}
+
 function notifyBoardDisplaySettingsListeners() {
     for (const listener of boardDisplaySettingsListeners) {
         listener();
@@ -399,6 +414,15 @@ function setShowBoardCoordinatesInStorage(nextShowBoardCoordinates: boolean) {
     window.localStorage.setItem(
         BOARD_COORDINATES_STORAGE_KEY,
         String(nextShowBoardCoordinates)
+    );
+    notifyBoardDisplaySettingsListeners();
+    window.dispatchEvent(new Event(BOARD_DISPLAY_SETTINGS_CHANGE_EVENT));
+}
+
+function setTwoStepPlacementInStorage(nextTwoStepPlacement: boolean) {
+    window.localStorage.setItem(
+        BOARD_TWO_STEP_PLACEMENT_STORAGE_KEY,
+        String(nextTwoStepPlacement)
     );
     notifyBoardDisplaySettingsListeners();
     window.dispatchEvent(new Event(BOARD_DISPLAY_SETTINGS_CHANGE_EVENT));
@@ -568,6 +592,44 @@ export default function AppShell({
             return getShowBoardCoordinatesFromStorage();
         },
         () => true
+    );
+    const twoStepPlacement = useSyncExternalStore(
+        (onStoreChange) => {
+            boardDisplaySettingsListeners.add(onStoreChange);
+
+            const handleStorage = (event: StorageEvent) => {
+                if (event.key === BOARD_TWO_STEP_PLACEMENT_STORAGE_KEY) {
+                    onStoreChange();
+                }
+            };
+
+            const handleBoardDisplaySettingsChange = () => {
+                onStoreChange();
+            };
+
+            window.addEventListener("storage", handleStorage);
+            window.addEventListener(
+                BOARD_DISPLAY_SETTINGS_CHANGE_EVENT,
+                handleBoardDisplaySettingsChange
+            );
+
+            return () => {
+                boardDisplaySettingsListeners.delete(onStoreChange);
+                window.removeEventListener("storage", handleStorage);
+                window.removeEventListener(
+                    BOARD_DISPLAY_SETTINGS_CHANGE_EVENT,
+                    handleBoardDisplaySettingsChange
+                );
+            };
+        },
+        () => {
+            if (typeof window === "undefined") {
+                return false;
+            }
+
+            return getTwoStepPlacementFromStorage();
+        },
+        () => false
     );
 
     useEffect(() => {
@@ -750,8 +812,10 @@ export default function AppShell({
         () => ({
             showBoardCoordinates,
             setShowBoardCoordinates: setShowBoardCoordinatesInStorage,
+            twoStepPlacement,
+            setTwoStepPlacement: setTwoStepPlacementInStorage,
         }),
-        [showBoardCoordinates]
+        [showBoardCoordinates, twoStepPlacement]
     );
     const headerActionsContextValue = useMemo(
         () => ({ setHeaderActions }),
@@ -933,6 +997,20 @@ export default function AppShell({
                                             aria-label={t("showBoardCoordinates")}
                                             onChange={(event) => {
                                                 setShowBoardCoordinatesInStorage(
+                                                    event.target.checked
+                                                );
+                                            }}
+                                        />
+                                    </label>
+                                    <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900">
+                                        <span>{t("twoStepPlacement")}</span>
+                                        <input
+                                            type="checkbox"
+                                            className="h-5 w-5 accent-zinc-950 dark:accent-white"
+                                            checked={twoStepPlacement}
+                                            aria-label={t("twoStepPlacement")}
+                                            onChange={(event) => {
+                                                setTwoStepPlacementInStorage(
                                                     event.target.checked
                                                 );
                                             }}
