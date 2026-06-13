@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    getAppNavigationTargets,
     getChangelogDialogClassName,
     getSettingsDialogClassName,
     resolveShowBoardCoordinatesPreference,
     shouldAnchorHeaderDialogsToViewportTop,
     shouldUseOverlayHeader,
+    updateAppNavigationStateForPath,
 } from "../components/AppShell";
 
 describe("shouldUseOverlayHeader", () => {
@@ -37,6 +39,33 @@ describe("shouldUseOverlayHeader", () => {
                 pathname: "/",
             })
         ).toBe(false);
+    });
+
+    it("allows a back target to home from a non-home route", () => {
+        expect(
+            getAppNavigationTargets({
+                entries: ["/", "/games/game123"],
+                index: 1,
+            })
+        ).toEqual({
+            backPath: "/",
+        });
+    });
+
+    it("returns only useful non-home back targets", () => {
+        expect(
+            getAppNavigationTargets({
+                entries: [
+                    "/",
+                    "/games/game123",
+                    "/shares/share123",
+                    "/drafts/draft123",
+                ],
+                index: 2,
+            })
+        ).toEqual({
+            backPath: "/games/game123",
+        });
     });
 });
 
@@ -90,5 +119,102 @@ describe("header dialog placement", () => {
         expect(
             getSettingsDialogClassName({ alignToViewportTop: true })
         ).toContain("absolute right-4 top-4");
+    });
+});
+
+describe("app navigation state", () => {
+    it("starts a stack from the first app path", () => {
+        expect(
+            updateAppNavigationStateForPath({
+                pathname: "/games/game123",
+                state: { entries: [], index: -1 },
+            })
+        ).toEqual({
+            entries: ["/games/game123"],
+            index: 0,
+        });
+    });
+
+    it("appends new paths and leaves the current path unchanged", () => {
+        const state = updateAppNavigationStateForPath({
+            pathname: "/shares/share123",
+            state: { entries: ["/games/game123"], index: 0 },
+        });
+
+        expect(state).toEqual({
+            entries: ["/games/game123", "/shares/share123"],
+            index: 1,
+        });
+        expect(
+            updateAppNavigationStateForPath({
+                pathname: "/shares/share123",
+                state,
+            })
+        ).toEqual(state);
+    });
+
+    it("drops forward entries when navigating from the middle of the stack", () => {
+        expect(
+            updateAppNavigationStateForPath({
+                pathname: "/drafts/draft123",
+                state: {
+                    entries: [
+                        "/games/game123",
+                        "/shares/share123",
+                        "/drafts/old-draft",
+                    ],
+                    index: 1,
+                },
+            })
+        ).toEqual({
+            entries: [
+                "/games/game123",
+                "/shares/share123",
+                "/drafts/draft123",
+            ],
+            index: 2,
+        });
+    });
+
+    it("moves to an existing path instead of duplicating it", () => {
+        expect(
+            updateAppNavigationStateForPath({
+                pathname: "/shares/share123",
+                state: {
+                    entries: [
+                        "/games/game123",
+                        "/shares/share123",
+                        "/drafts/draft123",
+                    ],
+                    index: 2,
+                },
+            })
+        ).toEqual({
+            entries: [
+                "/games/game123",
+                "/shares/share123",
+                "/drafts/draft123",
+            ],
+            index: 1,
+        });
+    });
+
+    it("resets the app navigation stack when reaching home", () => {
+        expect(
+            updateAppNavigationStateForPath({
+                pathname: "/",
+                state: {
+                    entries: [
+                        "/",
+                        "/drafts/draft123",
+                        "/shares/share123",
+                    ],
+                    index: 2,
+                },
+            })
+        ).toEqual({
+            entries: ["/"],
+            index: 0,
+        });
     });
 });

@@ -1,9 +1,16 @@
 import { changelog } from "../lib/changelog";
 
-export default function ChangelogReleaseList() {
+export default function ChangelogReleaseList({
+    limit,
+}: Readonly<{
+    limit?: number;
+}> = {}) {
+    const releases =
+        typeof limit === "number" ? changelog.slice(0, limit) : changelog;
+
     return (
         <div className="flex flex-col gap-4">
-            {changelog.map((release) => (
+            {releases.map((release) => (
                 <article
                     key={release.version}
                     className="rounded-lg border border-zinc-300 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800"

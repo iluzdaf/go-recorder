@@ -1,16 +1,23 @@
 [
     {
+        "version": "0.4.0",
+        "date": "2026-06-13",
+        "title": "Hane at the head of two stones.",
+        "items": [
+            {
+                "id": "pwa-offline",
+                "text": "You can now install Go Recorder as an app and keep working offline on local games, drafts, and saved variation drafts."
+            }
+        ]
+    },
+    {
         "version": "0.3.0",
         "date": "2026-06-08",
         "title": "Corners, then sides, then center.",
         "items": [
             {
                 "id": "drafts-and-variations",
-                "text": "Add drafts and variations."
-            },
-            {
-                "id": "board-display-settings",
-                "text": "Add board display settings."
+                "text": "Create board drafts and explore variations from shared positions."
             }
         ]
     },
@@ -21,7 +28,7 @@
         "items": [
             {
                 "id": "stone-edits",
-                "text": "Add stone edits."
+                "text": "Fix mistaken stones without restarting the game."
             }
         ]
     },
@@ -32,7 +39,7 @@
         "items": [
             {
                 "id": "record-and-share",
-                "text": "Record games and share them."
+                "text": "Record a game and share a stable link to the position."
             }
         ]
     }

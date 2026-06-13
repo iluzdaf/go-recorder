@@ -1,21 +1,27 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Pencil, Trash2, X } from "lucide-react";
 import type { LocalDraftRecord } from "@/lib/localGames";
 import { getAllLocalDrafts, deleteLocalRecord } from "@/lib/localGames";
 import { GameBoardThumbnail, getDraftTitle } from "@/components/GameListItem";
+import { navigateWithinApp } from "@/lib/fullscreenNavigation";
 import { t } from "@/lib/i18n";
 
 export default function DraftsPage() {
+    const router = useRouter();
     const [drafts, setDrafts] = useState<LocalDraftRecord[]>([]);
     const [loaded, setLoaded] = useState(false);
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     useEffect(() => {
-        setDrafts(getAllLocalDrafts());
-        setLoaded(true);
+        const timeoutId = window.setTimeout(() => {
+            setDrafts(getAllLocalDrafts());
+            setLoaded(true);
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
     }, []);
 
     function handleDeleteRequest(id: string) {
@@ -49,10 +55,16 @@ export default function DraftsPage() {
                             key={draft.id}
                             className="flex items-stretch overflow-hidden rounded-xl border border-zinc-300 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
                         >
-                            <Link
-                                href={`/drafts/${draft.id}`}
+                            <button
+                                type="button"
                                 aria-label={`${t("editDraft")}: ${getDraftTitle(draft)}`}
-                                className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-neutral-750"
+                                className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left hover:bg-zinc-50 dark:hover:bg-neutral-750"
+                                onClick={() => {
+                                    navigateWithinApp({
+                                        path: `/drafts/${draft.id}`,
+                                        push: router.push,
+                                    });
+                                }}
                             >
                                 <GameBoardThumbnail game={draft} />
                                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -69,7 +81,7 @@ export default function DraftsPage() {
                                     size={15}
                                     className="shrink-0 text-zinc-400 dark:text-zinc-500"
                                 />
-                            </Link>
+                            </button>
                             <div className="flex items-center border-l border-zinc-200 px-2 dark:border-neutral-700">
                                 {pendingDeleteId === draft.id ? (
                                     <>

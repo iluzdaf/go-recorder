@@ -1,21 +1,27 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Pencil, Trash2, X } from "lucide-react";
 import type { LocalGameRecord } from "@/lib/localGames";
 import { getAllLocalGames, deleteLocalRecord } from "@/lib/localGames";
 import { GameBoardThumbnail, getGameTitle } from "@/components/GameListItem";
+import { navigateWithinApp } from "@/lib/fullscreenNavigation";
 import { t } from "@/lib/i18n";
 
 export default function GamesPage() {
+    const router = useRouter();
     const [games, setGames] = useState<LocalGameRecord[]>([]);
     const [loaded, setLoaded] = useState(false);
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     useEffect(() => {
-        setGames(getAllLocalGames());
-        setLoaded(true);
+        const timeoutId = window.setTimeout(() => {
+            setGames(getAllLocalGames());
+            setLoaded(true);
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
     }, []);
 
     function handleDeleteRequest(id: string) {
@@ -49,10 +55,16 @@ export default function GamesPage() {
                             key={game.id}
                             className="flex items-stretch overflow-hidden rounded-xl border border-zinc-300 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
                         >
-                            <Link
-                                href={`/games/${game.id}`}
+                            <button
+                                type="button"
                                 aria-label={`${t("editGame")}: ${getGameTitle(game)}`}
-                                className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-neutral-750"
+                                className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left hover:bg-zinc-50 dark:hover:bg-neutral-750"
+                                onClick={() => {
+                                    navigateWithinApp({
+                                        path: `/games/${game.id}`,
+                                        push: router.push,
+                                    });
+                                }}
                             >
                                 <GameBoardThumbnail game={game} />
                                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -74,7 +86,7 @@ export default function GamesPage() {
                                     size={15}
                                     className="shrink-0 text-zinc-400 dark:text-zinc-500"
                                 />
-                            </Link>
+                            </button>
                             <div className="flex items-center border-l border-zinc-200 px-2 dark:border-neutral-700">
                                 {pendingDeleteId === game.id ? (
                                     <>
