@@ -21,6 +21,7 @@
     "appSettings": "App",
     "boardCoordinates": "Board coordinates",
     "showBoardCoordinates": "Show board coordinates",
+    "twoStepPlacement": "Two-step placement",
     "enterFullscreen": "Enter fullscreen",
     "exitFullscreen": "Exit fullscreen",
     "gameRecordingInProgress": "Game recording in progress",

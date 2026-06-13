@@ -143,6 +143,7 @@
 ## Smoke Tests
 
 - Every PR that changes behavior must include `Smoke Tests For Reviewer`.
+- Smoke tests must use `- [ ]` checkbox format.
 - Smoke tests should be short and concrete.
 - Smoke tests should be executable against a preview deployment or relevant environment.
 - Smoke tests should be tailored from `docs/smoke-test-checklists.md`.

@@ -2,7 +2,7 @@
 
 - Use these as starting points.
 - Tailor the list to the PR.
-- Include the tailored list in `Smoke Tests For Reviewer`.
+- Include the tailored list in `Smoke Tests For Reviewer` using `- [ ]` checkbox format.
 - Run these against the preview deployment or relevant environment.
 - Do not use these as a reason for agents to visually test locally.
 

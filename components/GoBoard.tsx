@@ -110,7 +110,7 @@ function getActionBarStorageKey(id: string) {
 export default function GoBoard({ id }: GoBoardProps) {
     const [size, setSize] = useState<BoardSize>(19);
     const { isDarkMode } = useTheme();
-    const { showBoardCoordinates } = useBoardDisplaySettings();
+    const { showBoardCoordinates, twoStepPlacement } = useBoardDisplaySettings();
     const { setHeaderStatus } = useHeaderStatus();
     const { isOverlayHeader } = useHeaderVisibility();
     const hasLoadedGameRef = useRef(false);
@@ -552,6 +552,8 @@ export default function GoBoard({ id }: GoBoardProps) {
     };
 
     const getEnabledPlacementZoomWindow = (vertex: Vertex) => {
+        if (!twoStepPlacement) return null;
+
         const metrics = getGridMetrics();
         if (!metrics) return null;
         if (
