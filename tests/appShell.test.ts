@@ -13,23 +13,40 @@ import {
 
 describe("shouldUseOverlayHeader", () => {
     it.each(["/games/game123", "/drafts/draft123", "/shares/share123"])(
-        "uses the overlay header for %s on board routes",
+        "always uses the overlay header for %s on board routes",
         (pathname) => {
             expect(
                 shouldUseOverlayHeader({
+                    isShortViewport: false,
+                    pathname,
+                })
+            ).toBe(true);
+            expect(
+                shouldUseOverlayHeader({
+                    isShortViewport: true,
                     pathname,
                 })
             ).toBe(true);
         }
     );
 
-    it("keeps the regular header on non-board routes", () => {
-        expect(
-            shouldUseOverlayHeader({
-                pathname: "/",
-            })
-        ).toBe(false);
-    });
+    it.each(["/", "/games", "/drafts", "/changelog"])(
+        "uses the overlay header for %s only on short viewports",
+        (pathname) => {
+            expect(
+                shouldUseOverlayHeader({
+                    isShortViewport: true,
+                    pathname,
+                })
+            ).toBe(true);
+            expect(
+                shouldUseOverlayHeader({
+                    isShortViewport: false,
+                    pathname,
+                })
+            ).toBe(false);
+        }
+    );
 
     it("allows a back target to home from a non-home route", () => {
         expect(

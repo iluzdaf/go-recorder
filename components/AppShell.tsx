@@ -204,16 +204,26 @@ function writeAppNavigationState(state: AppNavigationState) {
     );
 }
 
-export function shouldUseOverlayHeader({
-    pathname,
-}: {
-    pathname: string | null | undefined;
-}) {
+function isBoardRoute(pathname: string | null | undefined) {
     return Boolean(
         pathname?.startsWith("/games/") ||
             pathname?.startsWith("/drafts/") ||
             pathname?.startsWith("/shares/")
     );
+}
+
+export function shouldUseOverlayHeader({
+    isShortViewport,
+    pathname,
+}: {
+    isShortViewport: boolean;
+    pathname: string | null | undefined;
+}) {
+    if (isBoardRoute(pathname)) {
+        return true;
+    }
+
+    return isShortViewport;
 }
 
 export function getChangelogDialogClassName({
@@ -798,6 +808,7 @@ export default function AppShell({
     }, [closeSettings, isSettingsOpen]);
 
     const usesOverlayHeader = shouldUseOverlayHeader({
+        isShortViewport,
         pathname,
     });
     const isHeaderVisible =
