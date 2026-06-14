@@ -88,21 +88,6 @@ function getSystemTheme() {
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
-function subscribeToShortViewport(onStoreChange: () => void) {
-    const shortViewportQuery = window.matchMedia(SHORT_VIEWPORT_QUERY);
-
-    shortViewportQuery.addEventListener("change", onStoreChange);
-
-    return () => {
-        shortViewportQuery.removeEventListener("change", onStoreChange);
-    };
-}
-
-function getIsShortViewport() {
-    if (typeof window === "undefined") return false;
-
-    return window.matchMedia(SHORT_VIEWPORT_QUERY).matches;
-}
 
 function normalizeAppPath(pathname: string | null | undefined) {
     if (!pathname?.startsWith("/")) return "/";
@@ -220,17 +205,14 @@ function writeAppNavigationState(state: AppNavigationState) {
 }
 
 export function shouldUseOverlayHeader({
-    isShortViewport,
     pathname,
 }: {
-    isShortViewport: boolean;
     pathname: string | null | undefined;
 }) {
     return Boolean(
-        isShortViewport &&
-            (pathname?.startsWith("/games/") ||
-                pathname?.startsWith("/drafts/") ||
-                pathname?.startsWith("/shares/"))
+        pathname?.startsWith("/games/") ||
+            pathname?.startsWith("/drafts/") ||
+            pathname?.startsWith("/shares/")
     );
 }
 
@@ -504,11 +486,38 @@ export default function AppShell({
         getIsFullscreenSupported,
         () => false
     );
-    const isShortViewport = useSyncExternalStore(
-        subscribeToShortViewport,
-        getIsShortViewport,
-        () => false
-    );
+    const [isShortViewport, setIsShortViewport] = useState(false);
+
+    useEffect(() => {
+        const update = () => {
+            setIsShortViewport(window.matchMedia(SHORT_VIEWPORT_QUERY).matches);
+        };
+
+        update();
+
+        const query = window.matchMedia(SHORT_VIEWPORT_QUERY);
+        query.addEventListener("change", update);
+        window.addEventListener("resize", update);
+        window.visualViewport?.addEventListener("resize", update);
+
+        let orientationTimeoutId: ReturnType<typeof setTimeout> | null = null;
+        const handleOrientationChange = () => {
+            if (orientationTimeoutId !== null) clearTimeout(orientationTimeoutId);
+            orientationTimeoutId = setTimeout(() => {
+                window.scrollTo(0, 0);
+                update();
+            }, 100);
+        };
+        window.addEventListener("orientationchange", handleOrientationChange);
+
+        return () => {
+            query.removeEventListener("change", update);
+            window.removeEventListener("resize", update);
+            window.visualViewport?.removeEventListener("resize", update);
+            window.removeEventListener("orientationchange", handleOrientationChange);
+            if (orientationTimeoutId !== null) clearTimeout(orientationTimeoutId);
+        };
+    }, []);
     const isDarkMode = useSyncExternalStore(
         (onStoreChange) => {
             themeListeners.add(onStoreChange);
@@ -789,11 +798,10 @@ export default function AppShell({
     }, [closeSettings, isSettingsOpen]);
 
     const usesOverlayHeader = shouldUseOverlayHeader({
-        isShortViewport,
         pathname,
     });
     const isHeaderVisible =
-        !usesOverlayHeader || isHeaderExpanded || Boolean(headerStatus);
+        !usesOverlayHeader || isHeaderExpanded || Boolean(headerStatus) || !isShortViewport;
     const areHeaderDialogsAnchoredToViewportTop =
         shouldAnchorHeaderDialogsToViewportTop({
             isHeaderVisible,
@@ -923,7 +931,7 @@ export default function AppShell({
                                 <Settings size={18} />
                             </button>
 
-                            {usesOverlayHeader ? (
+                            {usesOverlayHeader && isShortViewport ? (
                                 <button
                                     type="button"
                                     className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"

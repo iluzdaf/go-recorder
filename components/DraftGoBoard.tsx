@@ -687,8 +687,8 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         <div
             className={
                 isDarkMode
-                    ? "draft-board goban-theme-dark relative m-0 flex h-full touch-none flex-col overflow-hidden overscroll-none bg-neutral-900 p-0 text-white"
-                    : "draft-board goban-theme-light relative m-0 flex h-full touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
+                    ? "draft-board goban-theme-dark relative m-0 flex min-h-0 flex-1 touch-none flex-col overflow-hidden overscroll-none bg-neutral-900 p-0 text-white"
+                    : "draft-board goban-theme-light relative m-0 flex min-h-0 flex-1 touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
             }
         >
             <div
