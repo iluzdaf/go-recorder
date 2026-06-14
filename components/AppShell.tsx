@@ -88,23 +88,6 @@ function getSystemTheme() {
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
-function subscribeToShortViewport(onStoreChange: () => void) {
-    const shortViewportQuery = window.matchMedia(SHORT_VIEWPORT_QUERY);
-
-    shortViewportQuery.addEventListener("change", onStoreChange);
-    window.addEventListener("resize", onStoreChange);
-
-    return () => {
-        shortViewportQuery.removeEventListener("change", onStoreChange);
-        window.removeEventListener("resize", onStoreChange);
-    };
-}
-
-function getIsShortViewport() {
-    if (typeof window === "undefined") return false;
-
-    return window.matchMedia(SHORT_VIEWPORT_QUERY).matches;
-}
 
 function normalizeAppPath(pathname: string | null | undefined) {
     if (!pathname?.startsWith("/")) return "/";
@@ -506,11 +489,35 @@ export default function AppShell({
         getIsFullscreenSupported,
         () => false
     );
-    const isShortViewport = useSyncExternalStore(
-        subscribeToShortViewport,
-        getIsShortViewport,
-        () => false
-    );
+    const [isShortViewport, setIsShortViewport] = useState(false);
+
+    useEffect(() => {
+        const update = () => {
+            setIsShortViewport(window.matchMedia(SHORT_VIEWPORT_QUERY).matches);
+        };
+
+        update();
+
+        const query = window.matchMedia(SHORT_VIEWPORT_QUERY);
+        query.addEventListener("change", update);
+        window.addEventListener("resize", update);
+        window.visualViewport?.addEventListener("resize", update);
+
+        let orientationTimeoutId: ReturnType<typeof setTimeout> | null = null;
+        const handleOrientationChange = () => {
+            if (orientationTimeoutId !== null) clearTimeout(orientationTimeoutId);
+            orientationTimeoutId = setTimeout(update, 100);
+        };
+        window.addEventListener("orientationchange", handleOrientationChange);
+
+        return () => {
+            query.removeEventListener("change", update);
+            window.removeEventListener("resize", update);
+            window.visualViewport?.removeEventListener("resize", update);
+            window.removeEventListener("orientationchange", handleOrientationChange);
+            if (orientationTimeoutId !== null) clearTimeout(orientationTimeoutId);
+        };
+    }, []);
     const isDarkMode = useSyncExternalStore(
         (onStoreChange) => {
             themeListeners.add(onStoreChange);
