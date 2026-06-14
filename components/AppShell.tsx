@@ -205,17 +205,14 @@ function writeAppNavigationState(state: AppNavigationState) {
 }
 
 export function shouldUseOverlayHeader({
-    isShortViewport,
     pathname,
 }: {
-    isShortViewport: boolean;
     pathname: string | null | undefined;
 }) {
     return Boolean(
-        isShortViewport &&
-            (pathname?.startsWith("/games/") ||
-                pathname?.startsWith("/drafts/") ||
-                pathname?.startsWith("/shares/"))
+        pathname?.startsWith("/games/") ||
+            pathname?.startsWith("/drafts/") ||
+            pathname?.startsWith("/shares/")
     );
 }
 
@@ -506,7 +503,10 @@ export default function AppShell({
         let orientationTimeoutId: ReturnType<typeof setTimeout> | null = null;
         const handleOrientationChange = () => {
             if (orientationTimeoutId !== null) clearTimeout(orientationTimeoutId);
-            orientationTimeoutId = setTimeout(update, 100);
+            orientationTimeoutId = setTimeout(() => {
+                window.scrollTo(0, 0);
+                update();
+            }, 100);
         };
         window.addEventListener("orientationchange", handleOrientationChange);
 
@@ -798,11 +798,10 @@ export default function AppShell({
     }, [closeSettings, isSettingsOpen]);
 
     const usesOverlayHeader = shouldUseOverlayHeader({
-        isShortViewport,
         pathname,
     });
     const isHeaderVisible =
-        !usesOverlayHeader || isHeaderExpanded || Boolean(headerStatus);
+        !usesOverlayHeader || isHeaderExpanded || Boolean(headerStatus) || !isShortViewport;
     const areHeaderDialogsAnchoredToViewportTop =
         shouldAnchorHeaderDialogsToViewportTop({
             isHeaderVisible,
@@ -932,7 +931,7 @@ export default function AppShell({
                                 <Settings size={18} />
                             </button>
 
-                            {usesOverlayHeader ? (
+                            {usesOverlayHeader && isShortViewport ? (
                                 <button
                                     type="button"
                                     className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
@@ -1087,7 +1086,7 @@ export default function AppShell({
                         </div>
                     </div>
                 ) : null}
-                <div className={`flex min-h-0 flex-1 flex-col overflow-hidden${usesOverlayHeader && isHeaderVisible ? " pt-14" : ""}`}>
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                     {children}
                 </div>
                     </HeaderVisibilityContext.Provider>
