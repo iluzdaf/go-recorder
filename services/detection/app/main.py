@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 
+from .auth import require_api_key
 from .detection import DetectionError, detect_board, parse_corners
 from .schemas import DetectionResult
 
@@ -19,6 +20,7 @@ def health() -> dict[str, str]:
 async def detect(
     image: UploadFile = File(...),
     corners: str = Form(...),
+    _: None = Depends(require_api_key),
 ) -> DetectionResult:
     raw = await image.read()
     if not raw:

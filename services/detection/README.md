@@ -19,6 +19,14 @@
     - `confidence`: float in `[0, 1]` describing classification clarity.
   - `400` on malformed input (missing/undecodable image, invalid `corners` JSON, wrong corner count).
 
+## Authentication
+
+- Set `DETECTION_API_KEY` to require a shared secret on `POST /detect`.
+  - When set, requests must send a matching `X-API-Key` header or receive `401`.
+  - When unset (local development, tests), no authentication is enforced.
+- `GET /health` is always open for readiness probes.
+- The caller (the Next.js proxy route) holds the key server-side; it never reaches the browser.
+
 ## Pipeline
 
 - Perspective-correct the board using the four corners.
@@ -48,3 +56,6 @@
   - `gcloud builds submit --tag gcr.io/<project>/go-board-detection`
   - `gcloud run deploy go-board-detection --image gcr.io/<project>/go-board-detection --region <region> --allow-unauthenticated`
 - The Next.js app reaches this service through a server-side proxy route (added in the frontend PR); the service URL is configured there, not in this service.
+- Set the shared secret on the deployed service, e.g.:
+  - `gcloud run deploy go-board-detection --source . --region <region> --allow-unauthenticated --set-env-vars DETECTION_API_KEY=<secret>`
+  - For stronger handling, store the secret in Secret Manager and reference it with `--set-secrets`.
