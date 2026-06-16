@@ -30,7 +30,8 @@
 ## Pipeline
 
 - Perspective-correct the board using the four corners.
-- Detect grid lines, auto-detect board size, and classify each intersection as empty, black, or white.
+- Detect grid lines and auto-detect board size.
+- Classify each intersection against a local (per-cell) background: a dark fill is black, a bright fill is white, and a fill that matches the board is checked for a dark outline ring (outlined white stones on light boards / kifu diagrams). This handles wood, light, and dark-mode boards.
 - Infer a `positionView` for partial captures from which sides reach a real board edge.
 
 ## Local Development

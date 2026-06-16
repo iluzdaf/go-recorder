@@ -24,9 +24,13 @@ WARP_SIZE = 720
 EDGE_INSET_FRAC = 0.03
 PEAK_HEIGHT_FRAC = 0.25
 PEAK_MIN_DISTANCE_FRAC = 0.02
-PATCH_RADIUS_FRAC = 0.3
-DARK_DELTA = 60.0
-LIGHT_DELTA = 35.0
+INTERIOR_RADIUS_FRAC = 0.26
+BACKGROUND_RADIUS_FRAC = 0.12
+FILL_DARK_DELTA = 50.0
+FILL_LIGHT_DELTA = 40.0
+RING_DARK_DELTA = 30.0
+RING_COVERAGE_THRESHOLD = 0.5
+RING_SAMPLES = 36
 
 Corner = tuple[float, float]
 
@@ -135,6 +139,54 @@ def _cell_size(xs: list[int], ys: list[int]) -> float:
     return float(np.median(diffs)) if diffs else float(WARP_SIZE)
 
 
+def _local_background(
+    gray: np.ndarray,
+    xs: list[int],
+    ys: list[int],
+    i: int,
+    j: int,
+    radius: int,
+) -> float | None:
+    """Board brightness around an intersection, sampled at the centres of the
+    adjacent (diagonal) cells. Cell centres never sit on a grid line or a stone,
+    so the estimate stays clean at edges and corners and adapts to local
+    lighting and board colour (light, dark, or wood)."""
+
+    samples: list[float] = []
+    for di in (-1, 1):
+        for dj in (-1, 1):
+            ni, nj = i + di, j + dj
+            if 0 <= ni < len(xs) and 0 <= nj < len(ys):
+                cx = (xs[i] + xs[ni]) // 2
+                cy = (ys[j] + ys[nj]) // 2
+                samples.append(_patch_median(gray, cx, cy, radius))
+    return float(np.median(samples)) if samples else None
+
+
+def _ring_coverage(
+    gray: np.ndarray, cx: int, cy: int, cell: float, dark_below: float
+) -> float:
+    """Fraction of directions around the intersection whose boundary band holds
+    a dark pixel. A stone outline yields a near-closed dark ring; an empty
+    intersection only crosses the thin grid lines along a few directions. The
+    radial band tolerates stones whose outline radius varies slightly."""
+
+    height, width = gray.shape
+    band = [cell * fraction for fraction in (0.34, 0.38, 0.42, 0.46)]
+    dark = 0
+    for k in range(RING_SAMPLES):
+        angle = 2.0 * np.pi * k / RING_SAMPLES
+        cos_a = np.cos(angle)
+        sin_a = np.sin(angle)
+        for radius in band:
+            px = int(round(cx + radius * cos_a))
+            py = int(round(cy + radius * sin_a))
+            if 0 <= px < width and 0 <= py < height and gray[py, px] < dark_below:
+                dark += 1
+                break
+    return dark / RING_SAMPLES
+
+
 def _detect_stones(
     gray: np.ndarray,
     xs: list[int],
@@ -142,34 +194,47 @@ def _detect_stones(
     start_x: int,
     start_y: int,
 ) -> tuple[list[SetupStone], float]:
-    radius = max(2, int(_cell_size(xs, ys) * PATCH_RADIUS_FRAC))
+    cell = _cell_size(xs, ys)
+    interior_radius = max(2, int(cell * INTERIOR_RADIUS_FRAC))
+    background_radius = max(2, int(cell * BACKGROUND_RADIUS_FRAC))
 
-    background_samples = [
-        _patch_median(gray, (xs[i] + xs[i + 1]) // 2, (ys[j] + ys[j + 1]) // 2, radius)
-        for j in range(len(ys) - 1)
-        for i in range(len(xs) - 1)
-    ]
-    wood = float(np.median(background_samples)) if background_samples else float(np.median(gray))
+    fallback_background = float(np.median(gray))
 
     stones: list[SetupStone] = []
-    clear = 0
-    total = 0
+    confidences: list[float] = []
     for j, y in enumerate(ys):
         for i, x in enumerate(xs):
-            total += 1
-            value = _patch_median(gray, x, y, radius)
-            if value < wood - DARK_DELTA:
-                stones.append(SetupStone(x=start_x + i, y=start_y + j, color="B"))
-                if value < wood - DARK_DELTA * 1.2:
-                    clear += 1
-            elif value > wood + LIGHT_DELTA:
-                stones.append(SetupStone(x=start_x + i, y=start_y + j, color="W"))
-                if value > wood + LIGHT_DELTA * 1.2:
-                    clear += 1
-            elif abs(value - wood) < LIGHT_DELTA * 0.6:
-                clear += 1
+            interior = _patch_median(gray, x, y, interior_radius)
+            background = _local_background(gray, xs, ys, i, j, background_radius)
+            if background is None:
+                background = fallback_background
 
-    confidence = clear / total if total else 0.0
+            diff = interior - background
+            if diff < -FILL_DARK_DELTA:
+                # A solid dark fill: a black stone (any board), or a white stone
+                # on a dark board is handled by the bright branch below.
+                stones.append(SetupStone(x=start_x + i, y=start_y + j, color="B"))
+                confidences.append(min(1.0, -diff / (2.0 * FILL_DARK_DELTA)))
+            elif diff > FILL_LIGHT_DELTA:
+                # A solid bright fill: a white stone on a wood or dark board.
+                stones.append(SetupStone(x=start_x + i, y=start_y + j, color="W"))
+                confidences.append(min(1.0, diff / (2.0 * FILL_LIGHT_DELTA)))
+            else:
+                # Fill matches the board (e.g. an outlined white stone on a
+                # light board): look for the stone's dark outline ring.
+                coverage = _ring_coverage(
+                    gray, x, y, cell, background - RING_DARK_DELTA
+                )
+                if coverage > RING_COVERAGE_THRESHOLD:
+                    color = "B" if interior < background - 15 else "W"
+                    stones.append(
+                        SetupStone(x=start_x + i, y=start_y + j, color=color)
+                    )
+                    confidences.append(coverage)
+                else:
+                    confidences.append(1.0 - coverage)
+
+    confidence = float(np.mean(confidences)) if confidences else 0.0
     return stones, confidence
 
 
