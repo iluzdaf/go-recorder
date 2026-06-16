@@ -10,6 +10,7 @@ import {
     createLocalGameInputFromForm,
 } from "@/lib/localGameSetup";
 import { GameBoardThumbnail, getDraftTitle, getGameTitle } from "@/components/GameListItem";
+import ImageDraftCreator from "@/components/ImageDraftCreator";
 import { navigateWithinApp } from "@/lib/fullscreenNavigation";
 import { t } from "@/lib/i18n";
 
@@ -23,6 +24,7 @@ export default function Home() {
   const [handicap, setHandicap] = useState(0);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
+  const [isImportingImage, setIsImportingImage] = useState(false);
   const [recentGames, setRecentGames] = useState<LocalGameRecord[]>([]);
   const [recentDrafts, setRecentDrafts] = useState<LocalDraftRecord[]>([]);
 
@@ -201,6 +203,15 @@ export default function Home() {
             {isCreatingDraft ? t("creatingDraft") : t("createDraft")}
           </button>
 
+          <button
+            type="button"
+            disabled={isCreatingGame || isCreatingDraft}
+            onClick={() => setIsImportingImage(true)}
+            className="rounded border border-sky-700 px-4 py-2 font-medium text-sky-700 hover:bg-sky-50 disabled:opacity-50 dark:border-sky-500 dark:text-sky-400 dark:hover:bg-neutral-700"
+          >
+            {t("createDraftFromImage")}
+          </button>
+
           {recentDrafts.length > 0 && (
             <div className="flex flex-col gap-2 border-t border-zinc-200 pt-4 dark:border-neutral-700">
               <div className="flex items-center justify-between">
@@ -251,6 +262,10 @@ export default function Home() {
           )}
         </section>
       </div>
+
+      {isImportingImage && (
+        <ImageDraftCreator onClose={() => setIsImportingImage(false)} />
+      )}
     </main>
   );
 }
