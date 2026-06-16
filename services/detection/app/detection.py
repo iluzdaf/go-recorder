@@ -20,7 +20,7 @@ from .board_size import smallest_fitting_size, snap_board_size
 from .position_view import infer_position_view
 from .schemas import DetectionResult, SetupStone
 
-WARP_SIZE = 720
+WARP_SIZE = 1280
 EDGE_INSET_FRAC = 0.03
 PEAK_HEIGHT_FRAC = 0.25
 PEAK_MIN_DISTANCE_FRAC = 0.02
@@ -29,8 +29,9 @@ BACKGROUND_RADIUS_FRAC = 0.12
 FILL_DARK_DELTA = 50.0
 FILL_LIGHT_DELTA = 40.0
 RING_DARK_DELTA = 30.0
-RING_COVERAGE_THRESHOLD = 0.5
+RING_COVERAGE_THRESHOLD = 0.42
 RING_SAMPLES = 36
+RING_BAND_FRACS = (0.30, 0.34, 0.38, 0.42, 0.46)
 
 Corner = tuple[float, float]
 
@@ -75,7 +76,16 @@ def _warp(image: np.ndarray, corners: Sequence[Corner]) -> np.ndarray:
         dtype=np.float32,
     )
     matrix = cv2.getPerspectiveTransform(source, target)
-    return cv2.warpPerspective(image, matrix, (WARP_SIZE, WARP_SIZE))
+    # Downscaling a high-resolution photo with linear interpolation blurs thin
+    # stone outlines away; area interpolation preserves them.
+    interpolation = (
+        cv2.INTER_AREA
+        if max(image.shape[:2]) > WARP_SIZE
+        else cv2.INTER_LINEAR
+    )
+    return cv2.warpPerspective(
+        image, matrix, (WARP_SIZE, WARP_SIZE), flags=interpolation
+    )
 
 
 def _smooth(profile: np.ndarray, window: int) -> np.ndarray:
@@ -172,7 +182,7 @@ def _ring_coverage(
     radial band tolerates stones whose outline radius varies slightly."""
 
     height, width = gray.shape
-    band = [cell * fraction for fraction in (0.34, 0.38, 0.42, 0.46)]
+    band = [cell * fraction for fraction in RING_BAND_FRACS]
     dark = 0
     for k in range(RING_SAMPLES):
         angle = 2.0 * np.pi * k / RING_SAMPLES
