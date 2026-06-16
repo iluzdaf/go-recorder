@@ -173,15 +173,16 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                             {t("adjustCornersHint")}
                         </p>
 
-                        <div className="relative mx-auto w-full select-none">
+                        <div className="relative mx-auto w-full touch-none select-none">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 ref={imageRef}
                                 src={image.url}
                                 alt=""
                                 onLoad={handleImageLoad}
+                                onDragStart={(event) => event.preventDefault()}
                                 draggable={false}
-                                className="w-full touch-none rounded-lg"
+                                className="pointer-events-none w-full select-none rounded-lg"
                             />
 
                             {corners && (
