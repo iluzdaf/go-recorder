@@ -226,9 +226,12 @@ def _detect_stones(
                     gray, x, y, cell, background - RING_DARK_DELTA
                 )
                 if coverage > RING_COVERAGE_THRESHOLD:
-                    color = "B" if interior < background - 15 else "W"
+                    # A board-coloured fill ringed by a dark outline is a white
+                    # stone. Black stones are solid and already caught above, so
+                    # we do not second-guess the colour here (a white stone's
+                    # subtle interior shading must not be read as black).
                     stones.append(
-                        SetupStone(x=start_x + i, y=start_y + j, color=color)
+                        SetupStone(x=start_x + i, y=start_y + j, color="W")
                     )
                     confidences.append(coverage)
                 else:
