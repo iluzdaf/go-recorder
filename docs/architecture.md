@@ -28,6 +28,10 @@
   - Creates shares.
 - `/api/shares/[slug]`
   - Looks up shares.
+- `/api/detect-board`
+  - Proxies board-image detection to the external detection service.
+  - Reads `DETECTION_SERVICE_URL` and forwards the shared secret `DETECTION_API_KEY` as an `X-API-Key` header.
+  - Both env vars are server-side only and never sent to the browser.
 - `/shares/[slug]/opengraph-image`
   - Renders share previews.
 - `/changelog`
@@ -81,6 +85,20 @@
   - Contains board-position draft state helpers.
 - `lib/variationDraft.ts`
   - Contains variation editing behavior on top of a base game.
+
+## Draft From Image
+
+- `components/ImageDraftCreator.tsx`
+  - Overlay flow: upload an image, mark the four board corners, detect, and open the resulting draft.
+- `lib/imageCorners.ts`
+  - Corner-handle geometry and display-to-natural-pixel scaling.
+- `lib/detectBoardClient.ts`
+  - Posts the image and corners to `/api/detect-board`.
+- `lib/boardDetection.ts`
+  - Detection result type and runtime validator.
+- `lib/boardDetectionDraft.ts`
+  - Converts a detection result into a normal board draft input.
+- The detection service itself lives in `services/detection/` (separate backend boundary).
 
 ## Share Viewing
 
