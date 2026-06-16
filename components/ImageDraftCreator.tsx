@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 
 import { createBoardDraftInputFromDetection } from "@/lib/boardDetectionDraft";
 import { detectBoard } from "@/lib/detectBoardClient";
@@ -145,9 +146,11 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                         type="button"
                         onClick={onClose}
                         disabled={isDetecting}
-                        className="rounded px-3 py-1 text-sm text-zinc-300 hover:text-white disabled:opacity-50"
+                        aria-label={t("cancelImport")}
+                        title={t("cancelImport")}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded text-zinc-300 hover:text-white disabled:opacity-50"
                     >
-                        {t("cancelImport")}
+                        <X size={20} />
                     </button>
                 </div>
 
