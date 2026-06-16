@@ -26,6 +26,19 @@
 - `git diff --check`
   - Checks for whitespace errors.
 
+## Detection Service (Python)
+
+- Run from `services/detection/`.
+- `python3 -m venv .venv`
+  - Creates the service virtualenv.
+- `.venv/bin/python -m pip install -r requirements-dev.txt`
+  - Installs runtime and test dependencies.
+- `.venv/bin/python -m pytest`
+  - Runs the detection service test suite.
+- `.venv/bin/python -m uvicorn app.main:app --reload`
+  - Serves the detection service locally.
+- See `services/detection/README.md` for the contract and Cloud Run deploy steps.
+
 ## Preferred Agent Checks
 
 - Run `pnpm typecheck` for non-trivial TypeScript changes.

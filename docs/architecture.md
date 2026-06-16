@@ -143,6 +143,19 @@
 - `app/shares/[slug]/opengraph-image.tsx`
   - Must stay visually aligned with live share captions and final-position behavior.
 
+## Board Detection Service
+
+- `services/detection/`
+  - Standalone FastAPI + OpenCV service, deployed separately on Cloud Run.
+  - A new backend boundary; not part of the Next.js app or Supabase.
+  - Stateless: uploaded images are processed in memory and never stored or logged.
+- Contract:
+  - `POST /detect` accepts `multipart/form-data` with an `image` file and a `corners` JSON field (4 points, TL/TR/BR/BL).
+  - Returns `boardSize` (auto-detected 9/13/19), `setupStones`, optional `positionView`, and `confidence`.
+  - Response field names mirror `components/types.ts` so the result maps onto a board draft.
+  - `GET /health` for readiness probes.
+- The Next.js app reaches the service through a server-side proxy route (added with the draft-from-image frontend).
+
 ## Copy And Changelog
 
 - `lib/messages/en.json`
