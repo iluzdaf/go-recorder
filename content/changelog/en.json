@@ -1,5 +1,16 @@
 [
     {
+        "version": "0.5.0",
+        "date": "2026-06-16",
+        "title": "There is death in the hane.",
+        "items": [
+            {
+                "id": "image-drafts",
+                "text": "Create a draft from a photo."
+            }
+        ]
+    },
+    {
         "version": "0.4.0",
         "date": "2026-06-13",
         "title": "Hane at the head of two stones.",
