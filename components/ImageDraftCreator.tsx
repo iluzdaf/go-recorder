@@ -4,11 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, X } from "lucide-react";
 
-import { createBoardDraftInputFromDetection } from "@/lib/boardDetectionDraft";
-import { detectBoard } from "@/lib/detectBoardClient";
-import { createLocalDraft } from "@/lib/localGames";
-import { navigateWithinApp } from "@/lib/fullscreenNavigation";
-import { t } from "@/lib/i18n";
+import { createBoardDraftInputFromDetection } from "../lib/boardDetectionDraft";
+import { detectBoard } from "../lib/detectBoardClient";
+import { createLocalDraft } from "../lib/localGames";
+import { navigateWithinApp } from "../lib/fullscreenNavigation";
+import { t } from "../lib/i18n";
 import {
     cornerToDisplay,
     createInitialCorners,
@@ -16,7 +16,7 @@ import {
     updateCorner,
     type CornerIndex,
     type OrderedCorners,
-} from "@/lib/imageCorners";
+} from "../lib/imageCorners";
 
 type ImageDraftCreatorProps = {
     onClose: () => void;
@@ -33,6 +33,29 @@ type ImageBox = {
     width: number;
     height: number;
 };
+
+export function createImageDetectionRequest({
+    corners,
+    file,
+    naturalHeight,
+    naturalWidth,
+}: {
+    corners: OrderedCorners;
+    file: File;
+    naturalHeight: number;
+    naturalWidth: number;
+}) {
+    const naturalCorners = scaleCornersToNatural(corners, {
+        naturalWidth,
+        naturalHeight,
+    });
+
+    return {
+        image: file,
+        imageName: file.name,
+        corners: [...naturalCorners],
+    };
+}
 
 export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
     const router = useRouter();
@@ -145,17 +168,15 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
         setIsDetecting(true);
         setError(null);
 
-        const naturalCorners = scaleCornersToNatural(corners, {
-            naturalWidth: element.naturalWidth,
-            naturalHeight: element.naturalHeight,
-        });
-
         try {
-            const detection = await detectBoard({
-                image: image.file,
-                imageName: image.file.name,
-                corners: [...naturalCorners],
-            });
+            const detection = await detectBoard(
+                createImageDetectionRequest({
+                    file: image.file,
+                    corners,
+                    naturalWidth: element.naturalWidth,
+                    naturalHeight: element.naturalHeight,
+                })
+            );
             const draft = createLocalDraft(
                 createBoardDraftInputFromDetection(detection)
             );
