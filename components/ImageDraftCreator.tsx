@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 
@@ -10,6 +10,7 @@ import { createLocalDraft } from "@/lib/localGames";
 import { navigateWithinApp } from "@/lib/fullscreenNavigation";
 import { t } from "@/lib/i18n";
 import {
+    cornerToDisplay,
     createInitialCorners,
     scaleCornersToNatural,
     updateCorner,
@@ -26,16 +27,45 @@ type SelectedImage = {
     url: string;
 };
 
+type ImageBox = {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+};
+
 export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
     const imageRef = useRef<HTMLImageElement>(null);
     const draggingRef = useRef<CornerIndex | null>(null);
 
     const [image, setImage] = useState<SelectedImage | null>(null);
     const [corners, setCorners] = useState<OrderedCorners | null>(null);
+    const [imageBox, setImageBox] = useState<ImageBox>({
+        left: 0,
+        top: 0,
+        width: 0,
+        height: 0,
+    });
     const [isDetecting, setIsDetecting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const measureImageBox = useCallback(() => {
+        const container = containerRef.current;
+        const element = imageRef.current;
+        if (!container || !element) return;
+
+        const containerRect = container.getBoundingClientRect();
+        const imageRect = element.getBoundingClientRect();
+        setImageBox({
+            left: imageRect.left - containerRect.left,
+            top: imageRect.top - containerRect.top,
+            width: imageRect.width,
+            height: imageRect.height,
+        });
+    }, []);
 
     useEffect(() => {
         return () => {
@@ -44,6 +74,20 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
             }
         };
     }, [image]);
+
+    useEffect(() => {
+        const element = imageRef.current;
+        if (!image || !element) return;
+
+        const observer = new ResizeObserver(() => measureImageBox());
+        observer.observe(element);
+        window.addEventListener("resize", measureImageBox);
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener("resize", measureImageBox);
+        };
+    }, [image, measureImageBox]);
 
     function handleSelectFile(event: React.ChangeEvent<HTMLInputElement>) {
         const file = event.target.files?.[0];
@@ -59,13 +103,8 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
     }
 
     function handleImageLoad() {
-        const element = imageRef.current;
-        if (!element) return;
-
-        const rect = element.getBoundingClientRect();
-        setCorners(
-            createInitialCorners({ width: rect.width, height: rect.height })
-        );
+        setCorners(createInitialCorners());
+        measureImageBox();
     }
 
     function handleHandlePointerDown(index: CornerIndex) {
@@ -82,14 +121,14 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
         if (index === null || !element) return;
 
         const rect = element.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+
         setCorners((previous) =>
             previous
-                ? updateCorner(
-                      previous,
-                      index,
-                      { x: event.clientX - rect.left, y: event.clientY - rect.top },
-                      { width: rect.width, height: rect.height }
-                  )
+                ? updateCorner(previous, index, {
+                      x: (event.clientX - rect.left) / rect.width,
+                      y: (event.clientY - rect.top) / rect.height,
+                  })
                 : previous
         );
     }
@@ -106,10 +145,7 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
         setIsDetecting(true);
         setError(null);
 
-        const rect = element.getBoundingClientRect();
         const naturalCorners = scaleCornersToNatural(corners, {
-            displayWidth: rect.width,
-            displayHeight: rect.height,
             naturalWidth: element.naturalWidth,
             naturalHeight: element.naturalHeight,
         });
@@ -188,45 +224,68 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                             {t("adjustCornersHint")}
                         </p>
 
-                        <div className="flex min-h-0 flex-1 items-center justify-center">
-                            <div className="relative w-fit touch-none select-none">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                    ref={imageRef}
-                                    src={image.url}
-                                    alt=""
-                                    onLoad={handleImageLoad}
-                                    onDragStart={(event) => event.preventDefault()}
-                                    draggable={false}
-                                    style={{ WebkitTouchCallout: "none" }}
-                                    className="pointer-events-none block max-h-[calc(100dvh_-_13rem)] max-w-[min(42rem,calc(100vw_-_2rem))] select-none rounded-lg"
-                                />
+                        <div
+                            ref={containerRef}
+                            className="relative flex min-h-0 flex-1 touch-none select-none items-center justify-center"
+                        >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                ref={imageRef}
+                                src={image.url}
+                                alt=""
+                                onLoad={handleImageLoad}
+                                onDragStart={(event) => event.preventDefault()}
+                                draggable={false}
+                                style={{ WebkitTouchCallout: "none" }}
+                                className="pointer-events-none block max-h-full max-w-full select-none rounded-lg"
+                            />
 
-                                {corners && (
-                                    <svg className="pointer-events-none absolute inset-0 h-full w-full">
+                            {corners && imageBox.width > 0 && (
+                                <>
+                                    <svg
+                                        className="pointer-events-none absolute"
+                                        style={{
+                                            left: imageBox.left,
+                                            top: imageBox.top,
+                                            width: imageBox.width,
+                                            height: imageBox.height,
+                                        }}
+                                    >
                                         <polygon
                                             points={corners
-                                                .map((corner) => `${corner.x},${corner.y}`)
+                                                .map((corner) => {
+                                                    const point = cornerToDisplay(
+                                                        corner,
+                                                        imageBox
+                                                    );
+                                                    return `${point.x},${point.y}`;
+                                                })
                                                 .join(" ")}
                                             className="fill-sky-500/20 stroke-sky-400"
                                             strokeWidth={2}
                                         />
                                     </svg>
-                                )}
 
-                                {corners?.map((corner, index) => (
-                                    <div
-                                        key={index}
-                                        onPointerDown={handleHandlePointerDown(
-                                            index as CornerIndex
-                                        )}
-                                        onPointerMove={handleHandlePointerMove}
-                                        onPointerUp={handleHandlePointerUp}
-                                        style={{ left: corner.x, top: corner.y }}
-                                        className="absolute -ml-4 -mt-4 h-8 w-8 cursor-grab touch-none rounded-full border-2 border-white bg-sky-500/70 active:cursor-grabbing"
-                                    />
-                                ))}
-                            </div>
+                                    {corners.map((corner, index) => {
+                                        const point = cornerToDisplay(corner, imageBox);
+                                        return (
+                                            <div
+                                                key={index}
+                                                onPointerDown={handleHandlePointerDown(
+                                                    index as CornerIndex
+                                                )}
+                                                onPointerMove={handleHandlePointerMove}
+                                                onPointerUp={handleHandlePointerUp}
+                                                style={{
+                                                    left: imageBox.left + point.x,
+                                                    top: imageBox.top + point.y,
+                                                }}
+                                                className="absolute -ml-4 -mt-4 h-8 w-8 cursor-grab touch-none rounded-full border-2 border-white bg-sky-500/70 active:cursor-grabbing"
+                                            />
+                                        );
+                                    })}
+                                </>
+                            )}
                         </div>
 
                         {error && (

@@ -2,54 +2,52 @@ import { describe, expect, it } from "vitest";
 
 import {
     clampCornerToBounds,
+    cornerToDisplay,
     createInitialCorners,
     scaleCornersToNatural,
     updateCorner,
 } from "../lib/imageCorners";
 
 describe("createInitialCorners", () => {
-    it("insets the handles from each edge in TL, TR, BR, BL order", () => {
-        const corners = createInitialCorners({ width: 100, height: 200 }, 0.1);
-
-        expect(corners).toEqual([
-            { x: 10, y: 20 },
-            { x: 90, y: 20 },
-            { x: 90, y: 180 },
-            { x: 10, y: 180 },
+    it("insets fractional handles from each edge in TL, TR, BR, BL order", () => {
+        expect(createInitialCorners(0.1)).toEqual([
+            { x: 0.1, y: 0.1 },
+            { x: 0.9, y: 0.1 },
+            { x: 0.9, y: 0.9 },
+            { x: 0.1, y: 0.9 },
         ]);
     });
 });
 
 describe("clampCornerToBounds", () => {
-    it("clamps to the image bounds", () => {
-        expect(
-            clampCornerToBounds({ x: -5, y: 250 }, { width: 100, height: 200 })
-        ).toEqual({ x: 0, y: 200 });
+    it("clamps fractions to the 0..1 range", () => {
+        expect(clampCornerToBounds({ x: -0.5, y: 2 })).toEqual({ x: 0, y: 1 });
     });
 });
 
 describe("updateCorner", () => {
     it("replaces a single clamped corner without mutating the input", () => {
-        const corners = createInitialCorners({ width: 100, height: 100 });
-        const next = updateCorner(
-            corners,
-            1,
-            { x: 999, y: -10 },
-            { width: 100, height: 100 }
-        );
+        const corners = createInitialCorners();
+        const next = updateCorner(corners, 1, { x: 9, y: -1 });
 
-        expect(next[1]).toEqual({ x: 100, y: 0 });
+        expect(next[1]).toEqual({ x: 1, y: 0 });
         expect(next).not.toBe(corners);
         expect(corners[1]).not.toEqual(next[1]);
     });
 });
 
+describe("cornerToDisplay", () => {
+    it("maps a fraction to pixels within the rendered box", () => {
+        expect(
+            cornerToDisplay({ x: 0.25, y: 0.5 }, { width: 400, height: 200 })
+        ).toEqual({ x: 100, y: 100 });
+    });
+});
+
 describe("scaleCornersToNatural", () => {
-    it("scales display coordinates to natural pixels", () => {
-        const corners = createInitialCorners({ width: 100, height: 100 }, 0.1);
+    it("scales fractions to natural pixels", () => {
+        const corners = createInitialCorners(0.1);
         const natural = scaleCornersToNatural(corners, {
-            displayWidth: 100,
-            displayHeight: 100,
             naturalWidth: 1000,
             naturalHeight: 500,
         });
@@ -60,17 +58,5 @@ describe("scaleCornersToNatural", () => {
             { x: 900, y: 450 },
             { x: 100, y: 450 },
         ]);
-    });
-
-    it("avoids division by zero for an unmeasured image", () => {
-        const corners = createInitialCorners({ width: 100, height: 100 });
-        const natural = scaleCornersToNatural(corners, {
-            displayWidth: 0,
-            displayHeight: 0,
-            naturalWidth: 1000,
-            naturalHeight: 1000,
-        });
-
-        expect(natural.every((corner) => corner.x === 0 && corner.y === 0)).toBe(true);
     });
 });
