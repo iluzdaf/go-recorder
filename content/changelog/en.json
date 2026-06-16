@@ -2,11 +2,11 @@
     {
         "version": "0.5.0",
         "date": "2026-06-16",
-        "title": "Read the whole board at a glance.",
+        "title": "There is death in the hane.",
         "items": [
             {
                 "id": "image-drafts",
-                "text": "Create a board draft from a photo: upload an image, drag the four corners onto the board, and land on an editable position you can correct."
+                "text": "Create a draft from a photo."
             }
         ]
     },
