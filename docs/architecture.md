@@ -155,6 +155,7 @@
   - Response field names mirror `components/types.ts` so the result maps onto a board draft.
   - `GET /health` for readiness probes.
 - The Next.js app reaches the service through a server-side proxy route (added with the draft-from-image frontend).
+- See `docs/detection-service.md` for the full contract, auth, detection approach, and deploy.
 
 ## Copy And Changelog
 

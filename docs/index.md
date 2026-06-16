@@ -30,6 +30,11 @@
 - `docs/smoke-test-checklists.md`
   - Manual smoke-test checklist starters.
   - Reviewer-facing checks for preview deployments.
+- `docs/detection-service.md`
+  - Board-detection service purpose and boundary.
+  - `POST /detect` contract and auth.
+  - Detection approach and known limitations.
+  - Local development and Cloud Run deploy.
 - `docs/supabase.md`
   - Local Supabase setup.
   - Migration rules.
