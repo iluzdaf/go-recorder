@@ -25,6 +25,7 @@ export default function Home() {
   const [isCreatingGame, setIsCreatingGame] = useState(false);
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
   const [isImportingImage, setIsImportingImage] = useState(false);
+  const [draftSource, setDraftSource] = useState<"blank" | "image">("blank");
   const [recentGames, setRecentGames] = useState<LocalGameRecord[]>([]);
   const [recentDrafts, setRecentDrafts] = useState<LocalDraftRecord[]>([]);
 
@@ -56,6 +57,11 @@ export default function Home() {
   }
 
   function handleCreateDraft() {
+    if (draftSource === "image") {
+      setIsImportingImage(true);
+      return;
+    }
+
     setIsCreatingDraft(true);
 
     const draft = createLocalDraft(createDefaultLocalBoardDraftInput());
@@ -194,6 +200,25 @@ export default function Home() {
         </form>
 
         <section className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
+          <div className="flex gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-900">
+            {(["blank", "image"] as const).map((source) => (
+              <button
+                key={source}
+                type="button"
+                aria-pressed={draftSource === source}
+                disabled={isCreatingGame || isCreatingDraft}
+                onClick={() => setDraftSource(source)}
+                className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50 ${
+                  draftSource === source
+                    ? "bg-white text-zinc-950 shadow-sm dark:bg-neutral-700 dark:text-white"
+                    : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+                }`}
+              >
+                {source === "blank" ? t("draftSourceBlank") : t("draftSourceImage")}
+              </button>
+            ))}
+          </div>
+
           <button
             type="button"
             disabled={isCreatingGame || isCreatingDraft}
@@ -201,15 +226,6 @@ export default function Home() {
             className="rounded bg-sky-700 px-4 py-2 font-medium text-white hover:bg-sky-600 disabled:opacity-50"
           >
             {isCreatingDraft ? t("creatingDraft") : t("createDraft")}
-          </button>
-
-          <button
-            type="button"
-            disabled={isCreatingGame || isCreatingDraft}
-            onClick={() => setIsImportingImage(true)}
-            className="rounded border border-sky-700 px-4 py-2 font-medium text-sky-700 hover:bg-sky-50 disabled:opacity-50 dark:border-sky-500 dark:text-sky-400 dark:hover:bg-neutral-700"
-          >
-            {t("createDraftFromImage")}
           </button>
 
           {recentDrafts.length > 0 && (
