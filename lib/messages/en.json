@@ -90,5 +90,18 @@
     "draft": "Draft",
     "variation": "Variation",
     "recentDrafts": "Recent drafts",
-    "showMoreDrafts": "Show all"
+    "showMoreDrafts": "Show all",
+    "createDraftFromImage": "Create from Image",
+    "importBoardImageTitle": "Create draft from image",
+    "selectBoardImage": "Choose a board photo",
+    "changeBoardImage": "Choose a different photo",
+    "adjustCornersHint": "Drag the four handles to the corners of the board.",
+    "detectPosition": "Detect Position",
+    "detectingPosition": "Detecting...",
+    "detectionUnavailable": "Image detection is not configured.",
+    "detectionInvalidInput": "Please choose an image and mark the four board corners.",
+    "detectionNetworkError": "Could not reach the detection service. Check your connection and try again.",
+    "detectionFailed": "Could not detect a board in that image. Try another photo or adjust the corners.",
+    "cancelImport": "Cancel",
+    "retryDetection": "Try Again"
 }
