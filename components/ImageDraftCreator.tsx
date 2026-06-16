@@ -137,11 +137,8 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950/90 p-4 text-white">
-            <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 overflow-auto">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-medium">
-                        {t("importBoardImageTitle")}
-                    </h2>
+            <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col gap-3">
+                <div className="flex shrink-0 items-center justify-between gap-2">
                     <button
                         type="button"
                         onClick={onClose}
@@ -152,6 +149,21 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                     >
                         <X size={20} />
                     </button>
+
+                    {image && (
+                        <button
+                            type="button"
+                            onClick={handleDetect}
+                            disabled={isDetecting || !corners}
+                            className="rounded bg-sky-600 px-4 py-2 font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                        >
+                            {isDetecting
+                                ? t("detectingPosition")
+                                : error
+                                  ? t("retryDetection")
+                                  : t("detectPosition")}
+                        </button>
+                    )}
                 </div>
 
                 <input
@@ -172,66 +184,58 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                     </button>
                 ) : (
                     <>
-                        <p className="text-sm text-zinc-300">
+                        <p className="shrink-0 text-center text-sm text-zinc-300">
                             {t("adjustCornersHint")}
                         </p>
 
-                        <div className="relative mx-auto w-full touch-none select-none">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                                ref={imageRef}
-                                src={image.url}
-                                alt=""
-                                onLoad={handleImageLoad}
-                                onDragStart={(event) => event.preventDefault()}
-                                draggable={false}
-                                style={{ WebkitTouchCallout: "none" }}
-                                className="pointer-events-none w-full select-none rounded-lg"
-                            />
-
-                            {corners && (
-                                <svg className="pointer-events-none absolute inset-0 h-full w-full">
-                                    <polygon
-                                        points={corners
-                                            .map((corner) => `${corner.x},${corner.y}`)
-                                            .join(" ")}
-                                        className="fill-sky-500/20 stroke-sky-400"
-                                        strokeWidth={2}
-                                    />
-                                </svg>
-                            )}
-
-                            {corners?.map((corner, index) => (
-                                <div
-                                    key={index}
-                                    onPointerDown={handleHandlePointerDown(
-                                        index as CornerIndex
-                                    )}
-                                    onPointerMove={handleHandlePointerMove}
-                                    onPointerUp={handleHandlePointerUp}
-                                    style={{ left: corner.x, top: corner.y }}
-                                    className="absolute -ml-4 -mt-4 h-8 w-8 cursor-grab touch-none rounded-full border-2 border-white bg-sky-500/70 active:cursor-grabbing"
+                        <div className="flex min-h-0 flex-1 items-center justify-center">
+                            <div className="relative w-fit touch-none select-none">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    ref={imageRef}
+                                    src={image.url}
+                                    alt=""
+                                    onLoad={handleImageLoad}
+                                    onDragStart={(event) => event.preventDefault()}
+                                    draggable={false}
+                                    style={{ WebkitTouchCallout: "none" }}
+                                    className="pointer-events-none block max-h-[calc(100dvh_-_13rem)] max-w-[min(42rem,calc(100vw_-_2rem))] select-none rounded-lg"
                                 />
-                            ))}
+
+                                {corners && (
+                                    <svg className="pointer-events-none absolute inset-0 h-full w-full">
+                                        <polygon
+                                            points={corners
+                                                .map((corner) => `${corner.x},${corner.y}`)
+                                                .join(" ")}
+                                            className="fill-sky-500/20 stroke-sky-400"
+                                            strokeWidth={2}
+                                        />
+                                    </svg>
+                                )}
+
+                                {corners?.map((corner, index) => (
+                                    <div
+                                        key={index}
+                                        onPointerDown={handleHandlePointerDown(
+                                            index as CornerIndex
+                                        )}
+                                        onPointerMove={handleHandlePointerMove}
+                                        onPointerUp={handleHandlePointerUp}
+                                        style={{ left: corner.x, top: corner.y }}
+                                        className="absolute -ml-4 -mt-4 h-8 w-8 cursor-grab touch-none rounded-full border-2 border-white bg-sky-500/70 active:cursor-grabbing"
+                                    />
+                                ))}
+                            </div>
                         </div>
 
                         {error && (
-                            <p className="text-sm text-red-400">{error}</p>
+                            <p className="shrink-0 text-center text-sm text-red-400">
+                                {error}
+                            </p>
                         )}
 
-                        <div className="flex flex-wrap gap-3">
-                            <button
-                                type="button"
-                                onClick={handleDetect}
-                                disabled={isDetecting || !corners}
-                                className="rounded bg-sky-600 px-4 py-2 font-medium text-white hover:bg-sky-500 disabled:opacity-50"
-                            >
-                                {isDetecting
-                                    ? t("detectingPosition")
-                                    : error
-                                      ? t("retryDetection")
-                                      : t("detectPosition")}
-                            </button>
+                        <div className="flex shrink-0 justify-center">
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
