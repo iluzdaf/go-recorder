@@ -39,10 +39,15 @@ def test_detect_returns_documented_shape():
     assert stones == {(3, 3, "B"), (9, 9, "W")}
 
 
-def test_missing_corners_field_is_rejected():
+def test_missing_corners_field_returns_400():
     image = render_board(9, stones=[])
     response = _post(image, None)
-    assert response.status_code == 422
+    assert response.status_code == 400
+
+
+def test_missing_image_returns_400():
+    response = _post(None, CORNERS_JSON)
+    assert response.status_code == 400
 
 
 def test_invalid_corners_json_returns_400():
@@ -54,6 +59,15 @@ def test_invalid_corners_json_returns_400():
 def test_wrong_corner_count_returns_400():
     image = render_board(9, stones=[])
     response = _post(image, json.dumps([{"x": 0, "y": 0}, {"x": 1, "y": 1}]))
+    assert response.status_code == 400
+
+
+def test_non_numeric_corner_returns_400():
+    image = render_board(9, stones=[])
+    corners = json.dumps(
+        [{"x": "bad", "y": 0}, {"x": 1, "y": 0}, {"x": 1, "y": 1}, {"x": 0, "y": 1}]
+    )
+    response = _post(image, corners)
     assert response.status_code == 400
 
 

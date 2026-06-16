@@ -54,11 +54,16 @@ def parse_corners(raw: str) -> list[Corner]:
     points: list[Corner] = []
     for point in data:
         if isinstance(point, dict) and "x" in point and "y" in point:
-            points.append((float(point["x"]), float(point["y"])))
+            raw_x, raw_y = point["x"], point["y"]
         elif isinstance(point, (list, tuple)) and len(point) == 2:
-            points.append((float(point[0]), float(point[1])))
+            raw_x, raw_y = point[0], point[1]
         else:
             raise DetectionError("each corner must provide x and y")
+
+        try:
+            points.append((float(raw_x), float(raw_y)))
+        except (TypeError, ValueError):
+            raise DetectionError("corner coordinates must be numbers")
     return points
 
 
