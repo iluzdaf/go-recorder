@@ -30,7 +30,8 @@
 ## Pipeline
 
 - Perspective-correct the board using the four corners.
-- Detect grid lines and auto-detect board size.
+- Detect grid lines, then fit a uniform lattice of a sensible line count: this drops spurious/duplicate lines, interpolates lines hidden under stones, and tolerates slightly over-marked corners without stretching the grid.
+- Auto-detect board size from the fitted grid.
 - Classify each intersection against a local (per-cell) background: a dark fill is black, a bright fill is white, and a fill that matches the board is checked for a dark outline ring (outlined white stones on light boards / kifu diagrams). This handles wood, light, and dark-mode boards.
 - Infer a `positionView` for partial captures from which sides reach a real board edge.
 

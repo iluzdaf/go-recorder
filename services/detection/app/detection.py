@@ -24,6 +24,9 @@ WARP_SIZE = 720
 EDGE_INSET_FRAC = 0.03
 PEAK_HEIGHT_FRAC = 0.25
 PEAK_MIN_DISTANCE_FRAC = 0.02
+MIN_GRID_LINES = 4
+MAX_GRID_LINES = 19
+GRID_MATCH_TOLERANCE_FRAC = 0.35
 INTERIOR_RADIUS_FRAC = 0.26
 BACKGROUND_RADIUS_FRAC = 0.12
 FILL_DARK_DELTA = 50.0
@@ -111,6 +114,45 @@ def _line_positions(gray: np.ndarray, axis: str) -> list[int]:
         gradient = np.abs(cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3))
         profile = gradient.sum(axis=1)
     return _find_peaks(_smooth(profile, 5))
+
+
+def _fit_grid(peaks: list[int]) -> list[int]:
+    """Fit the best uniform line lattice to noisy detected peaks.
+
+    Detected lines can include extras (a border or a slightly over-marked
+    corner) or gaps (a line hidden under a stone). We try a uniform grid of each
+    plausible line count at the detected spacing, anchored on each peak, and keep
+    the one that best matches the peaks while staying within their span. This
+    snaps the count to a sensible value and interpolates missing lines without
+    stretching the spacing, so the grid stays aligned to the real lines."""
+
+    if len(peaks) < MIN_GRID_LINES:
+        return list(peaks)
+
+    points = np.array(sorted(peaks), dtype=float)
+    spacing = float(np.median(np.diff(points)))
+    if spacing <= 0:
+        return [int(p) for p in points]
+
+    tolerance = GRID_MATCH_TOLERANCE_FRAC * spacing
+    low, high = float(points[0]), float(points[-1])
+    max_lines = min(MAX_GRID_LINES, len(points) + 2)
+
+    best_score = -1.0
+    best_grid = points
+    for line_count in range(MIN_GRID_LINES, max_lines + 1):
+        for anchor in points:
+            lattice = anchor + np.arange(line_count) * spacing
+            distances = np.abs(lattice[:, None] - points[None, :]).min(axis=1)
+            inside = (lattice >= low - tolerance) & (lattice <= high + tolerance)
+            matched = int(np.sum(inside & (distances < tolerance)))
+            outside = int(np.sum(~inside))
+            score = matched - 0.6 * outside
+            if score > best_score:
+                best_score = score
+                best_grid = lattice
+
+    return [int(round(value)) for value in best_grid]
 
 
 def _real_sides(xs: list[int], ys: list[int], size: int) -> dict[str, bool]:
@@ -250,8 +292,8 @@ def detect_board(raw: bytes, corners: Sequence[Corner]) -> DetectionResult:
     warped = _warp(_decode(raw), corners)
     gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
 
-    xs = _line_positions(gray, "vertical")
-    ys = _line_positions(gray, "horizontal")
+    xs = _fit_grid(_line_positions(gray, "vertical"))
+    ys = _fit_grid(_line_positions(gray, "horizontal"))
     if len(xs) < 2 or len(ys) < 2:
         raise DetectionError("Could not detect a board grid")
 
