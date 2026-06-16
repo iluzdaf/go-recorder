@@ -9,6 +9,7 @@ import {
     createDefaultLocalBoardDraftInput,
     createLocalGameInputFromForm,
 } from "@/lib/localGameSetup";
+import { Grid3x3, Image as ImageIcon } from "lucide-react";
 import { GameBoardThumbnail, getDraftTitle, getGameTitle } from "@/components/GameListItem";
 import ImageDraftCreator from "@/components/ImageDraftCreator";
 import { navigateWithinApp } from "@/lib/fullscreenNavigation";
@@ -201,22 +202,34 @@ export default function Home() {
 
         <section className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
           <div className="flex gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-900">
-            {(["blank", "image"] as const).map((source) => (
-              <button
-                key={source}
-                type="button"
-                aria-pressed={draftSource === source}
-                disabled={isCreatingGame || isCreatingDraft}
-                onClick={() => setDraftSource(source)}
-                className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50 ${
-                  draftSource === source
-                    ? "bg-white text-zinc-950 shadow-sm dark:bg-neutral-700 dark:text-white"
-                    : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
-                }`}
-              >
-                {source === "blank" ? t("draftSourceBlank") : t("draftSourceImage")}
-              </button>
-            ))}
+            {(["blank", "image"] as const).map((source) => {
+              const label =
+                source === "blank"
+                  ? t("draftSourceBlank")
+                  : t("draftSourceImage");
+              return (
+                <button
+                  key={source}
+                  type="button"
+                  aria-label={label}
+                  title={label}
+                  aria-pressed={draftSource === source}
+                  disabled={isCreatingGame || isCreatingDraft}
+                  onClick={() => setDraftSource(source)}
+                  className={`flex flex-1 items-center justify-center rounded-md px-3 py-2 disabled:opacity-50 ${
+                    draftSource === source
+                      ? "bg-white text-zinc-950 shadow-sm dark:bg-neutral-700 dark:text-white"
+                      : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  {source === "blank" ? (
+                    <Grid3x3 size={18} />
+                  ) : (
+                    <ImageIcon size={18} />
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           <button
