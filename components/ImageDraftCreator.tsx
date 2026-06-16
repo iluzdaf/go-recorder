@@ -182,6 +182,7 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                                 onLoad={handleImageLoad}
                                 onDragStart={(event) => event.preventDefault()}
                                 draggable={false}
+                                style={{ WebkitTouchCallout: "none" }}
                                 className="pointer-events-none w-full select-none rounded-lg"
                             />
 
