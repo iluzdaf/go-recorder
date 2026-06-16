@@ -64,6 +64,7 @@
 ## Triage Agent
 
 - Convert `needs-triage` feedback into an implementation-ready task.
+- Read the issue body and all comments before deciding whether open questions are answered.
 - Include:
   - Type.
   - Problem.
