@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 
 import { createBoardDraftInputFromDetection } from "@/lib/boardDetectionDraft";
 import { detectBoard } from "@/lib/detectBoardClient";
@@ -191,8 +191,11 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                             type="button"
                             onClick={handleDetect}
                             disabled={isDetecting || !corners}
-                            className="rounded bg-sky-600 px-4 py-2 font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                            className="inline-flex items-center gap-2 rounded bg-sky-600 px-4 py-2 font-medium text-white hover:bg-sky-500 disabled:opacity-50"
                         >
+                            {isDetecting && (
+                                <Loader2 size={16} className="animate-spin" />
+                            )}
                             {isDetecting
                                 ? t("detectingPosition")
                                 : error
