@@ -6,6 +6,7 @@ import {
     clearDraftShareCache,
     getBoardDraftStrokeMode,
     moveSetupStone,
+    moveSetupStones,
     removeSetupStone,
     toggleBoardDraftStone,
 } from "../lib/boardDraft";
@@ -277,6 +278,119 @@ describe("moveSetupStone", () => {
             ok: false,
             error: "Move leaves a group with no liberties",
         });
+    });
+});
+
+describe("moveSetupStones", () => {
+    it("moves a group of setup stones by a delta", () => {
+        const result = moveSetupStones({
+            boardSize: 19,
+            dx: 1,
+            dy: -1,
+            gameState: {
+                setupStones: [
+                    { x: 3, y: 4, color: "B" },
+                    { x: 4, y: 4, color: "B" },
+                    { x: 10, y: 10, color: "W" },
+                ],
+                moves: [],
+                currentPlayer: "B",
+            },
+            indexes: [0, 1],
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            gameState: {
+                setupStones: [
+                    { x: 4, y: 3, color: "B" },
+                    { x: 5, y: 3, color: "B" },
+                    { x: 10, y: 10, color: "W" },
+                ],
+                moves: [],
+                currentPlayer: "B",
+            },
+        });
+    });
+
+    it("allows a group to slide onto a vertex vacated by the same group", () => {
+        const result = moveSetupStones({
+            boardSize: 19,
+            dx: 1,
+            dy: 0,
+            gameState: {
+                setupStones: [
+                    { x: 3, y: 4, color: "B" },
+                    { x: 4, y: 4, color: "B" },
+                ],
+                moves: [],
+                currentPlayer: "B",
+            },
+            indexes: [0, 1],
+        });
+
+        expect(result.ok).toBe(true);
+    });
+
+    it("rejects when a moved stone lands on a stationary stone", () => {
+        expect(
+            moveSetupStones({
+                boardSize: 19,
+                dx: 1,
+                dy: 0,
+                gameState: {
+                    setupStones: [
+                        { x: 3, y: 4, color: "B" },
+                        { x: 4, y: 4, color: "W" },
+                    ],
+                    moves: [],
+                    currentPlayer: "B",
+                },
+                indexes: [0],
+            })
+        ).toEqual({ ok: false, error: "Destination is occupied" });
+    });
+
+    it("rejects a group move that leaves a group with no liberties", () => {
+        // White surrounds (1,1); moving black onto it self-captures.
+        const result = moveSetupStones({
+            boardSize: 9,
+            dx: -4,
+            dy: -4,
+            gameState: {
+                setupStones: [
+                    { x: 5, y: 5, color: "B" },
+                    { x: 1, y: 0, color: "W" },
+                    { x: 0, y: 1, color: "W" },
+                    { x: 2, y: 1, color: "W" },
+                    { x: 1, y: 2, color: "W" },
+                ],
+                moves: [],
+                currentPlayer: "B",
+            },
+            indexes: [0],
+        });
+
+        expect(result).toEqual({
+            ok: false,
+            error: "Move leaves a group with no liberties",
+        });
+    });
+
+    it("rejects a group move that runs out of bounds", () => {
+        expect(
+            moveSetupStones({
+                boardSize: 9,
+                dx: 0,
+                dy: 1,
+                gameState: {
+                    setupStones: [{ x: 3, y: 8, color: "B" }],
+                    moves: [],
+                    currentPlayer: "B",
+                },
+                indexes: [0],
+            })
+        ).toEqual({ ok: false, error: "Destination is out of bounds" });
     });
 });
 
