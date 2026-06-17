@@ -499,27 +499,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         [clearCachedShareLink, updateDraft]
     );
 
-    const handleVariationUndo = useCallback(() => {
-        const currentDraft = draftRef.current;
-        if (!currentDraft || currentDraft.draftKind !== "variation") return;
-        if (currentDraft.baseMoveCount === null) return;
-
-        const nextGameState = undoVariationDraftMove({
-            baseMoveCount: currentDraft.baseMoveCount,
-            gameState: currentDraft.gameState,
-        });
-
-        if (nextGameState === currentDraft.gameState) return;
-
-        clearCachedShareLink();
-        updateDraft(
-            clearDraftShareCache({
-                ...currentDraft,
-                gameState: nextGameState,
-            })
-        );
-    }, [clearCachedShareLink, updateDraft]);
-
     const handleDownloadSgf = useCallback(() => {
         const currentDraft = draftRef.current;
         if (!currentDraft) return;
@@ -836,6 +815,28 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         adapter: correctionAdapter,
         onStatus: setShareStatus,
     });
+
+    const handleVariationUndo = useCallback(() => {
+        const currentDraft = draftRef.current;
+        if (!currentDraft || currentDraft.draftKind !== "variation") return;
+        if (currentDraft.baseMoveCount === null) return;
+
+        const nextGameState = undoVariationDraftMove({
+            baseMoveCount: currentDraft.baseMoveCount,
+            gameState: currentDraft.gameState,
+        });
+
+        if (nextGameState === currentDraft.gameState) return;
+
+        correction.exitStoneEditMode();
+        clearCachedShareLink();
+        updateDraft(
+            clearDraftShareCache({
+                ...currentDraft,
+                gameState: nextGameState,
+            })
+        );
+    }, [clearCachedShareLink, correction, updateDraft]);
 
     if (!draft) {
         return (
