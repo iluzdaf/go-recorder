@@ -5,6 +5,8 @@
 - Convert rough feedback into prioritized implementation tasks.
 - Route tasks through triage, planning, implementation, review, smoke testing, and human merge.
 - Keep the source of truth in GitHub issues and PRs, not only chat.
+- Preserve original feedback as the intake record; triage must add structure without overwriting prior observations.
+- Keep one issue per piece of feedback unless a split is needed for scope control.
 
 ## Labels
 
@@ -13,20 +15,24 @@
 - `needs-clarification`
   - Triage found open questions that must be answered before implementation.
 - `ready-for-agent`
-  - Triage is complete.
-  - The task has enough detail for an implementation agent to start.
+  - Triage is complete on the feedback issue.
+  - The issue has enough detail for an implementation agent to start.
 - `needs-plan`
-  - An agent has claimed the task.
-  - The next step is to propose an implementation plan before editing code.
+  - PR label.
+  - The work has been claimed and the next step is to propose a plan in the PR.
 - `needs-plan-approval`
-  - A plan has been proposed.
+  - PR label.
+  - A plan has been proposed in the PR.
   - Human approval is required before implementation.
 - `in-progress`
+  - PR label.
   - An agent is implementing an approved plan.
 - `needs-review`
+  - PR label.
   - Implementation is complete.
   - A separate review pass is needed.
 - `smoke-test-ready`
+  - PR label.
   - Review is complete.
   - The PR has a manual smoke-test checklist.
 - `blocked`
@@ -36,7 +42,7 @@
 
 - `needs-triage`
 - `ready-for-agent`
-- `needs-plan`
+- draft PR with `needs-plan`
 - `needs-plan-approval`
 - `in-progress`
 - `needs-review`
@@ -60,11 +66,15 @@
   - Share links when relevant.
   - Device and browser details when relevant.
   - Prior discussion when relevant.
+- Treat the feedback body and comments as the historical record.
+- Do not rewrite or replace existing feedback text during triage.
 
 ## Triage Agent
 
 - Convert `needs-triage` feedback into an implementation-ready task.
 - Read the issue body and all comments before deciding whether open questions are answered.
+- Preserve the original feedback body and comments.
+- Append triage in a new comment instead of overwriting existing feedback.
 - Include:
   - Type.
   - Problem.
@@ -79,9 +89,21 @@
 - Add `needs-clarification` when requirements are unclear.
 - Ask concise concrete questions when requirements are unclear.
 - Do not mark a task `ready-for-agent` until ambiguity is removed.
-- Create or update an Agent Task issue when requirements are clear.
-- Replace `needs-triage` or `needs-clarification` with `ready-for-agent` when ready.
-- Link back to the original feedback when triage creates a new issue.
+- Keep the feedback issue as the task record by default.
+- Do not create a separate Agent Task issue unless broad feedback must be split into multiple independently actionable tasks.
+- Rename the feedback issue title to indicate triage completion when helpful, for example `[Triaged Feedback]: ...`.
+- Keep `ready-for-agent` on the feedback issue until work is claimed in a PR.
+- Remove `needs-triage` after triage is complete; use `needs-clarification` on the feedback issue only when open questions remain.
+
+## Recommended Triage Record
+
+- Append a triage comment on the feedback issue with:
+  - A short triage status.
+  - The distilled problem statement.
+  - The desired outcome.
+  - Acceptance criteria.
+  - Open questions, if any.
+- Keep implementation planning, approvals, and execution updates in the PR after handoff.
 
 ## Prioritization
 
@@ -95,12 +117,14 @@
 
 ## Planning
 
-- Move claimed tasks from `ready-for-agent` to `needs-plan`.
+- Open a draft PR when claiming a `ready-for-agent` issue.
+- Move workflow labels from the issue to the PR once the draft PR exists.
 - Write a plan before editing code for:
   - Non-trivial tasks.
   - Broad tasks.
   - Tasks with multiple plausible implementations.
-- Move tasks from `needs-plan` to `needs-plan-approval` after posting the plan.
+- Put the plan in the PR description or a PR comment.
+- Move the PR from `needs-plan` to `needs-plan-approval` after posting the plan.
 - Wait for human approval before implementation.
 - Skip planning only for tiny mechanical changes when the user explicitly allows it.
 - A good plan includes:
@@ -117,18 +141,19 @@
 - Switch to `main`.
 - Pull latest remote changes.
 - Create a feature branch with the `codex/` prefix unless instructed otherwise.
-- Move the task from `ready-for-agent` to `needs-plan`.
-- Write the implementation plan.
-- Move the task from `needs-plan` to `needs-plan-approval`.
+- Open a draft PR linked to the feedback issue before substantial edits.
+- Remove `ready-for-agent` from the issue once the PR is the active work surface.
+- Add `needs-plan` to the PR.
+- Write the implementation plan in the PR.
+- Move the PR from `needs-plan` to `needs-plan-approval`.
 - Wait for human approval before editing code.
-- Move the task to `in-progress` after approval.
+- Move the PR to `in-progress` after approval.
 - Implement the approved plan.
 - Prefer one focused commit per plan step.
 - Run relevant non-visual checks.
-- Open a PR linked to the task.
 - Include the approved plan in the PR description.
 - Include `Smoke Tests For Reviewer` in the PR description before requesting review.
-- Move the task to `needs-review` when implementation is ready.
+- Move the PR to `needs-review` when implementation is ready.
 
 ## Verification
 
