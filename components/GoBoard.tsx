@@ -2,20 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
-import type { ComponentType, PointerEvent as ReactPointerEvent } from "react";
+import type { ComponentType } from "react";
 
 import type {
     BoardSize,
     GameState,
     LocalGameRecord,
     Move,
-    Stone,
 } from "./types";
 import { downloadSgf } from "./sgf";
-import {
-    createGameSnapshot,
-    shouldAutosave,
-} from "../lib/gameLogic";
+import { createGameSnapshot, shouldAutosave } from "../lib/gameLogic";
 import { getLocalGame } from "../lib/localGames";
 import { saveLocalEditableRecord } from "../lib/localEditableSave";
 import { createLoadedLocalGame } from "../lib/localGameView";
@@ -35,35 +31,14 @@ import useBoardGeometry from "./useBoardGeometry";
 import useEditableShareMenuController from "./useEditableShareMenuController";
 import { playGameMove, replayGame } from "../lib/gameReplay";
 import { isActionBarAnchor } from "../lib/actionBarDrag";
-import { getLiveBoardGridMetrics } from "../lib/boardGeometry";
 import {
     applyRecorderCorrection,
-    createStoneSelectionDragState,
-    didPointerLeaveHoldVertex,
-    getCorrectionTapAction,
-    getEditableMoveIndexAtVertex,
-    getPlacementZoomWindow,
-    getPlacementZoomOverlayOffset,
-    getVertexFromPlacementZoomPointer,
-    getSelectedMoveVertices,
-    getStoneCorrectionHandleAnchor,
-    getStoneCorrectionHandlePosition,
-    getStoneCorrectionOrigin,
-    getStoneSelectionDragVertexFromPointer,
-    getVertexFromBoardPointer,
-    isRecorderCorrectionLegal,
-    isStoneSelectionDragActive,
-    shouldShowCorrectionTouchGuide,
-    shouldShowOriginalSelectedStones,
-    shouldShowPlacementPreview,
-    shouldStartStoneSelectionHold,
-    shouldUsePlacementZoom,
-    toggleCorrectionSelection,
-    visitCorrectionSelectionDragMove,
-    type BoardAreaZoomWindow,
-    type StoneSelectionDragState,
     type Vertex,
 } from "../lib/gameCorrectionUi";
+import {
+    useStoneCorrection,
+    type StoneCorrectionMarker,
+} from "./useStoneCorrection";
 
 type ShudanGobanProps = {
     vertexSize: number;
@@ -80,27 +55,10 @@ type ShudanGobanProps = {
 
 const BoardView = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
 
-type TouchPreview = {
-    x: number;
-    y: number;
-    screenX: number;
-    screenY: number;
-} | null;
-
 type GoBoardProps = {
     id: string;
 };
 
-function stoneToSign(stone: Stone) {
-    return stone === "B" ? 1 : -1;
-}
-
-function cloneSignMap(signMap: number[][]) {
-    return signMap.map((row) => [...row]);
-}
-
-const STONE_SELECT_HOLD_MS = 450;
-const STONE_CORRECTION_PILL_GAP_PX = 8;
 const ACTION_BAR_STORAGE_KEY_PREFIX = "go-recorder:game-action-bar-anchor:";
 
 function getActionBarStorageKey(id: string) {
@@ -114,32 +72,8 @@ export default function GoBoard({ id }: GoBoardProps) {
     const { setHeaderStatus } = useHeaderStatus();
     const { isOverlayHeader } = useHeaderVisibility();
     const hasLoadedGameRef = useRef(false);
-    const stoneSelectTimeoutRef = useRef<number | null>(null);
-    const stoneSelectOriginRef = useRef<Vertex | null>(null);
-    const selectedGroupDragOriginRef = useRef<Vertex | null>(null);
-    const stoneSelectionDragStateRef = useRef<StoneSelectionDragState | null>(
-        null
-    );
-    const stoneSelectionDragStartMoveIndexRef = useRef<number | null>(null);
-    const stoneSelectionDragVisitedMoveIndexesRef = useRef<Set<number>>(
-        new Set()
-    );
-    const didSelectStoneByHoldRef = useRef(false);
-    const didDragStoneSelectionRef = useRef(false);
-    const [didStartStoneSelectionDrag, setDidStartStoneSelectionDrag] =
-        useState(false);
-    const [isCorrectionDragActive, setIsCorrectionDragActive] =
-        useState(false);
     const lastSavedSnapshotRef = useRef("");
     const localGameRecordRef = useRef<LocalGameRecord | null>(null);
-    const [touchPreview, setTouchPreview] = useState<TouchPreview>(null);
-    const [placementZoomWindow, setPlacementZoomWindow] =
-        useState<BoardAreaZoomWindow | null>(null);
-    const [selectedGroupDragOrigin, setSelectedGroupDragOriginState] =
-        useState<Vertex | null>(null);
-    const [selectedMoveIndexes, setSelectedMoveIndexes] = useState<number[]>([]);
-    const selectedMoveIndexesRef = useRef<number[]>([]);
-    const touchPreviewVertexRef = useRef<Vertex | null>(null);
     const [updatedAt, setUpdatedAt] = useState<string | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -158,9 +92,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         setCreating: setEditableShareCreating,
         setError: setEditableShareError,
     } = shareMenu;
-    const isStonePlacementActiveRef = useRef(false);
-    const stonePlacementCanCommitRef = useRef(false);
-    const isPendingPlacementZoomRef = useRef(false);
     const actionBar = useActionBarDrag({
         initialAnchor: () => {
             if (typeof window === "undefined") return "left";
@@ -196,10 +127,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         measureGrid: true,
         showCoordinates: showBoardCoordinates,
     });
-
-    useEffect(() => {
-        selectedMoveIndexesRef.current = selectedMoveIndexes;
-    }, [selectedMoveIndexes]);
 
     useEffect(() => {
         setHeaderStatus(
@@ -265,7 +192,9 @@ export default function GoBoard({ id }: GoBoardProps) {
                 const localGameRecord = localGameRecordRef.current;
 
                 if (!localGameRecord) {
-                    console.error("Failed to save game: local game record was not loaded");
+                    console.error(
+                        "Failed to save game: local game record was not loaded"
+                    );
                     return;
                 }
 
@@ -295,10 +224,9 @@ export default function GoBoard({ id }: GoBoardProps) {
     const board = replay.board;
     const signMap = board.signMap;
 
-    type Marker = null | { type: "circle" };
-
-    const markerMap: Marker[][] = Array.from({ length: size }, () =>
-        Array.from({ length: size }, () => null)
+    const markerMap: StoneCorrectionMarker[][] = Array.from(
+        { length: size },
+        () => Array.from({ length: size }, () => null as StoneCorrectionMarker)
     );
 
     const lastMove = gameState.moves.at(-1);
@@ -307,479 +235,16 @@ export default function GoBoard({ id }: GoBoardProps) {
         markerMap[lastMove.y][lastMove.x] = { type: "circle" };
     }
 
-    const selectedMoveVertices = getSelectedMoveVertices({
-        gameState,
-        selectedMoveIndexes,
-    });
-    const selectedVertices = selectedMoveVertices.map(({ x, y }) => [x, y] as [number, number]);
-    const dragOrigin = getStoneCorrectionOrigin({
-        from: selectedGroupDragOrigin,
-        gameState,
-        selectedMoveIndexes,
-    });
-    const dragPreview = touchPreview
-        ? (() => {
-              if (!dragOrigin) return null;
-              if (!didStartStoneSelectionDrag) return null;
+    const clearCachedShareLink = () => {
+        clearShareLink();
 
-              const previewSignMap = cloneSignMap(signMap);
-              const previewVertices: [number, number][] = [];
-              const dx = touchPreview.x - dragOrigin.x;
-              const dy = touchPreview.y - dragOrigin.y;
+        const localGameRecord = localGameRecordRef.current;
+        if (!localGameRecord) return;
 
-              if (
-                  !isRecorderCorrectionLegal({
-                      boardSize: size,
-                      from: dragOrigin,
-                      gameState,
-                      selectedMoveIndexes,
-                      vertex: touchPreview,
-                  })
-              ) {
-                  return null;
-              }
-
-              type PlayMoveWithNext = {
-                  move: { type: "play"; x: number; y: number; color: Stone };
-                  nextX: number;
-                  nextY: number;
-              };
-              const playMoves: PlayMoveWithNext[] = [];
-
-              for (const moveIndex of selectedMoveIndexes) {
-                  const move = gameState.moves[moveIndex];
-
-                  if (move?.type !== "play") continue;
-
-                  const nextX = move.x + dx;
-                  const nextY = move.y + dy;
-
-                  if (nextX < 0 || nextX >= size || nextY < 0 || nextY >= size) {
-                      return null;
-                  }
-
-                  playMoves.push({ move, nextX, nextY });
-              }
-
-              for (const { move } of playMoves) {
-                  previewSignMap[move.y][move.x] = 0;
-              }
-
-              for (const { move, nextX, nextY } of playMoves) {
-                  previewSignMap[nextY][nextX] = stoneToSign(move.color);
-                  previewVertices.push([nextX, nextY]);
-              }
-
-              return {
-                  signMap: previewSignMap,
-                  selectedVertices: previewVertices,
-              };
-          })()
-        : null;
-    const isMovingSelectedStones = isStoneSelectionDragActive({
-        hasTouchPreview: Boolean(touchPreview),
-        selectedMoveIndexes,
-        didStartStoneSelectionDrag,
-    });
-    const hasValidDragPreview = Boolean(dragPreview);
-    const isDeselectingLastStone =
-        isCorrectionDragActive && selectedMoveIndexes.length === 0;
-    const renderSelectedVertices = shouldShowOriginalSelectedStones({
-        isMovingSelectedStones,
-        hasValidDragPreview,
-    })
-        ? selectedVertices
-        : [];
-    const renderDimmedVertices = dragPreview ? dragPreview.selectedVertices : [];
-    const shouldShowTouchGuide = shouldShowCorrectionTouchGuide({
-        hasTouchPreview: Boolean(touchPreview),
-        isMovingSelectedStones,
-        hasValidDragPreview,
-        isDeselectingLastStone,
-    });
-    const placementPreviewSignMap =
-        shouldShowPlacementPreview({
-            hasTouchPreview: Boolean(touchPreview),
-            hasSelectedStone: selectedMoveIndexes.length > 0,
-            isCorrectionDragActive,
-        }) && touchPreview
-            ? (() => {
-                  if (signMap[touchPreview.y]?.[touchPreview.x] !== 0) return null;
-
-                  const preview = cloneSignMap(signMap);
-                  preview[touchPreview.y][touchPreview.x] = stoneToSign(
-                      gameState.currentPlayer
-                  );
-                  return preview;
-              })()
-            : null;
-    const boardSignMap = dragPreview?.signMap ?? placementPreviewSignMap ?? signMap;
-    const boardMarkerMap =
-        isMovingSelectedStones &&
-        hasValidDragPreview &&
-        gameState.moves.length > 0 &&
-        selectedMoveIndexes.includes(gameState.moves.length - 1)
-            ? (() => {
-                  const nextMarkerMap = markerMap.map((row) => [...row]);
-                  const lastMove = gameState.moves.at(-1);
-
-                  if (lastMove?.type === "play") {
-                      nextMarkerMap[lastMove.y][lastMove.x] = null;
-                  }
-
-                  return nextMarkerMap;
-            })()
-            : markerMap;
-    const stoneCorrectionHandleVertices = dragPreview
-        ? dragPreview.selectedVertices.map(([x, y]) => ({ x, y }))
-        : selectedMoveVertices;
-    const stoneCorrectionAnchorVertex = getStoneCorrectionHandleAnchor(
-        stoneCorrectionHandleVertices
-    );
-    const stoneCorrectionHandlePosition = getStoneCorrectionHandlePosition({
-        anchor: stoneCorrectionAnchorVertex,
-        gapPx: STONE_CORRECTION_PILL_GAP_PX,
-        grid: gridMetrics,
-    });
-    const hasStoneCorrectionSelection = Boolean(stoneCorrectionHandlePosition);
-    const placementZoomVertexSize = placementZoomWindow
-        ? gridMetrics.boardSizePx / placementZoomWindow.size
-        : vertexSize;
-    const placementZoomOffset = getPlacementZoomOverlayOffset({
-        showCoordinates: showBoardCoordinates,
-        zoomCellSize: placementZoomVertexSize,
-    });
-    const placementZoomRangeX: [number, number] | undefined = placementZoomWindow
-        ? [
-              placementZoomWindow.startX,
-              placementZoomWindow.startX + placementZoomWindow.size - 1,
-          ]
-        : undefined;
-    const placementZoomRangeY: [number, number] | undefined = placementZoomWindow
-        ? [
-              placementZoomWindow.startY,
-              placementZoomWindow.startY + placementZoomWindow.size - 1,
-          ]
-        : undefined;
-    const placementZoomClassName = placementZoomWindow
-        ? [
-              "goban-placement-zoom pointer-events-none absolute z-10",
-              placementZoomWindow.startY > 0
-                  ? "goban-placement-zoom-hide-top"
-                  : "",
-              placementZoomWindow.startX + placementZoomWindow.size < size
-                  ? "goban-placement-zoom-hide-right"
-                  : "",
-              placementZoomWindow.startY + placementZoomWindow.size < size
-                  ? "goban-placement-zoom-hide-bottom"
-                  : "",
-              placementZoomWindow.startX > 0
-                  ? "goban-placement-zoom-hide-left"
-                  : "",
-          ]
-              .filter(Boolean)
-              .join(" ")
-        : "";
-    const touchGuideMetrics =
-        touchPreview && placementZoomWindow
-            ? {
-                  left: gridMetrics.left,
-                  top: gridMetrics.top,
-                  cellSize: placementZoomVertexSize,
-                  boardSizePx: gridMetrics.boardSizePx,
-                  x: touchPreview.x - placementZoomWindow.startX,
-                  y: touchPreview.y - placementZoomWindow.startY,
-              }
-            : touchPreview
-              ? {
-                    left: gridMetrics.left,
-                    top: gridMetrics.top,
-                    cellSize: gridMetrics.cellSize,
-                    boardSizePx: gridMetrics.boardSizePx,
-                    x: touchPreview.x,
-                    y: touchPreview.y,
-                }
-              : null;
-
-    const getGridMetrics = () => {
-        const gobanWrapper = gobanWrapperRef.current;
-        if (!gobanWrapper) return null;
-
-        const metrics = getLiveBoardGridMetrics({
-            boardSize: size,
-            gobanWrapper,
-        });
-        if (!metrics) return null;
-
-        setGridMetrics(metrics.gridMetrics);
-        return { gridGeometry: metrics.gridGeometry };
-    };
-
-    const getFullBoardVertexFromPointer = (clientX: number, clientY: number) => {
-        const metrics = getGridMetrics();
-        if (!metrics) return null;
-
-        return getVertexFromBoardPointer({
-            clientX,
-            clientY,
-            grid: metrics.gridGeometry,
-        });
-    };
-
-    const getZoomedPlacementVertexFromPointer = (
-        clientX: number,
-        clientY: number
-    ) => {
-        if (!placementZoomWindow) return null;
-
-        const metrics = getGridMetrics();
-        if (!metrics) return null;
-
-        return getVertexFromPlacementZoomPointer({
-            clientX,
-            clientY,
-            grid: metrics.gridGeometry,
-            zoomWindow: placementZoomWindow,
-        });
-    };
-
-    const getPlacementVertexFromPointer = (clientX: number, clientY: number) => {
-        if (placementZoomWindow) {
-            return getZoomedPlacementVertexFromPointer(clientX, clientY);
-        }
-
-        return getFullBoardVertexFromPointer(clientX, clientY);
-    };
-
-    const getEnabledPlacementZoomWindow = (vertex: Vertex) => {
-        if (!twoStepPlacement) return null;
-
-        const metrics = getGridMetrics();
-        if (!metrics) return null;
-        if (
-            !shouldUsePlacementZoom({
-                cellSize: metrics.gridGeometry.cellSize,
-            })
-        ) {
-            return null;
-        }
-
-        return getPlacementZoomWindow({
-            boardSize: size,
-            vertex,
-        });
-    };
-
-    const clearStoneSelectTimeout = () => {
-        if (stoneSelectTimeoutRef.current !== null) {
-            window.clearTimeout(stoneSelectTimeoutRef.current);
-        }
-        stoneSelectTimeoutRef.current = null;
-        stoneSelectOriginRef.current = null;
-    };
-
-    const clearPlacementZoom = () => {
-        isPendingPlacementZoomRef.current = false;
-        setPlacementZoomWindow(null);
-    };
-
-    const clearStoneSelectionDragState = () => {
-        didSelectStoneByHoldRef.current = false;
-        setDidStartStoneSelectionDrag(false);
-        setIsCorrectionDragActive(false);
-        didDragStoneSelectionRef.current = false;
-        stoneSelectOriginRef.current = null;
-        selectedGroupDragOriginRef.current = null;
-        setSelectedGroupDragOriginState(null);
-        stoneSelectionDragStateRef.current = null;
-        stoneSelectionDragStartMoveIndexRef.current = null;
-        stoneSelectionDragVisitedMoveIndexesRef.current.clear();
-        touchPreviewVertexRef.current = null;
-    };
-
-    const toggleSelectedMoveIndex = (moveIndex: number) => {
-        setSelectedMoveIndexes((current) => {
-            const nextSelection = toggleCorrectionSelection({
-                moveIndex,
-                selectedMoveIndexes: current,
-            });
-            selectedMoveIndexesRef.current = nextSelection;
-            if (nextSelection.length === 0) {
-                setSelectedGroupDragOrigin(null);
-            }
-            return nextSelection;
-        });
-        setShareStatus(null);
-    };
-
-    const visitStoneSelectionDragMove = (moveIndex: number | null) => {
-        const result = visitCorrectionSelectionDragMove({
-            moveIndex,
-            selectedMoveIndexes: selectedMoveIndexesRef.current,
-            visitedMoveIndexes: stoneSelectionDragVisitedMoveIndexesRef.current,
-        });
-
-        if (!result.didToggle) return;
-
-        stoneSelectionDragVisitedMoveIndexesRef.current =
-            result.visitedMoveIndexes;
-        selectedMoveIndexesRef.current = result.selectedMoveIndexes;
-        setSelectedMoveIndexes(result.selectedMoveIndexes);
-        if (result.selectedMoveIndexes.length === 0) {
-            setSelectedGroupDragOrigin(null);
-        }
-        setShareStatus(null);
-    };
-
-    const getDragPreviewFromPointer = ({
-        clientX,
-        clientY,
-        dragState,
-    }: {
-        clientX: number;
-        clientY: number;
-        dragState: StoneSelectionDragState;
-    }) => {
-        const metrics = getGridMetrics();
-        if (!metrics) return null;
-
-        return getStoneSelectionDragVertexFromPointer({
-            clientX,
-            clientY,
-            dragState,
-            grid: metrics.gridGeometry,
-        });
-    };
-
-    const startStoneSelectionHandleDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
-        if (selectedMoveIndexesRef.current.length === 0) return;
-
-        const origin = getStoneCorrectionOrigin({
-            gameState,
-            selectedMoveIndexes: selectedMoveIndexesRef.current,
-        });
-
-        if (!origin) return;
-
-        event.preventDefault();
-        event.stopPropagation();
-        event.currentTarget.setPointerCapture(event.pointerId);
-
-        const metrics = getGridMetrics();
-        if (!metrics) return;
-
-        stoneSelectionDragStateRef.current = createStoneSelectionDragState({
-            grid: metrics.gridGeometry,
-            pointerId: event.pointerId,
-            origin,
-            pointerX: event.clientX,
-            pointerY: event.clientY,
-        });
-        selectedGroupDragOriginRef.current = origin;
-        setSelectedGroupDragOriginState(origin);
-        setDidStartStoneSelectionDrag(true);
-        setIsCorrectionDragActive(true);
-        touchPreviewVertexRef.current = origin;
-        setTouchPreview({
-            ...origin,
-            screenX: event.clientX,
-            screenY: event.clientY,
-        });
-    };
-
-    const updateStoneSelectionHandleDrag = (
-        event: ReactPointerEvent<HTMLButtonElement>
-    ) => {
-        const dragState = stoneSelectionDragStateRef.current;
-        if (!dragState || dragState.pointerId !== event.pointerId) return;
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        const vertex = getDragPreviewFromPointer({
-            clientX: event.clientX,
-            clientY: event.clientY,
-            dragState,
-        });
-
-        if (!vertex) {
-            touchPreviewVertexRef.current = null;
-            setTouchPreview(null);
-            return;
-        }
-
-        touchPreviewVertexRef.current = vertex;
-        setTouchPreview({
-            ...vertex,
-            screenX: event.clientX,
-            screenY: event.clientY,
-        });
-    };
-
-    const finishStoneSelectionHandleDrag = (
-        event: ReactPointerEvent<HTMLButtonElement>
-    ) => {
-        const dragState = stoneSelectionDragStateRef.current;
-        if (!dragState || dragState.pointerId !== event.pointerId) return;
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        const pointerVertex =
-            getDragPreviewFromPointer({
-                clientX: event.clientX,
-                clientY: event.clientY,
-                dragState,
-            }) ?? touchPreviewVertexRef.current;
-        const origin = dragState.origin;
-        const shouldCommit = didStartStoneSelectionDrag && pointerVertex !== null;
-
-        if (shouldCommit && origin !== null) {
-            correctMoves(
-                selectedMoveIndexesRef.current,
-                pointerVertex,
-                origin
-            );
-        }
-
-        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-            event.currentTarget.releasePointerCapture(event.pointerId);
-        }
-
-        clearStoneSelectionDragState();
-        setTouchPreview(null);
-    };
-
-    const cancelStoneSelectionHandleDrag = (
-        event: ReactPointerEvent<HTMLButtonElement>
-    ) => {
-        const dragState = stoneSelectionDragStateRef.current;
-        if (!dragState || dragState.pointerId !== event.pointerId) return;
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-            event.currentTarget.releasePointerCapture(event.pointerId);
-        }
-
-        clearStoneSelectionDragState();
-        setTouchPreview(null);
-    };
-
-    const setSelectedGroupDragOrigin = (vertex: Vertex | null) => {
-        selectedGroupDragOriginRef.current = vertex;
-        setSelectedGroupDragOriginState(vertex);
-    };
-
-    const handleExitStoneEditMode = () => {
-        clearStoneSelectTimeout();
-        clearStoneSelectionDragState();
-        selectedGroupDragOriginRef.current = null;
-        selectedMoveIndexesRef.current = [];
-        setSelectedGroupDragOrigin(null);
-        setSelectedMoveIndexes([]);
-        setTouchPreview(null);
+        localGameRecordRef.current = {
+            ...localGameRecord,
+            lastShareSlug: null,
+        };
     };
 
     const playMove = (x: number, y: number) => {
@@ -797,61 +262,62 @@ export default function GoBoard({ id }: GoBoardProps) {
         setHasUnsavedChanges(true);
     };
 
-    const correctMoves = (moveIndexes: number[], vertex: Vertex, from?: Vertex) => {
+    const applyCorrection = ({
+        selectedMoveIndexes,
+        vertex,
+        from,
+    }: {
+        selectedMoveIndexes: number[];
+        vertex: Vertex;
+        from?: Vertex;
+    }) => {
         const result = applyRecorderCorrection({
             boardSize: size,
             from,
             gameState,
-            selectedMoveIndexes: moveIndexes,
+            selectedMoveIndexes,
             vertex,
         });
 
         if (!result.ok) {
-            setShareStatus(formatMoveEditError(result.error));
-            return true;
+            return {
+                ok: false as const,
+                error: formatMoveEditError(result.error),
+            };
         }
 
         clearCachedShareLink();
-
-        selectedMoveIndexesRef.current = result.selectedMoveIndexes;
         setGameState(result.gameState);
-        setSelectedMoveIndexes(result.selectedMoveIndexes);
-        setShareStatus(result.status);
-        setHasUnsavedChanges(result.hasUnsavedChanges);
-        return true;
-    };
+        setHasUnsavedChanges(true);
 
-    const updateTouchPreview = (clientX: number, clientY: number) => {
-        const vertex = getPlacementVertexFromPointer(clientX, clientY);
-        if (!vertex) {
-            stonePlacementCanCommitRef.current = false;
-            touchPreviewVertexRef.current = null;
-            setTouchPreview(null);
-            return null;
-        }
-
-        touchPreviewVertexRef.current = vertex;
-        setTouchPreview({
-            ...vertex,
-            screenX: clientX,
-            screenY: clientY,
-        });
-        return vertex;
+        return {
+            ok: true as const,
+            gameState: result.gameState,
+            selectedMoveIndexes: result.selectedMoveIndexes,
+            status: result.status,
+            hasUnsavedChanges: true as const,
+        };
     };
 
     const canShareGame = gameState.moves.some((move) => move.type === "play");
 
-    const clearCachedShareLink = () => {
-        clearShareLink();
-
-        const localGameRecord = localGameRecordRef.current;
-        if (!localGameRecord) return;
-
-        localGameRecordRef.current = {
-            ...localGameRecord,
-            lastShareSlug: null,
-        };
-    };
+    const correction = useStoneCorrection({
+        boardSize: size,
+        gameState,
+        signMap,
+        baseMarkerMap: markerMap,
+        visibleStoneOwners: replay.visibleStoneOwners,
+        gridMetrics,
+        setGridMetrics,
+        gobanWrapperRef,
+        vertexSize,
+        showCoordinates: showBoardCoordinates,
+        twoStepPlacement,
+        onPlaceStone: (vertex) => playMove(vertex.x, vertex.y),
+        applyCorrection,
+        onStatus: setShareStatus,
+        placementPreviewColor: gameState.currentPlayer,
+    });
 
     const createCurrentLocalGameRecord = useCallback(() => {
         const localGameRecord = localGameRecordRef.current;
@@ -870,14 +336,14 @@ export default function GoBoard({ id }: GoBoardProps) {
         clearCachedShareLink();
 
         const previousMoves = gameState.moves.slice(0, -1);
-        const lastMove = gameState.moves.at(-1);
+        const lastUndoneMove = gameState.moves.at(-1);
 
         setGameState({
             ...gameState,
             moves: previousMoves,
-            currentPlayer: lastMove?.color ?? "B",
+            currentPlayer: lastUndoneMove?.color ?? "B",
         });
-        setSelectedMoveIndexes([]);
+        correction.clearSelection();
         setHasUnsavedChanges(true);
     };
 
@@ -894,7 +360,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             moves: [...gameState.moves, newMove],
             currentPlayer: gameState.currentPlayer === "B" ? "W" : "B",
         });
-        setSelectedMoveIndexes([]);
+        correction.clearSelection();
         setHasUnsavedChanges(true);
     };
 
@@ -907,7 +373,14 @@ export default function GoBoard({ id }: GoBoardProps) {
             blackPlayerName: gameMetadata.blackPlayerName,
             whitePlayerName: gameMetadata.whitePlayerName,
         });
-    }, [gameMetadata.blackPlayerName, gameMetadata.whitePlayerName, gameMetadata.handicap, gameState.moves, gameState.setupStones, size]);
+    }, [
+        gameMetadata.blackPlayerName,
+        gameMetadata.whitePlayerName,
+        gameMetadata.handicap,
+        gameState.moves,
+        gameState.setupStones,
+        size,
+    ]);
 
     const handleDownloadSgfFromShareMenu = useCallback(() => {
         handleDownloadSgf();
@@ -965,17 +438,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         void handleShare();
     }, [canAutoCreateNow, canShareGame, handleShare, markAutoCreateAttempted]);
 
-    const handleClosePlacementZoom = useCallback(() => {
-        clearPlacementZoom();
-        setTouchPreview(null);
-    }, []);
-
-    useEffect(() => {
-        return () => {
-            clearStoneSelectTimeout();
-        };
-    }, []);
-
     return (
         <div
             className={
@@ -1021,9 +483,11 @@ export default function GoBoard({ id }: GoBoardProps) {
                         canShareGame={canShareGame}
                         canUndo={gameState.moves.length > 0}
                         dragX={actionBar.dragX}
-                        hasStoneCorrectionSelection={hasStoneCorrectionSelection}
-                        onClosePlacementZoom={handleClosePlacementZoom}
-                        onExitStoneEditMode={handleExitStoneEditMode}
+                        hasStoneCorrectionSelection={
+                            correction.hasStoneCorrectionSelection
+                        }
+                        onClosePlacementZoom={correction.handleClosePlacementZoom}
+                        onExitStoneEditMode={correction.exitStoneEditMode}
                         onLostPointerCapture={
                             actionBar.dragHandlers.onLostPointerCapture
                         }
@@ -1037,7 +501,9 @@ export default function GoBoard({ id }: GoBoardProps) {
                         railRef={actionBar.railRef}
                         shareMenuOpen={shareMenu.isOpen}
                         shareTriggerRef={shareMenu.triggerRef}
-                        showPlacementZoomControl={Boolean(placementZoomWindow)}
+                        showPlacementZoomControl={Boolean(
+                            correction.placementZoomWindow
+                        )}
                     />
                     <div
                         ref={gobanWrapperRef}
@@ -1049,301 +515,47 @@ export default function GoBoard({ id }: GoBoardProps) {
                         onContextMenu={(event) => {
                             event.preventDefault();
                         }}
-                        onPointerDown={(event) => {
-                            if (
-                                event.target instanceof HTMLElement &&
-                                event.target.closest("button")
-                            ) {
-                                return;
-                            }
-
-                            event.preventDefault();
-                            event.currentTarget.setPointerCapture(event.pointerId);
-                            const vertex = placementZoomWindow
-                                ? getPlacementVertexFromPointer(
-                                      event.clientX,
-                                      event.clientY
-                                  )
-                                : getFullBoardVertexFromPointer(
-                                      event.clientX,
-                                      event.clientY
-                                  );
-
-                            didSelectStoneByHoldRef.current = false;
-                            setDidStartStoneSelectionDrag(false);
-                            clearStoneSelectTimeout();
-                            isPendingPlacementZoomRef.current = false;
-                            isStonePlacementActiveRef.current = Boolean(vertex);
-                            stonePlacementCanCommitRef.current = Boolean(vertex);
-                            if (!vertex) {
-                                touchPreviewVertexRef.current = null;
-                                setTouchPreview(null);
-                                return;
-                            }
-
-                            const editableMoveIndex = getEditableMoveIndexAtVertex({
-                                moves: gameState.moves,
-                                vertex,
-                                visibleStoneOwners: replay.visibleStoneOwners,
-                            });
-
-                            isPendingPlacementZoomRef.current = Boolean(
-                                !placementZoomWindow &&
-                                    selectedMoveIndexes.length === 0 &&
-                                    editableMoveIndex === null &&
-                                    getEnabledPlacementZoomWindow(vertex)
-                            );
-
-                            if (!isPendingPlacementZoomRef.current) {
-                                touchPreviewVertexRef.current = vertex;
-                                setTouchPreview({
-                                    ...vertex,
-                                    screenX: event.clientX,
-                                    screenY: event.clientY,
-                                });
-                            }
-
-                            if (placementZoomWindow && editableMoveIndex !== null) {
-                                return;
-                            }
-
-                            if (selectedMoveIndexes.length > 0) {
-                                stoneSelectOriginRef.current = vertex;
-                                didDragStoneSelectionRef.current = false;
-                                stoneSelectionDragStartMoveIndexRef.current =
-                                    editableMoveIndex;
-                                stoneSelectionDragVisitedMoveIndexesRef.current.clear();
-                                touchPreviewVertexRef.current = vertex;
-                                return;
-                            }
-
-                            if (
-                                shouldStartStoneSelectionHold({
-                                    editableMoveIndexAtVertex: editableMoveIndex,
-                                    selectedMoveIndexes,
-                                }) &&
-                                editableMoveIndex !== null
-                            ) {
-                                stoneSelectOriginRef.current = vertex;
-                                stoneSelectTimeoutRef.current = window.setTimeout(() => {
-                                    didSelectStoneByHoldRef.current = true;
-                                    setSelectedMoveIndexes((current) => {
-                                        const nextSelection = current.includes(editableMoveIndex)
-                                            ? current
-                                            : [...current, editableMoveIndex];
-                                        selectedMoveIndexesRef.current = nextSelection;
-                                        return nextSelection;
-                                    });
-                                    setShareStatus(null);
-                                    stoneSelectTimeoutRef.current = null;
-                                }, STONE_SELECT_HOLD_MS);
-                            }
-                        }}
-                        onPointerMove={(event) => {
-                            if (!isStonePlacementActiveRef.current) return;
-                            event.preventDefault();
-                            if (isPendingPlacementZoomRef.current) return;
-
-                            const vertex = updateTouchPreview(
-                                event.clientX,
-                                event.clientY
-                            );
-                            if (selectedMoveIndexesRef.current.length > 0) {
-                                setPlacementZoomWindow(null);
-                                const origin = stoneSelectOriginRef.current;
-                                const didLeaveOrigin =
-                                    origin !== null &&
-                                    didPointerLeaveHoldVertex({ origin, vertex });
-                                if (
-                                    didLeaveOrigin &&
-                                    !didDragStoneSelectionRef.current
-                                ) {
-                                    didDragStoneSelectionRef.current = true;
-                                    setIsCorrectionDragActive(true);
-
-                                    const startMoveIndex =
-                                        stoneSelectionDragStartMoveIndexRef.current;
-                                    if (startMoveIndex !== null) {
-                                        visitStoneSelectionDragMove(startMoveIndex);
-                                    }
-                                }
-
-                                const editableMoveIndex = vertex
-                                    ? getEditableMoveIndexAtVertex({
-                                          moves: gameState.moves,
-                                          vertex,
-                                          visibleStoneOwners: replay.visibleStoneOwners,
-                                      })
-                                    : null;
-
-                                if (
-                                    didLeaveOrigin &&
-                                    editableMoveIndex !== null &&
-                                    !stoneSelectionDragVisitedMoveIndexesRef.current.has(
-                                        editableMoveIndex
-                                    )
-                                ) {
-                                    visitStoneSelectionDragMove(editableMoveIndex);
-                                }
-
-                                return;
-                            }
-
-                            const origin = stoneSelectOriginRef.current;
-
-                            if (
-                                stoneSelectTimeoutRef.current !== null &&
-                                didPointerLeaveHoldVertex({ origin, vertex })
-                            ) {
-                                clearStoneSelectTimeout();
-                            }
-                        }}
-                        onPointerUp={(event) => {
-                            if (
-                                event.target instanceof HTMLElement &&
-                                event.target.closest("button")
-                            ) {
-                                return;
-                            }
-
-                            const vertex = placementZoomWindow
-                                ? getPlacementVertexFromPointer(
-                                      event.clientX,
-                                      event.clientY
-                                  )
-                                : getFullBoardVertexFromPointer(
-                                      event.clientX,
-                                      event.clientY
-                                  );
-                            const editableMoveIndex = vertex
-                                ? getEditableMoveIndexAtVertex({
-                                      moves: gameState.moves,
-                                      vertex,
-                                      visibleStoneOwners: replay.visibleStoneOwners,
-                                  })
-                                : null;
-
-                            if (stoneSelectTimeoutRef.current !== null) {
-                                clearStoneSelectTimeout();
-                            }
-
-                            const releaseTouchPreview = () => {
-                                isStonePlacementActiveRef.current = false;
-                                stonePlacementCanCommitRef.current = false;
-                                isPendingPlacementZoomRef.current = false;
-                                setTouchPreview(null);
-                                event.currentTarget.releasePointerCapture(
-                                    event.pointerId
-                                );
-                                clearStoneSelectionDragState();
-                            };
-
-                            if (!stonePlacementCanCommitRef.current || !vertex) {
-                                releaseTouchPreview();
-                                return;
-                            }
-
-                            if (didSelectStoneByHoldRef.current) {
-                                releaseTouchPreview();
-                                return;
-                            }
-
-                            if (didDragStoneSelectionRef.current) {
-                                releaseTouchPreview();
-                                return;
-                            }
-
-                            if (selectedMoveIndexesRef.current.length === 0) {
-                                if (editableMoveIndex !== null) {
-                                    releaseTouchPreview();
-                                    return;
-                                }
-
-                                if (!placementZoomWindow) {
-                                    const zoomWindow =
-                                        getEnabledPlacementZoomWindow(vertex);
-
-                                    if (zoomWindow) {
-                                        setPlacementZoomWindow(zoomWindow);
-                                        releaseTouchPreview();
-                                        return;
-                                    }
-                                }
-
-                                playMove(vertex.x, vertex.y);
-                                releaseTouchPreview();
-                                return;
-                            }
-
-                            if (editableMoveIndex !== null) {
-                                const correctionTapAction = getCorrectionTapAction({
-                                    editableMoveIndexAtVertex: editableMoveIndex,
-                                    selectedMoveIndexes: selectedMoveIndexesRef.current,
-                                });
-
-                                if (
-                                    correctionTapAction === "deselect" ||
-                                    correctionTapAction === "select"
-                                ) {
-                                    toggleSelectedMoveIndex(editableMoveIndex);
-                                }
-
-                                releaseTouchPreview();
-                                return;
-                            }
-
-                            releaseTouchPreview();
-                        }}
-                        onPointerCancel={(event) => {
-                            if (
-                                event.target instanceof HTMLElement &&
-                                event.target.closest("button")
-                            ) {
-                                return;
-                            }
-
-                            clearStoneSelectTimeout();
-                            setSelectedGroupDragOrigin(null);
-                            clearStoneSelectionDragState();
-                            isStonePlacementActiveRef.current = false;
-                            stonePlacementCanCommitRef.current = false;
-                            clearPlacementZoom();
-                            setTouchPreview(null);
-                            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-                                event.currentTarget.releasePointerCapture(event.pointerId);
-                            }
-                        }}
+                        onPointerDown={correction.onBoardPointerDown}
+                        onPointerMove={correction.onBoardPointerMove}
+                        onPointerUp={correction.onBoardPointerUp}
+                        onPointerCancel={correction.onBoardPointerCancel}
                     >
-                    <BoardView
-                        vertexSize={vertexSize}
-                        signMap={boardSignMap}
-                        markerMap={boardMarkerMap}
-                        selectedVertices={renderSelectedVertices}
-                        dimmedVertices={renderDimmedVertices}
-                        showCoordinates={showBoardCoordinates}
-                    />
-                        {placementZoomWindow ? (
+                        <BoardView
+                            vertexSize={vertexSize}
+                            signMap={correction.boardSignMap}
+                            markerMap={correction.boardMarkerMap}
+                            selectedVertices={correction.renderSelectedVertices}
+                            dimmedVertices={correction.renderDimmedVertices}
+                            showCoordinates={showBoardCoordinates}
+                        />
+                        {correction.placementZoomWindow ? (
                             <div
                                 aria-hidden="true"
-                                className={placementZoomClassName}
+                                className={correction.placementZoomClassName}
                                 style={{
-                                    left: gridMetrics.left + placementZoomOffset,
-                                    top: gridMetrics.top + placementZoomOffset,
+                                    left:
+                                        gridMetrics.left +
+                                        correction.placementZoomOffset,
+                                    top:
+                                        gridMetrics.top +
+                                        correction.placementZoomOffset,
                                 }}
                             >
                                 <BoardView
-                                    vertexSize={placementZoomVertexSize}
-                                    signMap={boardSignMap}
-                                    markerMap={boardMarkerMap}
-                                    selectedVertices={renderSelectedVertices}
-                                    dimmedVertices={renderDimmedVertices}
-                                    rangeX={placementZoomRangeX}
-                                    rangeY={placementZoomRangeY}
+                                    vertexSize={correction.placementZoomVertexSize}
+                                    signMap={correction.boardSignMap}
+                                    markerMap={correction.boardMarkerMap}
+                                    selectedVertices={
+                                        correction.renderSelectedVertices
+                                    }
+                                    dimmedVertices={correction.renderDimmedVertices}
+                                    rangeX={correction.placementZoomRangeX}
+                                    rangeY={correction.placementZoomRangeY}
                                     showCoordinates={showBoardCoordinates}
                                 />
                             </div>
                         ) : null}
-                        {hasStoneCorrectionSelection ? (
+                        {correction.hasStoneCorrectionSelection ? (
                             <div
                                 className={
                                     isDarkMode
@@ -1351,20 +563,35 @@ export default function GoBoard({ id }: GoBoardProps) {
                                         : "absolute z-30 inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white shadow-lg"
                                 }
                                 style={{
-                                    left: stoneCorrectionHandlePosition?.left ?? 0,
-                                    top: stoneCorrectionHandlePosition?.top ?? 0,
+                                    left:
+                                        correction.stoneCorrectionHandlePosition
+                                            ?.left ?? 0,
+                                    top:
+                                        correction.stoneCorrectionHandlePosition
+                                            ?.top ?? 0,
                                     transform:
-                                        stoneCorrectionHandlePosition?.transform,
+                                        correction.stoneCorrectionHandlePosition
+                                            ?.transform,
                                 }}
                             >
                                 <button
                                     type="button"
                                     className="inline-flex h-11 w-11 cursor-grab items-center justify-center active:cursor-grabbing"
-                                    onPointerDown={startStoneSelectionHandleDrag}
-                                    onPointerMove={updateStoneSelectionHandleDrag}
-                                    onPointerUp={finishStoneSelectionHandleDrag}
-                                    onPointerCancel={cancelStoneSelectionHandleDrag}
-                                    onLostPointerCapture={cancelStoneSelectionHandleDrag}
+                                    onPointerDown={
+                                        correction.startStoneSelectionHandleDrag
+                                    }
+                                    onPointerMove={
+                                        correction.updateStoneSelectionHandleDrag
+                                    }
+                                    onPointerUp={
+                                        correction.finishStoneSelectionHandleDrag
+                                    }
+                                    onPointerCancel={
+                                        correction.cancelStoneSelectionHandleDrag
+                                    }
+                                    onLostPointerCapture={
+                                        correction.cancelStoneSelectionHandleDrag
+                                    }
                                     aria-label={t("moveSelectedStones")}
                                     title={t("moveSelectedStones")}
                                 >
@@ -1382,53 +609,68 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 </button>
                             </div>
                         ) : null}
-                        {shouldShowTouchGuide && touchGuideMetrics && (
-                            <svg
-                                className="pointer-events-none absolute z-20"
-                                style={{
-                                    left: touchGuideMetrics.left,
-                                    top: touchGuideMetrics.top,
-                                }}
-                                width={touchGuideMetrics.boardSizePx}
-                                height={touchGuideMetrics.boardSizePx}
-                                viewBox={`0 0 ${touchGuideMetrics.boardSizePx} ${touchGuideMetrics.boardSizePx}`}
-                            >
-                                <line
-                                    x1={0}
-                                    y1={
-                                        touchGuideMetrics.y *
-                                            touchGuideMetrics.cellSize +
-                                        touchGuideMetrics.cellSize / 2
+                        {correction.shouldShowTouchGuide &&
+                            correction.touchGuideMetrics && (
+                                <svg
+                                    className="pointer-events-none absolute z-20"
+                                    style={{
+                                        left: correction.touchGuideMetrics.left,
+                                        top: correction.touchGuideMetrics.top,
+                                    }}
+                                    width={correction.touchGuideMetrics.boardSizePx}
+                                    height={
+                                        correction.touchGuideMetrics.boardSizePx
                                     }
-                                    x2={touchGuideMetrics.boardSizePx}
-                                    y2={
-                                        touchGuideMetrics.y *
-                                            touchGuideMetrics.cellSize +
-                                        touchGuideMetrics.cellSize / 2
-                                    }
-                                    stroke="rgb(56 189 248 / 0.8)"
-                                    strokeWidth="1"
-                                    vectorEffect="non-scaling-stroke"
-                                />
-                                <line
-                                    x1={
-                                        touchGuideMetrics.x *
-                                            touchGuideMetrics.cellSize +
-                                        touchGuideMetrics.cellSize / 2
-                                    }
-                                    y1={0}
-                                    x2={
-                                        touchGuideMetrics.x *
-                                            touchGuideMetrics.cellSize +
-                                        touchGuideMetrics.cellSize / 2
-                                    }
-                                    y2={touchGuideMetrics.boardSizePx}
-                                    stroke="rgb(56 189 248 / 0.8)"
-                                    strokeWidth="1"
-                                    vectorEffect="non-scaling-stroke"
-                                />
-                            </svg>
-                        )}
+                                    viewBox={`0 0 ${correction.touchGuideMetrics.boardSizePx} ${correction.touchGuideMetrics.boardSizePx}`}
+                                >
+                                    <line
+                                        x1={0}
+                                        y1={
+                                            correction.touchGuideMetrics.y *
+                                                correction.touchGuideMetrics
+                                                    .cellSize +
+                                            correction.touchGuideMetrics.cellSize /
+                                                2
+                                        }
+                                        x2={
+                                            correction.touchGuideMetrics.boardSizePx
+                                        }
+                                        y2={
+                                            correction.touchGuideMetrics.y *
+                                                correction.touchGuideMetrics
+                                                    .cellSize +
+                                            correction.touchGuideMetrics.cellSize /
+                                                2
+                                        }
+                                        stroke="rgb(56 189 248 / 0.8)"
+                                        strokeWidth="1"
+                                        vectorEffect="non-scaling-stroke"
+                                    />
+                                    <line
+                                        x1={
+                                            correction.touchGuideMetrics.x *
+                                                correction.touchGuideMetrics
+                                                    .cellSize +
+                                            correction.touchGuideMetrics.cellSize /
+                                                2
+                                        }
+                                        y1={0}
+                                        x2={
+                                            correction.touchGuideMetrics.x *
+                                                correction.touchGuideMetrics
+                                                    .cellSize +
+                                            correction.touchGuideMetrics.cellSize /
+                                                2
+                                        }
+                                        y2={
+                                            correction.touchGuideMetrics.boardSizePx
+                                        }
+                                        stroke="rgb(56 189 248 / 0.8)"
+                                        strokeWidth="1"
+                                        vectorEffect="non-scaling-stroke"
+                                    />
+                                </svg>
+                            )}
                     </div>
                 </div>
             )}
