@@ -788,10 +788,14 @@ export function useStoneCorrection<
                 }
             }
 
-            const vertexKey = `${vertex.x},${vertex.y}`;
-            if (!strokeState.visited.has(vertexKey)) {
-                strokeState.visited.add(vertexKey);
-                stroke.paint(vertex, strokeState.mode);
+            // Only paint the trail once a stroke has actually started, so a
+            // stationary long-press on a stone can still hold-to-select.
+            if (strokeState.moved) {
+                const vertexKey = `${vertex.x},${vertex.y}`;
+                if (!strokeState.visited.has(vertexKey)) {
+                    strokeState.visited.add(vertexKey);
+                    stroke.paint(vertex, strokeState.mode);
+                }
             }
 
             return;
