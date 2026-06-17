@@ -9,6 +9,7 @@ import type {
     GameState,
     LocalGameRecord,
     Move,
+    Stone,
 } from "./types";
 import { downloadSgf } from "./sgf";
 import { createGameSnapshot, shouldAutosave } from "../lib/gameLogic";
@@ -31,14 +32,34 @@ import useBoardGeometry from "./useBoardGeometry";
 import useEditableShareMenuController from "./useEditableShareMenuController";
 import { playGameMove, replayGame } from "../lib/gameReplay";
 import { isActionBarAnchor } from "../lib/actionBarDrag";
+import { getLiveBoardGridMetrics } from "../lib/boardGeometry";
 import {
     applyRecorderCorrection,
-    type Vertex,
+    getEditableMoveIndexAtVertex,
+    getPlacementZoomWindow,
+    getSelectedMoveVertices,
+    getStoneCorrectionOrigin,
+    getStoneSelectionDragVertexFromPointer,
+    getVertexFromBoardPointer,
+    getVertexFromPlacementZoomPointer,
+    isRecorderCorrectionLegal,
+    shouldUsePlacementZoom,
+    type BoardGridGeometry,
 } from "../lib/gameCorrectionUi";
 import {
     useStoneCorrection,
+    type StoneCorrectionAdapter,
+    type StoneCorrectionGeometry,
     type StoneCorrectionMarker,
 } from "./useStoneCorrection";
+
+function stoneToSign(stone: Stone) {
+    return stone === "B" ? 1 : -1;
+}
+
+function cloneSignMap(signMap: number[][]) {
+    return signMap.map((row) => [...row]);
+}
 
 type ShudanGobanProps = {
     vertexSize: number;
@@ -262,61 +283,176 @@ export default function GoBoard({ id }: GoBoardProps) {
         setHasUnsavedChanges(true);
     };
 
-    const applyCorrection = ({
-        selectedMoveIndexes,
-        vertex,
-        from,
-    }: {
-        selectedMoveIndexes: number[];
-        vertex: Vertex;
-        from?: Vertex;
-    }) => {
-        const result = applyRecorderCorrection({
+    const canShareGame = gameState.moves.some((move) => move.type === "play");
+
+    const measureGeometry = (): BoardGridGeometry | null => {
+        const gobanWrapper = gobanWrapperRef.current;
+        if (!gobanWrapper) return null;
+
+        const metrics = getLiveBoardGridMetrics({
             boardSize: size,
-            from,
-            gameState,
-            selectedMoveIndexes,
-            vertex,
+            gobanWrapper,
         });
+        if (!metrics) return null;
 
-        if (!result.ok) {
-            return {
-                ok: false as const,
-                error: formatMoveEditError(result.error),
-            };
-        }
-
-        clearCachedShareLink();
-        setGameState(result.gameState);
-        setHasUnsavedChanges(true);
-
-        return {
-            ok: true as const,
-            gameState: result.gameState,
-            selectedMoveIndexes: result.selectedMoveIndexes,
-            status: result.status,
-            hasUnsavedChanges: true as const,
-        };
+        setGridMetrics(metrics.gridMetrics);
+        return metrics.gridGeometry;
     };
 
-    const canShareGame = gameState.moves.some((move) => move.type === "play");
+    const geometry: StoneCorrectionGeometry = {
+        gridMetrics,
+        measure: measureGeometry,
+        vertexFromPointer: ({ clientX, clientY, geometry: grid }) =>
+            getVertexFromBoardPointer({ clientX, clientY, grid }),
+        dragVertexFromPointer: ({ clientX, clientY, dragState, geometry: grid }) =>
+            getStoneSelectionDragVertexFromPointer({
+                clientX,
+                clientY,
+                dragState,
+                grid,
+            }),
+        zoom: {
+            enabled: twoStepPlacement,
+            window: (vertex) => {
+                const grid = measureGeometry();
+                if (!grid) return null;
+                if (!shouldUsePlacementZoom({ cellSize: grid.cellSize })) {
+                    return null;
+                }
+
+                return getPlacementZoomWindow({ boardSize: size, vertex });
+            },
+            vertexFromPointer: ({ clientX, clientY, geometry: grid, zoomWindow }) =>
+                getVertexFromPlacementZoomPointer({
+                    clientX,
+                    clientY,
+                    grid,
+                    zoomWindow,
+                }),
+        },
+    };
+
+    const adapter: StoneCorrectionAdapter = {
+        getEditableItemIdAtVertex: (vertex) =>
+            getEditableMoveIndexAtVertex({
+                moves: gameState.moves,
+                vertex,
+                visibleStoneOwners: replay.visibleStoneOwners,
+            }),
+        getSelectedItemVertices: (ids) =>
+            getSelectedMoveVertices({
+                gameState,
+                selectedMoveIndexes: ids,
+            }),
+        getOrigin: (ids, from) =>
+            getStoneCorrectionOrigin({
+                from,
+                gameState,
+                selectedMoveIndexes: ids,
+            }),
+        buildDragPreview: ({ ids, origin, target }) => {
+            if (
+                !isRecorderCorrectionLegal({
+                    boardSize: size,
+                    from: origin,
+                    gameState,
+                    selectedMoveIndexes: ids,
+                    vertex: target,
+                })
+            ) {
+                return null;
+            }
+
+            const previewSignMap = cloneSignMap(signMap);
+            const previewVertices: [number, number][] = [];
+            const dx = target.x - origin.x;
+            const dy = target.y - origin.y;
+
+            type PlayMoveWithNext = {
+                move: { type: "play"; x: number; y: number; color: Stone };
+                nextX: number;
+                nextY: number;
+            };
+            const playMoves: PlayMoveWithNext[] = [];
+
+            for (const moveIndex of ids) {
+                const move = gameState.moves[moveIndex];
+
+                if (move?.type !== "play") continue;
+
+                const nextX = move.x + dx;
+                const nextY = move.y + dy;
+
+                if (nextX < 0 || nextX >= size || nextY < 0 || nextY >= size) {
+                    return null;
+                }
+
+                playMoves.push({ move, nextX, nextY });
+            }
+
+            for (const { move } of playMoves) {
+                previewSignMap[move.y][move.x] = 0;
+            }
+
+            for (const { move, nextX, nextY } of playMoves) {
+                previewSignMap[nextY][nextX] = stoneToSign(move.color);
+                previewVertices.push([nextX, nextY]);
+            }
+
+            return {
+                signMap: previewSignMap,
+                selectedVertices: previewVertices,
+            };
+        },
+        getDragHiddenMarkerVertex: (ids) => {
+            if (gameState.moves.length === 0) return null;
+            const lastIndex = gameState.moves.length - 1;
+            if (!ids.includes(lastIndex)) return null;
+
+            const lastPlayedMove = gameState.moves.at(-1);
+            if (lastPlayedMove?.type !== "play") return null;
+
+            return { x: lastPlayedMove.x, y: lastPlayedMove.y };
+        },
+        applyMove: ({ ids, target, from }) => {
+            const result = applyRecorderCorrection({
+                boardSize: size,
+                from,
+                gameState,
+                selectedMoveIndexes: ids,
+                vertex: target,
+            });
+
+            if (!result.ok) {
+                return {
+                    ok: false as const,
+                    error: formatMoveEditError(result.error),
+                };
+            }
+
+            clearCachedShareLink();
+            setGameState(result.gameState);
+            setHasUnsavedChanges(true);
+
+            return {
+                ok: true as const,
+                selectedIds: result.selectedMoveIndexes,
+                status: result.status,
+            };
+        },
+        placeAt: (vertex) => playMove(vertex.x, vertex.y),
+    };
 
     const correction = useStoneCorrection({
         boardSize: size,
-        gameState,
         signMap,
         baseMarkerMap: markerMap,
-        visibleStoneOwners: replay.visibleStoneOwners,
-        gridMetrics,
-        setGridMetrics,
-        gobanWrapperRef,
         vertexSize,
         showCoordinates: showBoardCoordinates,
-        twoStepPlacement,
-        onPlaceStone: (vertex) => playMove(vertex.x, vertex.y),
-        applyCorrection,
-        onStatus: setShareStatus,
         placementPreviewColor: gameState.currentPlayer,
+        geometry,
+        adapter,
+        onStatus: setShareStatus,
     });
 
     const createCurrentLocalGameRecord = useCallback(() => {
