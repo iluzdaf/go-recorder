@@ -450,9 +450,28 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         positionView: draft?.positionView ?? null,
     });
 
+    // The selection handle / touch guide are positioned in full-board vertex
+    // coordinates, so shift gridMetrics by the visible range origin and use the
+    // displayed cell size for position-view (partial-board) drafts.
+    const correctionDisplayedCellSize = positionRange
+        ? gridMetrics.boardSizePx / positionRange.columns
+        : gridMetrics.cellSize;
+    const correctionGridMetrics = positionRange
+        ? {
+              left:
+                  gridMetrics.left -
+                  positionRange.startX * correctionDisplayedCellSize,
+              top:
+                  gridMetrics.top -
+                  positionRange.startY * correctionDisplayedCellSize,
+              cellSize: correctionDisplayedCellSize,
+              boardSizePx: gridMetrics.boardSizePx,
+          }
+        : gridMetrics;
+
     const correctionGeometry: StoneCorrectionGeometry<PositionViewGridGeometry> =
         {
-            gridMetrics,
+            gridMetrics: correctionGridMetrics,
             measure: measureGeometry,
             vertexFromPointer: ({ clientX, clientY, geometry: grid }) =>
                 getVertexFromPositionViewPointer({ clientX, clientY, grid }),
@@ -769,8 +788,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         },
     };
 
-    const boardSelectionEnabled = !isVariationDraft && !positionRange;
-
     const correction = useStoneCorrection<DraftMarker, PositionViewGridGeometry>(
         {
             boardSize: correctionBoardSize,
@@ -784,7 +801,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             geometry: correctionGeometry,
             adapter: isVariationDraft ? variationAdapter : boardAdapter,
             onStatus: setShareStatus,
-            enableSelection: isVariationDraft ? true : boardSelectionEnabled,
             stroke: isVariationDraft ? null : boardStroke,
         }
     );
