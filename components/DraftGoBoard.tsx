@@ -2,10 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
-import type {
-    ComponentType,
-    PointerEvent as ReactPointerEvent,
-} from "react";
+import type { ComponentType } from "react";
 
 import type {
     GameState,
@@ -29,12 +26,10 @@ import {
     applyBoardDraftStrokeVertex,
     clearDraftShareCache,
     getBoardDraftStrokeMode,
-    type BoardDraftStrokeMode,
+    getSetupStoneAtVertex,
+    moveSetupStones,
 } from "../lib/boardDraft";
-import {
-    getLiveBoardGridMetrics,
-    getLivePositionViewGridMetrics,
-} from "../lib/boardGeometry";
+import { getLivePositionViewGridMetrics } from "../lib/boardGeometry";
 import { canShareDraft, getIllegalBoardGroupVertices } from "../lib/draftSharing";
 import { formatMoveEditError, t } from "../lib/i18n";
 import { saveLocalEditableRecord } from "../lib/localEditableSave";
@@ -44,6 +39,7 @@ import {
     getPositionViewDisplaySize,
     getPositionViewRange,
     getVertexFromPositionViewPointer,
+    type PositionViewGridGeometry,
 } from "../lib/positionView";
 import { createShareFromLocalRecord } from "../lib/shareClient";
 import { replayGame } from "../lib/gameReplay";
@@ -53,12 +49,9 @@ import {
     getPlacementZoomWindow,
     getSelectedMoveVertices,
     getStoneCorrectionOrigin,
-    getStoneSelectionDragVertexFromPointer,
-    getVertexFromBoardPointer,
     getVertexFromPlacementZoomPointer,
     isRecorderCorrectionLegal,
     shouldUsePlacementZoom,
-    type BoardGridGeometry,
 } from "../lib/gameCorrectionUi";
 import {
     createVariationMoveNumberMarkerMap,
@@ -70,6 +63,7 @@ import {
     useStoneCorrection,
     type StoneCorrectionAdapter,
     type StoneCorrectionGeometry,
+    type StoneCorrectionStroke,
 } from "./useStoneCorrection";
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
@@ -90,17 +84,6 @@ type ShudanGobanProps = {
 
 type DraftGoBoardProps = {
     id: string;
-};
-
-type Vertex = {
-    x: number;
-    y: number;
-};
-
-type BoardDraftStrokeState = {
-    mode: BoardDraftStrokeMode;
-    pointerId: number;
-    visitedVertices: Set<string>;
 };
 
 const BoardView = ShudanGoban as unknown as ComponentType<ShudanGobanProps>;
@@ -159,7 +142,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     const [positionViewSettingsOpen, setPositionViewSettingsOpen] =
         useState(false);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
-    const strokeStateRef = useRef<BoardDraftStrokeState | null>(null);
     const shareMenu = useEditableShareMenuController({
         initialShareSlug: draft?.lastShareSlug ?? null,
         onStatus: setShareStatus,
@@ -182,17 +164,12 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
               positionView,
           })
         : 19;
-    const {
-        boardAreaRef,
-        gobanWrapperRef,
-        gridMetrics,
-        setGridMetrics,
-        vertexSize,
-    } = useBoardGeometry({
-        boardSize: displayBoardSize,
-        measureGrid: true,
-        showCoordinates: showBoardCoordinates,
-    });
+    const { boardAreaRef, gobanWrapperRef, gridMetrics, vertexSize } =
+        useBoardGeometry({
+            boardSize: displayBoardSize,
+            measureGrid: true,
+            showCoordinates: showBoardCoordinates,
+        });
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
 
     useEffect(() => {
@@ -208,49 +185,33 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         return () => setHeaderStatus(null);
     }, [dismissShareStatus, setHeaderStatus, shareStatus]);
 
-    const getGridMetrics = useCallback(() => {
-        const gobanWrapper = gobanWrapperRef.current;
-        if (!gobanWrapper || !draft) return null;
-
-        const positionRange = getPositionViewRange({
-            boardSize: draft.boardSize,
-            positionView: draft.positionView ?? null,
-        });
-        const metrics = positionRange
-            ? getLivePositionViewGridMetrics({
-                  columns: positionRange.columns,
-                  gobanWrapper,
-                  rows: positionRange.rows,
-                  startX: positionRange.startX,
-                  startY: positionRange.startY,
-              })
-            : getLivePositionViewGridMetrics({
-                  columns: draft.boardSize,
-                  gobanWrapper,
-                  rows: draft.boardSize,
-                  startX: 0,
-                  startY: 0,
-              });
-
-        return metrics ? { gridGeometry: metrics } : null;
-    }, [draft, gobanWrapperRef]);
-
-    const getVertexFromPointer = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>): Vertex | null => {
+    const measureGeometry =
+        useCallback((): PositionViewGridGeometry | null => {
             const gobanWrapper = gobanWrapperRef.current;
-            if (!gobanWrapper || !draft) return null;
+            const currentDraft = draftRef.current;
+            if (!gobanWrapper || !currentDraft) return null;
 
-            const metrics = getGridMetrics();
-            if (!metrics) return null;
-
-            return getVertexFromPositionViewPointer({
-                clientX: event.clientX,
-                clientY: event.clientY,
-                grid: metrics.gridGeometry,
+            const positionRange = getPositionViewRange({
+                boardSize: currentDraft.boardSize,
+                positionView: currentDraft.positionView ?? null,
             });
-        },
-        [draft, getGridMetrics, gobanWrapperRef]
-    );
+
+            return positionRange
+                ? getLivePositionViewGridMetrics({
+                      columns: positionRange.columns,
+                      gobanWrapper,
+                      rows: positionRange.rows,
+                      startX: positionRange.startX,
+                      startY: positionRange.startY,
+                  })
+                : getLivePositionViewGridMetrics({
+                      columns: currentDraft.boardSize,
+                      gobanWrapper,
+                      rows: currentDraft.boardSize,
+                      startX: 0,
+                      startY: 0,
+                  });
+        }, [gobanWrapperRef]);
 
     const clearCachedShareLink = useCallback(() => {
         clearShareLink();
@@ -288,132 +249,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
 
         return () => window.clearTimeout(timeoutId);
     }, [draft]);
-
-    const applyStrokeVertex = useCallback(
-        ({
-            mode,
-            vertex,
-        }: {
-            mode: BoardDraftStrokeMode;
-            vertex: Vertex;
-        }) => {
-            const currentDraft = draftRef.current;
-            if (!currentDraft || currentDraft.draftKind !== "board") return;
-
-            const nextGameState = applyBoardDraftStrokeVertex({
-                gameState: currentDraft.gameState,
-                mode,
-                selectedColor,
-                vertex,
-            });
-
-            if (nextGameState === currentDraft.gameState) return;
-
-            const nextDraft = clearDraftShareCache({
-                ...currentDraft,
-                gameState: nextGameState,
-            });
-
-            clearCachedShareLink();
-            updateDraft(nextDraft);
-        },
-        [clearCachedShareLink, selectedColor, updateDraft]
-    );
-
-    const visitStrokeVertex = useCallback(
-        ({
-            mode,
-            vertex,
-            visitedVertices,
-        }: {
-            mode: BoardDraftStrokeMode;
-            vertex: Vertex;
-            visitedVertices: Set<string>;
-        }) => {
-            const vertexKey = `${vertex.x},${vertex.y}`;
-            if (visitedVertices.has(vertexKey)) return;
-
-            visitedVertices.add(vertexKey);
-            applyStrokeVertex({
-                mode,
-                vertex,
-            });
-        },
-        [applyStrokeVertex]
-    );
-
-    const handleBoardPointerDown = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            if (
-                event.target instanceof HTMLElement &&
-                event.target.closest("button")
-            ) {
-                return;
-            }
-
-            const currentDraft = draftRef.current;
-            if (!currentDraft) return;
-
-            const vertex = getVertexFromPointer(event);
-            if (!vertex) return;
-
-            event.preventDefault();
-            event.currentTarget.setPointerCapture(event.pointerId);
-
-            const mode = getBoardDraftStrokeMode({
-                gameState: currentDraft.gameState,
-                vertex,
-            });
-            const visitedVertices = new Set<string>();
-            strokeStateRef.current = {
-                mode,
-                pointerId: event.pointerId,
-                visitedVertices,
-            };
-            visitStrokeVertex({
-                mode,
-                vertex,
-                visitedVertices,
-            });
-        },
-        [getVertexFromPointer, visitStrokeVertex]
-    );
-
-    const handleBoardPointerMove = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            const strokeState = strokeStateRef.current;
-            if (!strokeState || strokeState.pointerId !== event.pointerId) {
-                return;
-            }
-
-            const vertex = getVertexFromPointer(event);
-            if (!vertex) return;
-
-            event.preventDefault();
-            visitStrokeVertex({
-                mode: strokeState.mode,
-                vertex,
-                visitedVertices: strokeState.visitedVertices,
-            });
-        },
-        [getVertexFromPointer, visitStrokeVertex]
-    );
-
-    const finishBoardStroke = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            const strokeState = strokeStateRef.current;
-            if (!strokeState || strokeState.pointerId !== event.pointerId) {
-                return;
-            }
-
-            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-                event.currentTarget.releasePointerCapture(event.pointerId);
-            }
-
-            strokeStateRef.current = null;
-        },
-        []
-    );
 
     const handleToggleColor = useCallback(() => {
         setSelectedColor((currentColor) => (currentColor === "B" ? "W" : "B"));
@@ -584,7 +419,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         void handleShare();
     }, [canAutoCreateNow, handleShare, markAutoCreateAttempted]);
 
-    // --- Stone correction (variation drafts) ---
+    // --- Stone correction (shared machine for board + variation drafts) ---
     const isVariationDraft = draft?.draftKind === "variation";
     const correctionBoardSize = draft?.boardSize ?? 19;
     const correctionGameState = draft?.gameState ?? EMPTY_GAME_STATE;
@@ -599,7 +434,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         isVariationDraft && variationReplay
             ? variationReplay.board.signMap
             : buildSignMap(correctionBoardSize, correctionGameState.setupStones);
-    const variationMarkerMap: DraftMarker[][] = isVariationDraft
+    const correctionMarkerMap: DraftMarker[][] = isVariationDraft
         ? createVariationMoveNumberMarkerMap({
               boardSize: correctionBoardSize,
               moves: correctionGameState.moves,
@@ -610,59 +445,85 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
               Array.from<DraftMarker>({ length: correctionBoardSize }).fill(null)
           );
     const variationBaseMoveCount = draft?.baseMoveCount ?? 0;
+    const positionRange = getPositionViewRange({
+        boardSize: correctionBoardSize,
+        positionView: draft?.positionView ?? null,
+    });
 
-    const measureFullBoardGeometry =
-        useCallback((): BoardGridGeometry | null => {
-            const gobanWrapper = gobanWrapperRef.current;
-            if (!gobanWrapper) return null;
-
-            const metrics = getLiveBoardGridMetrics({
-                boardSize: correctionBoardSize,
-                gobanWrapper,
-            });
-            if (!metrics) return null;
-
-            setGridMetrics(metrics.gridMetrics);
-            return metrics.gridGeometry;
-        }, [correctionBoardSize, gobanWrapperRef, setGridMetrics]);
-
-    const correctionGeometry: StoneCorrectionGeometry = {
-        gridMetrics,
-        measure: measureFullBoardGeometry,
-        vertexFromPointer: ({ clientX, clientY, geometry: grid }) =>
-            getVertexFromBoardPointer({ clientX, clientY, grid }),
-        dragVertexFromPointer: ({ clientX, clientY, dragState, geometry: grid }) =>
-            getStoneSelectionDragVertexFromPointer({
+    const correctionGeometry: StoneCorrectionGeometry<PositionViewGridGeometry> =
+        {
+            gridMetrics,
+            measure: measureGeometry,
+            vertexFromPointer: ({ clientX, clientY, geometry: grid }) =>
+                getVertexFromPositionViewPointer({ clientX, clientY, grid }),
+            createDragState: ({
+                geometry: grid,
+                origin,
+                pointerId,
+                pointerX,
+                pointerY,
+            }) => {
+                const stoneCenterX =
+                    grid.left +
+                    (origin.x - grid.startX) * grid.cellSize +
+                    grid.cellSize / 2;
+                const stoneCenterY =
+                    grid.top +
+                    (origin.y - grid.startY) * grid.cellSize +
+                    grid.cellSize / 2;
+                return {
+                    pointerId,
+                    origin,
+                    offsetX: pointerX - stoneCenterX,
+                    offsetY: pointerY - stoneCenterY,
+                };
+            },
+            dragVertexFromPointer: ({
                 clientX,
                 clientY,
                 dragState,
-                grid,
-            }),
-        zoom: {
-            enabled: isVariationDraft && twoStepPlacement,
-            window: (vertex) => {
-                const grid = measureFullBoardGeometry();
-                if (!grid) return null;
-                if (!shouldUsePlacementZoom({ cellSize: grid.cellSize })) {
-                    return null;
-                }
+                geometry: grid,
+            }) =>
+                getVertexFromPositionViewPointer({
+                    clientX: clientX - dragState.offsetX,
+                    clientY: clientY - dragState.offsetY,
+                    grid,
+                }),
+            zoom: {
+                enabled: isVariationDraft && twoStepPlacement,
+                window: (vertex) => {
+                    const grid = measureGeometry();
+                    if (!grid) return null;
+                    if (!shouldUsePlacementZoom({ cellSize: grid.cellSize })) {
+                        return null;
+                    }
 
-                return getPlacementZoomWindow({
-                    boardSize: correctionBoardSize,
-                    vertex,
-                });
-            },
-            vertexFromPointer: ({ clientX, clientY, geometry: grid, zoomWindow }) =>
-                getVertexFromPlacementZoomPointer({
+                    return getPlacementZoomWindow({
+                        boardSize: correctionBoardSize,
+                        vertex,
+                    });
+                },
+                vertexFromPointer: ({
                     clientX,
                     clientY,
-                    grid,
+                    geometry: grid,
                     zoomWindow,
-                }),
-        },
-    };
+                }) =>
+                    getVertexFromPlacementZoomPointer({
+                        clientX,
+                        clientY,
+                        grid: {
+                            left: grid.left,
+                            top: grid.top,
+                            cellSize: grid.cellSize,
+                            boardSize: correctionBoardSize,
+                        },
+                        zoomWindow,
+                    }),
+            },
+        };
 
-    const correctionAdapter: StoneCorrectionAdapter = {
+    const variationAdapter: StoneCorrectionAdapter = {
         getEditableItemIdAtVertex: (vertex) => {
             if (!isVariationDraft || !variationReplay) return null;
 
@@ -804,17 +665,129 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         },
     };
 
-    const correction = useStoneCorrection<DraftMarker>({
-        boardSize: correctionBoardSize,
-        signMap: correctionSignMap,
-        baseMarkerMap: variationMarkerMap,
-        vertexSize,
-        showCoordinates: showBoardCoordinates,
-        placementPreviewColor: correctionGameState.currentPlayer,
-        geometry: correctionGeometry,
-        adapter: correctionAdapter,
-        onStatus: setShareStatus,
-    });
+    const boardAdapter: StoneCorrectionAdapter = {
+        getEditableItemIdAtVertex: (vertex) => {
+            if (draftRef.current?.draftKind !== "board") return null;
+            const index = getSetupStoneAtVertex(
+                correctionGameState.setupStones,
+                vertex
+            );
+            return index === -1 ? null : index;
+        },
+        getSelectedItemVertices: (ids) =>
+            ids.flatMap((id) => {
+                const stone = correctionGameState.setupStones[id];
+                return stone ? [{ x: stone.x, y: stone.y }] : [];
+            }),
+        getOrigin: (ids, from) => {
+            if (ids.length !== 1 && from) return from;
+            const stone = correctionGameState.setupStones[ids[0]];
+            return stone ? { x: stone.x, y: stone.y } : null;
+        },
+        buildDragPreview: ({ ids, origin, target }) => {
+            const dx = target.x - origin.x;
+            const dy = target.y - origin.y;
+            const result = moveSetupStones({
+                boardSize: correctionBoardSize,
+                gameState: correctionGameState,
+                indexes: ids,
+                dx,
+                dy,
+            });
+            if (!result.ok) return null;
+
+            const previewSignMap = buildSignMap(
+                correctionBoardSize,
+                result.gameState.setupStones
+            );
+            const previewVertices = ids.flatMap((id) => {
+                const stone = result.gameState.setupStones[id];
+                return stone ? [[stone.x, stone.y] as [number, number]] : [];
+            });
+
+            return { signMap: previewSignMap, selectedVertices: previewVertices };
+        },
+        getDragHiddenMarkerVertex: () => null,
+        applyMove: ({ ids, target, from }) => {
+            const currentDraft = draftRef.current;
+            if (!currentDraft || currentDraft.draftKind !== "board" || !from) {
+                return { ok: false as const, error: t("stoneCorrectionFailed") };
+            }
+
+            const result = moveSetupStones({
+                boardSize: currentDraft.boardSize,
+                gameState: currentDraft.gameState,
+                indexes: ids,
+                dx: target.x - from.x,
+                dy: target.y - from.y,
+            });
+
+            if (!result.ok) {
+                return { ok: false as const, error: t("stoneCorrectionFailed") };
+            }
+
+            clearCachedShareLink();
+            updateDraft(
+                clearDraftShareCache({
+                    ...currentDraft,
+                    gameState: result.gameState,
+                })
+            );
+
+            return { ok: true as const, selectedIds: ids, status: null };
+        },
+        // Board placement is handled by the stroke (tap on empty draws).
+        placeAt: () => {},
+    };
+
+    const boardStroke: StoneCorrectionStroke = {
+        getMode: (vertex) =>
+            getBoardDraftStrokeMode({
+                gameState: draftRef.current?.gameState ?? EMPTY_GAME_STATE,
+                vertex,
+            }),
+        paint: (vertex, mode) => {
+            const currentDraft = draftRef.current;
+            if (!currentDraft || currentDraft.draftKind !== "board") return;
+
+            const nextGameState = applyBoardDraftStrokeVertex({
+                gameState: currentDraft.gameState,
+                mode,
+                selectedColor,
+                vertex,
+            });
+
+            if (nextGameState === currentDraft.gameState) return;
+
+            clearCachedShareLink();
+            updateDraft(
+                clearDraftShareCache({
+                    ...currentDraft,
+                    gameState: nextGameState,
+                })
+            );
+        },
+    };
+
+    const boardSelectionEnabled = !isVariationDraft && !positionRange;
+
+    const correction = useStoneCorrection<DraftMarker, PositionViewGridGeometry>(
+        {
+            boardSize: correctionBoardSize,
+            signMap: correctionSignMap,
+            baseMarkerMap: correctionMarkerMap,
+            vertexSize,
+            showCoordinates: showBoardCoordinates,
+            placementPreviewColor: isVariationDraft
+                ? correctionGameState.currentPlayer
+                : selectedColor,
+            geometry: correctionGeometry,
+            adapter: isVariationDraft ? variationAdapter : boardAdapter,
+            onStatus: setShareStatus,
+            enableSelection: isVariationDraft ? true : boardSelectionEnabled,
+            stroke: isVariationDraft ? null : boardStroke,
+        }
+    );
 
     const handleVariationUndo = useCallback(() => {
         const currentDraft = draftRef.current;
@@ -846,16 +819,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         );
     }
 
-    const signMap =
-        draft.draftKind === "variation"
-            ? correction.boardSignMap
-            : buildSignMap(draft.boardSize, draft.gameState.setupStones);
-    const markerMap =
-        draft.draftKind === "variation"
-            ? correction.boardMarkerMap
-            : Array.from({ length: draft.boardSize }, () =>
-                  Array.from<DraftMarker>({ length: draft.boardSize }).fill(null)
-              );
     const canUndoVariation =
         draft.draftKind === "variation" &&
         draft.baseMoveCount !== null &&
@@ -865,11 +828,10 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         draft.draftKind === "board"
             ? getIllegalBoardGroupVertices(draft)
             : [];
-    const positionRange = getPositionViewRange({
-        boardSize: draft.boardSize,
-        positionView: draft.positionView ?? null,
-    });
-    const isVariation = draft.draftKind === "variation";
+    const renderSelectedVertices =
+        draft.draftKind === "board"
+            ? [...illegalVertices, ...correction.renderSelectedVertices]
+            : correction.renderSelectedVertices;
 
     return (
         <div
@@ -904,7 +866,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                     canShareDraft={canShareCurrentDraft}
                     canUndo={canUndoVariation}
                     hasStoneCorrectionSelection={
-                        isVariation && correction.hasStoneCorrectionSelection
+                        correction.hasStoneCorrectionSelection
                     }
                     mode={draft.draftKind}
                     onClosePlacementZoom={correction.handleClosePlacementZoom}
@@ -927,9 +889,9 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                     selectedColor={selectedColor}
                     shareMenuOpen={shareMenu.isOpen}
                     shareTriggerRef={shareMenu.triggerRef}
-                    showPlacementZoomControl={
-                        isVariation && Boolean(correction.placementZoomWindow)
-                    }
+                    showPlacementZoomControl={Boolean(
+                        correction.placementZoomWindow
+                    )}
                 />
                 {positionViewSettingsOpen && draft.draftKind === "board" ? (
                     <PositionViewSettingsDialog
@@ -943,46 +905,22 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 <div
                     ref={gobanWrapperRef}
                     className="relative"
-                    onPointerCancel={
-                        isVariation
-                            ? correction.onBoardPointerCancel
-                            : finishBoardStroke
-                    }
-                    onPointerDown={
-                        isVariation
-                            ? correction.onBoardPointerDown
-                            : handleBoardPointerDown
-                    }
-                    onPointerMove={
-                        isVariation
-                            ? correction.onBoardPointerMove
-                            : handleBoardPointerMove
-                    }
-                    onPointerUp={
-                        isVariation
-                            ? correction.onBoardPointerUp
-                            : finishBoardStroke
-                    }
+                    onPointerCancel={correction.onBoardPointerCancel}
+                    onPointerDown={correction.onBoardPointerDown}
+                    onPointerMove={correction.onBoardPointerMove}
+                    onPointerUp={correction.onBoardPointerUp}
                 >
                     <BoardView
                         vertexSize={vertexSize}
-                        signMap={signMap}
-                        markerMap={markerMap}
-                        selectedVertices={
-                            isVariation
-                                ? correction.renderSelectedVertices
-                                : illegalVertices
-                        }
-                        dimmedVertices={
-                            isVariation
-                                ? correction.renderDimmedVertices
-                                : undefined
-                        }
+                        signMap={correction.boardSignMap}
+                        markerMap={correction.boardMarkerMap}
+                        selectedVertices={renderSelectedVertices}
+                        dimmedVertices={correction.renderDimmedVertices}
                         rangeX={positionRange?.rangeX}
                         rangeY={positionRange?.rangeY}
                         showCoordinates={showBoardCoordinates}
                     />
-                    {isVariation && correction.placementZoomWindow ? (
+                    {correction.placementZoomWindow ? (
                         <div
                             aria-hidden="true"
                             className={correction.placementZoomClassName}
@@ -997,11 +935,9 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                         >
                             <BoardView
                                 vertexSize={correction.placementZoomVertexSize}
-                                signMap={signMap}
-                                markerMap={markerMap}
-                                selectedVertices={
-                                    correction.renderSelectedVertices
-                                }
+                                signMap={correction.boardSignMap}
+                                markerMap={correction.boardMarkerMap}
+                                selectedVertices={renderSelectedVertices}
                                 dimmedVertices={correction.renderDimmedVertices}
                                 rangeX={correction.placementZoomRangeX}
                                 rangeY={correction.placementZoomRangeY}
@@ -1009,7 +945,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                             />
                         </div>
                     ) : null}
-                    {isVariation && correction.hasStoneCorrectionSelection ? (
+                    {correction.hasStoneCorrectionSelection ? (
                         <div
                             className={
                                 isDarkMode
@@ -1063,8 +999,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                             </button>
                         </div>
                     ) : null}
-                    {isVariation &&
-                        correction.shouldShowTouchGuide &&
+                    {correction.shouldShowTouchGuide &&
                         correction.touchGuideMetrics && (
                             <svg
                                 className="pointer-events-none absolute z-20"

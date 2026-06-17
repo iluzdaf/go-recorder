@@ -35,6 +35,7 @@ import { isActionBarAnchor } from "../lib/actionBarDrag";
 import { getLiveBoardGridMetrics } from "../lib/boardGeometry";
 import {
     applyRecorderCorrection,
+    createStoneSelectionDragState,
     getEditableMoveIndexAtVertex,
     getPlacementZoomWindow,
     getSelectedMoveVertices,
@@ -304,6 +305,14 @@ export default function GoBoard({ id }: GoBoardProps) {
         measure: measureGeometry,
         vertexFromPointer: ({ clientX, clientY, geometry: grid }) =>
             getVertexFromBoardPointer({ clientX, clientY, grid }),
+        createDragState: ({ geometry: grid, origin, pointerId, pointerX, pointerY }) =>
+            createStoneSelectionDragState({
+                grid,
+                origin,
+                pointerId,
+                pointerX,
+                pointerY,
+            }),
         dragVertexFromPointer: ({ clientX, clientY, dragState, geometry: grid }) =>
             getStoneSelectionDragVertexFromPointer({
                 clientX,

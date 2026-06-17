@@ -6,7 +6,6 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import type { BoardSize, Stone } from "./types";
 import type { BoardGridMetrics } from "../lib/boardGeometry";
 import {
-    createStoneSelectionDragState,
     didPointerLeaveHoldVertex,
     getCorrectionTapAction,
     getPlacementZoomOverlayOffset,
@@ -51,21 +50,28 @@ export type StoneCorrectionDragPreview = {
 };
 
 /** Geometry abstraction so full-board and position-view boards can reuse the machine. */
-export type StoneCorrectionGeometry = {
+export type StoneCorrectionGeometry<TGeometry = BoardGridGeometry> = {
     /** Handle / zoom-overlay sizing source. */
     gridMetrics: BoardGridMetrics;
     /** Measure the live grid; also refreshes gridMetrics. */
-    measure: () => BoardGridGeometry | null;
+    measure: () => TGeometry | null;
     vertexFromPointer: (args: {
         clientX: number;
         clientY: number;
-        geometry: BoardGridGeometry;
+        geometry: TGeometry;
     }) => Vertex | null;
+    createDragState: (args: {
+        geometry: TGeometry;
+        origin: Vertex;
+        pointerId: number;
+        pointerX: number;
+        pointerY: number;
+    }) => StoneSelectionDragState;
     dragVertexFromPointer: (args: {
         clientX: number;
         clientY: number;
         dragState: StoneSelectionDragState;
-        geometry: BoardGridGeometry;
+        geometry: TGeometry;
     }) => Vertex | null;
     zoom: {
         enabled: boolean;
@@ -73,10 +79,25 @@ export type StoneCorrectionGeometry = {
         vertexFromPointer: (args: {
             clientX: number;
             clientY: number;
-            geometry: BoardGridGeometry;
+            geometry: TGeometry;
             zoomWindow: BoardAreaZoomWindow;
         }) => Vertex | null;
     };
+};
+
+/** Optional freehand stroke painting (board drafts) layered under hold-to-select. */
+export type StoneCorrectionStroke = {
+    getMode: (vertex: Vertex) => "draw" | "erase";
+    paint: (vertex: Vertex, mode: "draw" | "erase") => void;
+};
+
+type StoneCorrectionStrokeState = {
+    mode: "draw" | "erase";
+    pointerId: number;
+    origin: Vertex;
+    visited: Set<string>;
+    moved: boolean;
+    originPainted: boolean;
 };
 
 /** Surface-specific item operations (moves for the recorder, setup stones for board drafts). */
@@ -105,16 +126,23 @@ export type StoneCorrectionAdapter = {
     placeAt: (vertex: Vertex) => void;
 };
 
-export type UseStoneCorrectionParams<TMarker = StoneCorrectionMarker> = {
+export type UseStoneCorrectionParams<
+    TMarker = StoneCorrectionMarker,
+    TGeometry = BoardGridGeometry,
+> = {
     boardSize: BoardSize;
     signMap: number[][];
     baseMarkerMap: TMarker[][];
     vertexSize: number;
     showCoordinates: boolean;
     placementPreviewColor: Stone;
-    geometry: StoneCorrectionGeometry;
+    geometry: StoneCorrectionGeometry<TGeometry>;
     adapter: StoneCorrectionAdapter;
     onStatus: (status: string | null) => void;
+    /** Whether long-press selection / move is available (false ⇒ stroke + tap only). */
+    enableSelection?: boolean;
+    /** Optional freehand stroke painting (board drafts). */
+    stroke?: StoneCorrectionStroke | null;
 };
 
 function stoneToSign(stone: Stone) {
@@ -128,7 +156,10 @@ function cloneSignMap(signMap: number[][]) {
 const STONE_SELECT_HOLD_MS = 450;
 const STONE_CORRECTION_PILL_GAP_PX = 8;
 
-export function useStoneCorrection<TMarker = StoneCorrectionMarker>({
+export function useStoneCorrection<
+    TMarker = StoneCorrectionMarker,
+    TGeometry = BoardGridGeometry,
+>({
     boardSize,
     signMap,
     baseMarkerMap,
@@ -138,7 +169,10 @@ export function useStoneCorrection<TMarker = StoneCorrectionMarker>({
     geometry,
     adapter,
     onStatus,
-}: UseStoneCorrectionParams<TMarker>) {
+    enableSelection = true,
+    stroke = null,
+}: UseStoneCorrectionParams<TMarker, TGeometry>) {
+    const strokeStateRef = useRef<StoneCorrectionStrokeState | null>(null);
     const stoneSelectTimeoutRef = useRef<number | null>(null);
     const stoneSelectOriginRef = useRef<Vertex | null>(null);
     const selectedGroupDragOriginRef = useRef<Vertex | null>(null);
@@ -372,6 +406,7 @@ export function useStoneCorrection<TMarker = StoneCorrectionMarker>({
         didSelectStoneByHoldRef.current = false;
         setDidStartStoneSelectionDrag(false);
         setIsCorrectionDragActive(false);
+        strokeStateRef.current = null;
         didDragStoneSelectionRef.current = false;
         stoneSelectOriginRef.current = null;
         selectedGroupDragOriginRef.current = null;
@@ -464,8 +499,8 @@ export function useStoneCorrection<TMarker = StoneCorrectionMarker>({
         const geometryResult = geometry.measure();
         if (!geometryResult) return;
 
-        stoneSelectionDragStateRef.current = createStoneSelectionDragState({
-            grid: geometryResult,
+        stoneSelectionDragStateRef.current = geometry.createDragState({
+            geometry: geometryResult,
             pointerId: event.pointerId,
             origin,
             pointerX: event.clientX,
@@ -621,6 +656,7 @@ export function useStoneCorrection<TMarker = StoneCorrectionMarker>({
         didSelectStoneByHoldRef.current = false;
         setDidStartStoneSelectionDrag(false);
         clearStoneSelectTimeout();
+        strokeStateRef.current = null;
         isPendingPlacementZoomRef.current = false;
         isStonePlacementActiveRef.current = Boolean(vertex);
         stonePlacementCanCommitRef.current = Boolean(vertex);
@@ -639,7 +675,8 @@ export function useStoneCorrection<TMarker = StoneCorrectionMarker>({
                 getEnabledPlacementZoomWindow(vertex)
         );
 
-        if (!isPendingPlacementZoomRef.current) {
+        // Stroke painting suppresses the single-stone placement ghost.
+        if (!isPendingPlacementZoomRef.current && !stroke) {
             touchPreviewVertexRef.current = vertex;
             setTouchPreview({
                 ...vertex,
@@ -661,26 +698,58 @@ export function useStoneCorrection<TMarker = StoneCorrectionMarker>({
             return;
         }
 
-        if (
-            shouldStartStoneSelectionHold({
-                editableMoveIndexAtVertex: editableId,
-                selectedMoveIndexes: selectedIds,
-            }) &&
-            editableId !== null
-        ) {
+        const startSelectionHold = (id: number) => {
             stoneSelectOriginRef.current = vertex;
             stoneSelectTimeoutRef.current = window.setTimeout(() => {
                 didSelectStoneByHoldRef.current = true;
+                strokeStateRef.current = null;
                 setSelectedIds((current) => {
-                    const nextSelection = current.includes(editableId)
+                    const nextSelection = current.includes(id)
                         ? current
-                        : [...current, editableId];
+                        : [...current, id];
                     selectedIdsRef.current = nextSelection;
                     return nextSelection;
                 });
                 onStatus(null);
                 stoneSelectTimeoutRef.current = null;
             }, STONE_SELECT_HOLD_MS);
+        };
+
+        const canHoldSelect =
+            enableSelection &&
+            editableId !== null &&
+            shouldStartStoneSelectionHold({
+                editableMoveIndexAtVertex: editableId,
+                selectedMoveIndexes: selectedIds,
+            });
+
+        if (stroke) {
+            const mode = stroke.getMode(vertex);
+            const strokeState: StoneCorrectionStrokeState = {
+                mode,
+                pointerId: event.pointerId,
+                origin: vertex,
+                visited: new Set(),
+                moved: false,
+                originPainted: false,
+            };
+            strokeStateRef.current = strokeState;
+
+            if (mode === "draw") {
+                // Empty vertex: paint immediately; nothing to hold-select here.
+                strokeState.visited.add(`${vertex.x},${vertex.y}`);
+                strokeState.originPainted = true;
+                stroke.paint(vertex, "draw");
+            } else if (canHoldSelect && editableId !== null) {
+                // Existing stone: defer the erase so a long-press can select.
+                startSelectionHold(editableId);
+            }
+
+            return;
+        }
+
+        if (canHoldSelect && editableId !== null) {
+            startSelectionHold(editableId);
         }
     };
 
@@ -688,6 +757,45 @@ export function useStoneCorrection<TMarker = StoneCorrectionMarker>({
         if (!isStonePlacementActiveRef.current) return;
         event.preventDefault();
         if (isPendingPlacementZoomRef.current) return;
+
+        if (
+            stroke &&
+            strokeStateRef.current &&
+            selectedIdsRef.current.length === 0
+        ) {
+            const strokeState = strokeStateRef.current;
+            const vertex = getFullBoardVertexFromPointer(
+                event.clientX,
+                event.clientY
+            );
+            if (!vertex) return;
+
+            const leftOrigin =
+                vertex.x !== strokeState.origin.x ||
+                vertex.y !== strokeState.origin.y;
+
+            if (leftOrigin) {
+                strokeState.moved = true;
+                // A drag is a stroke, not a hold-to-select.
+                clearStoneSelectTimeout();
+
+                if (!strokeState.originPainted) {
+                    strokeState.visited.add(
+                        `${strokeState.origin.x},${strokeState.origin.y}`
+                    );
+                    strokeState.originPainted = true;
+                    stroke.paint(strokeState.origin, strokeState.mode);
+                }
+            }
+
+            const vertexKey = `${vertex.x},${vertex.y}`;
+            if (!strokeState.visited.has(vertexKey)) {
+                strokeState.visited.add(vertexKey);
+                stroke.paint(vertex, strokeState.mode);
+            }
+
+            return;
+        }
 
         const vertex = updateTouchPreview(event.clientX, event.clientY);
         if (selectedIdsRef.current.length > 0) {
@@ -738,13 +846,6 @@ export function useStoneCorrection<TMarker = StoneCorrectionMarker>({
             return;
         }
 
-        const vertex = placementZoomWindow
-            ? getPlacementVertexFromPointer(event.clientX, event.clientY)
-            : getFullBoardVertexFromPointer(event.clientX, event.clientY);
-        const editableId = vertex
-            ? adapter.getEditableItemIdAtVertex(vertex)
-            : null;
-
         if (stoneSelectTimeoutRef.current !== null) {
             clearStoneSelectTimeout();
         }
@@ -757,6 +858,32 @@ export function useStoneCorrection<TMarker = StoneCorrectionMarker>({
             event.currentTarget.releasePointerCapture(event.pointerId);
             clearStoneSelectionDragState();
         };
+
+        if (
+            stroke &&
+            strokeStateRef.current &&
+            selectedIdsRef.current.length === 0
+        ) {
+            const strokeState = strokeStateRef.current;
+            // A tap on an existing stone (deferred erase) with no drag / hold.
+            if (
+                !didSelectStoneByHoldRef.current &&
+                !strokeState.moved &&
+                !strokeState.originPainted
+            ) {
+                stroke.paint(strokeState.origin, strokeState.mode);
+            }
+            strokeStateRef.current = null;
+            releaseTouchPreview();
+            return;
+        }
+
+        const vertex = placementZoomWindow
+            ? getPlacementVertexFromPointer(event.clientX, event.clientY)
+            : getFullBoardVertexFromPointer(event.clientX, event.clientY);
+        const editableId = vertex
+            ? adapter.getEditableItemIdAtVertex(vertex)
+            : null;
 
         if (!stonePlacementCanCommitRef.current || !vertex) {
             releaseTouchPreview();
