@@ -105,10 +105,10 @@ export type StoneCorrectionAdapter = {
     placeAt: (vertex: Vertex) => void;
 };
 
-export type UseStoneCorrectionParams = {
+export type UseStoneCorrectionParams<TMarker = StoneCorrectionMarker> = {
     boardSize: BoardSize;
     signMap: number[][];
-    baseMarkerMap: StoneCorrectionMarker[][];
+    baseMarkerMap: TMarker[][];
     vertexSize: number;
     showCoordinates: boolean;
     placementPreviewColor: Stone;
@@ -128,7 +128,7 @@ function cloneSignMap(signMap: number[][]) {
 const STONE_SELECT_HOLD_MS = 450;
 const STONE_CORRECTION_PILL_GAP_PX = 8;
 
-export function useStoneCorrection({
+export function useStoneCorrection<TMarker = StoneCorrectionMarker>({
     boardSize,
     signMap,
     baseMarkerMap,
@@ -138,7 +138,7 @@ export function useStoneCorrection({
     geometry,
     adapter,
     onStatus,
-}: UseStoneCorrectionParams) {
+}: UseStoneCorrectionParams<TMarker>) {
     const stoneSelectTimeoutRef = useRef<number | null>(null);
     const stoneSelectOriginRef = useRef<Vertex | null>(null);
     const selectedGroupDragOriginRef = useRef<Vertex | null>(null);
@@ -233,7 +233,7 @@ export function useStoneCorrection({
               const nextMarkerMap = baseMarkerMap.map((row) => [...row]);
               nextMarkerMap[dragHiddenMarkerVertex.y][
                   dragHiddenMarkerVertex.x
-              ] = null;
+              ] = null as TMarker;
               return nextMarkerMap;
           })()
         : baseMarkerMap;
