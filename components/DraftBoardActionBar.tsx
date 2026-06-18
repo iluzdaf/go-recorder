@@ -6,6 +6,7 @@ import {
     Settings,
     SquareArrowUpRight,
     Undo2,
+    X,
 } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 
@@ -21,7 +22,10 @@ type DraftBoardActionBarProps = {
     canShareDraft?: boolean;
     canUndo?: boolean;
     dragX: number | null;
+    hasStoneCorrectionSelection?: boolean;
     mode?: "board" | "variation";
+    onClosePlacementZoom?: () => void;
+    onExitStoneEditMode?: () => void;
     onLostPointerCapture: (event: ReactPointerEvent<HTMLDivElement>) => void;
     onPointerCancel: (event: ReactPointerEvent<HTMLDivElement>) => void;
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
@@ -36,6 +40,7 @@ type DraftBoardActionBarProps = {
     selectedColor?: Stone;
     shareMenuOpen: boolean;
     shareTriggerRef: RefObject<HTMLButtonElement | null>;
+    showPlacementZoomControl?: boolean;
 };
 
 export default function DraftBoardActionBar({
@@ -43,7 +48,10 @@ export default function DraftBoardActionBar({
     canShareDraft = true,
     canUndo = false,
     dragX,
+    hasStoneCorrectionSelection = false,
     mode = "board",
+    onClosePlacementZoom,
+    onExitStoneEditMode,
     onLostPointerCapture,
     onPointerCancel,
     onPointerDown,
@@ -58,11 +66,43 @@ export default function DraftBoardActionBar({
     selectedColor = "B",
     shareMenuOpen,
     shareTriggerRef,
+    showPlacementZoomControl = false,
 }: DraftBoardActionBarProps) {
+    const overlay =
+        showPlacementZoomControl || hasStoneCorrectionSelection ? (
+            <div className="absolute bottom-full left-1/2 mb-2 flex -translate-x-1/2 items-center gap-2">
+                {showPlacementZoomControl ? (
+                    <button
+                        type="button"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-950 shadow-lg hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                        onClick={onClosePlacementZoom}
+                        aria-label={t("closeBoardZoom")}
+                        title={t("closeBoardZoom")}
+                    >
+                        <X size={18} />
+                        <span>{t("closeBoardZoom")}</span>
+                    </button>
+                ) : null}
+                {hasStoneCorrectionSelection ? (
+                    <button
+                        type="button"
+                        className="inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-950 shadow-lg hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                        onClick={onExitStoneEditMode}
+                        aria-label={t("exitStoneCorrectionMode")}
+                        title={t("exitStoneCorrectionMode")}
+                    >
+                        <X size={18} />
+                        <span>{t("exitStoneCorrectionMode")}</span>
+                    </button>
+                ) : null}
+            </div>
+        ) : null;
+
     return (
         <FloatingBoardActionBar
             anchor={anchor}
             dragX={dragX}
+            overlay={overlay}
             railRef={railRef}
         >
             <div
