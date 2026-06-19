@@ -104,5 +104,7 @@
     "detectionNetworkError": "Could not reach the detection service. Check your connection and try again.",
     "detectionFailed": "Could not detect a board in that image. Try another photo or adjust the corners.",
     "cancelImport": "Cancel",
-    "retryDetection": "Try Again"
+    "retryDetection": "Try Again",
+    "showSourceImage": "Show source image",
+    "hideSourceImage": "Hide source image"
 }

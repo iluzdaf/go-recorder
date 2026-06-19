@@ -16,7 +16,11 @@
 
 # next.js
 /.next/
+**/.next/
 /out/
+
+# Claude memory
+memory/
 
 # production
 /build

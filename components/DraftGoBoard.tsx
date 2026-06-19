@@ -6,6 +6,7 @@ import type { ComponentType } from "react";
 
 import type {
     GameState,
+    ImageSourceMetadata,
     LocalDraftRecord,
     PositionView,
     SetupStone,
@@ -30,6 +31,8 @@ import {
     moveSetupStones,
 } from "../lib/boardDraft";
 import { getLivePositionViewGridMetrics } from "../lib/boardGeometry";
+import { computeImageOverlayStyle } from "../lib/imageOverlayAlignment";
+import { getImageSource } from "../lib/localImageStorage";
 import { canShareDraft, getIllegalBoardGroupVertices } from "../lib/draftSharing";
 import { formatMoveEditError, t } from "../lib/i18n";
 import { saveLocalEditableRecord } from "../lib/localEditableSave";
@@ -141,6 +144,10 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     const [selectedColor, setSelectedColor] = useState<Stone>("B");
     const [positionViewSettingsOpen, setPositionViewSettingsOpen] =
         useState(false);
+    const [imageSource, setImageSource] = useState<ImageSourceMetadata | null>(
+        null
+    );
+    const [sourceImageVisible, setSourceImageVisible] = useState(false);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
     const shareMenu = useEditableShareMenuController({
         initialShareSlug: draft?.lastShareSlug ?? null,
@@ -171,6 +178,18 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             showCoordinates: showBoardCoordinates,
         });
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
+
+    useEffect(() => {
+        const imageSourceId = draft?.imageSourceId ?? null;
+        if (!imageSourceId) return;
+        let cancelled = false;
+        void getImageSource(imageSourceId).then((result) => {
+            if (!cancelled) setImageSource(result);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [draft?.imageSourceId]);
 
     useEffect(() => {
         setHeaderStatus(
@@ -805,6 +824,10 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         }
     );
 
+    const handleToggleSourceImage = useCallback(() => {
+        setSourceImageVisible((v) => !v);
+    }, []);
+
     const handleVariationUndo = useCallback(() => {
         const currentDraft = draftRef.current;
         if (!currentDraft || currentDraft.draftKind !== "variation") return;
@@ -897,7 +920,10 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                     onToggleColor={handleToggleColor}
                     onTogglePositionViewSettings={handleTogglePositionViewSettings}
                     onToggleShareMenu={handleToggleShareMenu}
+                    onToggleSourceImage={handleToggleSourceImage}
                     onUndo={handleVariationUndo}
+                    showSourceImageToggle={imageSource !== null}
+                    sourceImageVisible={sourceImageVisible}
                     positionViewSettingsTriggerRef={
                         positionViewSettingsTriggerRef
                     }
@@ -936,6 +962,20 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                         rangeY={positionRange?.rangeY}
                         showCoordinates={showBoardCoordinates}
                     />
+                    {sourceImageVisible && imageSource ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                            src={imageSource.dataUrl}
+                            alt=""
+                            aria-hidden="true"
+                            style={computeImageOverlayStyle({
+                                imageSource,
+                                boardSize: draft.boardSize,
+                                gridMetrics,
+                                positionViewRange: positionRange,
+                            })}
+                        />
+                    ) : null}
                     {correction.placementZoomWindow ? (
                         <div
                             aria-hidden="true"
