@@ -134,7 +134,6 @@
   - Risks.
   - Tradeoffs.
   - Open user decisions.
-  - No local visual testing unless explicitly requested.
 
 ## Implementation Agent
 
@@ -150,18 +149,19 @@
 - Move the PR to `in-progress` after approval.
 - Implement the approved plan.
 - Prefer one focused commit per plan step.
-- Run relevant non-visual checks.
+- Run type checks, focused tests, and lint on changed files.
+- Run the app locally and verify as many smoke tests as possible.
 - Include the approved plan in the PR description.
-- Include `Smoke Tests For Reviewer` in the PR description before requesting review.
+- Include `Smoke Tests For Reviewer` in the PR description, marking any items the agent already verified.
 - Move the PR to `needs-review` when implementation is ready.
 
 ## Verification
 
-- Do not try to visually test locally.
 - Prefer `pnpm typecheck`.
 - Prefer focused Vitest targets for changed logic.
 - Prefer focused ESLint targets for changed files when practical.
 - Run `git diff --check`.
+- Run the app locally and work through smoke tests; mark each verified item in the PR.
 - Report unreliable or hanging checks.
 - Do not hide known full-suite failures.
 - Explain unrelated full-suite failures in PR notes.
@@ -171,11 +171,13 @@
 - Every PR that changes behavior must include `Smoke Tests For Reviewer`.
 - Smoke tests must use `- [ ]` checkbox format.
 - Smoke tests should be short and concrete.
-- Smoke tests should be executable against a preview deployment or relevant environment.
 - Smoke tests should be tailored from `docs/smoke-test-checklists.md`.
 - Smoke tests should cover the user-facing workflow changed by the PR.
 - Smoke tests should include visual confirmation steps when visual behavior matters.
-- Agents should not perform local visual testing unless explicitly asked.
+- Agents must run the app locally and verify as many smoke tests as possible before moving to `needs-review`.
+- Mark each locally verified item with `[x]` and note it was agent-verified.
+- Leave as `[ ]` any items that require a real device, a preview deployment, or human judgement.
+- A human is required only for remaining unverified items and the final merge.
 - Review agents must add or refine missing smoke tests before moving a task to `smoke-test-ready`.
 
 ## Review Agent
@@ -187,20 +189,19 @@
 - Call out scope creep.
 - Call out copy, route, and UI consistency problems.
 - Add or refine `Smoke Tests For Reviewer` in the PR.
-- Do not require local visual testing.
-- Put visual confirmation in preview smoke tests when needed.
+- Run the app locally and verify any smoke test items not yet marked verified.
 
 ## Human Merge Gate
 
 - Merge only after required code review issues are resolved.
 - Merge only after automated and focused checks are acceptable.
-- Merge only after smoke tests pass or failures are explicitly accepted.
+- Merge only after all smoke tests are verified or failures are explicitly accepted.
+- Human review is required for any smoke test item the agent could not verify locally.
 - Merge only while the PR remains scoped to the task.
 - After merge, repeat from the next prioritized `ready-for-agent` task.
 
 ## Repo Rules
 
-- Do not try to visually test locally.
 - Preserve unrelated user changes in the worktree.
 - Prefer minimal focused diffs.
 - Avoid new dependencies unless necessary.

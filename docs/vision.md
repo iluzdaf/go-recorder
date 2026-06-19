@@ -16,7 +16,7 @@
 - Prefer predictable, compact controls over explanatory UI text.
 - Keep correction and draft interactions forgiving on touch screens.
 - Make share links immutable so viewers can trust that a shared board state will not change.
-- Avoid local visual testing by agents; use preview smoke tests when visual confirmation matters.
+- Agents should run the app locally and verify smoke tests; use preview deployments for items that require a real device or environment.
 
 ## Scope Boundaries
 
