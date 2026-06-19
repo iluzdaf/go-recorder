@@ -111,6 +111,20 @@ describe("toCreateShareInput", () => {
         });
     });
 
+    it("excludes imageSourceId from the share payload", () => {
+        const draftWithImage: LocalDraftRecord = {
+            ...localDraft,
+            imageSourceId: "img-local-only",
+        };
+
+        const input = toCreateShareInput({
+            localRecord: draftWithImage,
+            sourceKind: "draft",
+        });
+
+        expect(input).not.toHaveProperty("imageSourceId");
+    });
+
     it("maps a board draft position view to draft share input", () => {
         expect(
             toCreateShareInput({

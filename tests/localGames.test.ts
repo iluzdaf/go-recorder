@@ -346,6 +346,111 @@ describe("local game storage", () => {
         });
     });
 
+    it("creates a board draft with an imageSourceId", () => {
+        const record = createLocalDraft({
+            draftKind: "board",
+            boardSize: 19,
+            gameState: emptyGameState,
+            imageSourceId: "img-abc",
+        });
+
+        expect(record).toMatchObject({
+            recordKind: "draft",
+            draftKind: "board",
+            imageSourceId: "img-abc",
+        });
+        expect(getLocalRecord(record.id)).toMatchObject({ imageSourceId: "img-abc" });
+    });
+
+    it("creates a board draft without imageSourceId by default", () => {
+        const record = createLocalDraft({
+            draftKind: "board",
+            boardSize: 19,
+            gameState: emptyGameState,
+        });
+
+        expect(record.imageSourceId).toBeNull();
+        expect(getLocalRecord(record.id)).toMatchObject({ imageSourceId: null });
+    });
+
+    it("accepts stored draft records with imageSourceId", () => {
+        window.localStorage.setItem(
+            "go-recorder:local-game:draft-with-img",
+            JSON.stringify({
+                recordKind: "draft",
+                draftKind: "board",
+                id: "draft-with-img",
+                boardSize: 19,
+                gameState: emptyGameState,
+                blackPlayerName: null,
+                whitePlayerName: null,
+                handicap: 0,
+                createdAt: "2026-05-28T00:00:00.000Z",
+                updatedAt: "2026-05-28T00:00:00.000Z",
+                lastShareSlug: null,
+                parentShareSlug: null,
+                baseMoveCount: null,
+                positionView: null,
+                imageSourceId: "img-stored",
+            })
+        );
+
+        expect(getLocalRecord("draft-with-img")).toMatchObject({
+            imageSourceId: "img-stored",
+        });
+    });
+
+    it("accepts stored draft records without imageSourceId (backwards compatibility)", () => {
+        window.localStorage.setItem(
+            "go-recorder:local-game:draft-no-img",
+            JSON.stringify({
+                recordKind: "draft",
+                draftKind: "board",
+                id: "draft-no-img",
+                boardSize: 19,
+                gameState: emptyGameState,
+                blackPlayerName: null,
+                whitePlayerName: null,
+                handicap: 0,
+                createdAt: "2026-05-28T00:00:00.000Z",
+                updatedAt: "2026-05-28T00:00:00.000Z",
+                lastShareSlug: null,
+                parentShareSlug: null,
+                baseMoveCount: null,
+                positionView: null,
+            })
+        );
+
+        const record = getLocalRecord("draft-no-img");
+        expect(record).not.toBeNull();
+        expect((record as { imageSourceId?: unknown }).imageSourceId).toBeUndefined();
+    });
+
+    it("rejects stored draft records with invalid imageSourceId", () => {
+        window.localStorage.setItem(
+            "go-recorder:local-game:draft-bad-img",
+            JSON.stringify({
+                recordKind: "draft",
+                draftKind: "board",
+                id: "draft-bad-img",
+                boardSize: 19,
+                gameState: emptyGameState,
+                blackPlayerName: null,
+                whitePlayerName: null,
+                handicap: 0,
+                createdAt: "2026-05-28T00:00:00.000Z",
+                updatedAt: "2026-05-28T00:00:00.000Z",
+                lastShareSlug: null,
+                parentShareSlug: null,
+                baseMoveCount: null,
+                positionView: null,
+                imageSourceId: 42,
+            })
+        );
+
+        expect(getLocalRecord("draft-bad-img")).toBeNull();
+    });
+
     it("saves local drafts while preserving draft metadata", () => {
         const record = createLocalDraft({
             draftKind: "variation",
