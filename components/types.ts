@@ -76,6 +76,24 @@ export type LocalGameRecord = {
     lastShareSlug?: string | null;
 };
 
+export type ImageSourceCorner = {
+    x: number;
+    y: number;
+};
+
+export type ImageSourceMetadata = {
+    id: string;
+    dataUrl: string;
+    naturalWidth: number;
+    naturalHeight: number;
+    corners: [
+        ImageSourceCorner,
+        ImageSourceCorner,
+        ImageSourceCorner,
+        ImageSourceCorner,
+    ];
+};
+
 export type LocalDraftRecord = {
     recordKind: "draft";
     draftKind: DraftKind;
@@ -91,6 +109,7 @@ export type LocalDraftRecord = {
     parentShareSlug: string | null;
     baseMoveCount: number | null;
     positionView?: PositionView | null;
+    imageSourceId?: string | null;
 };
 
 export type LocalEditableRecord = LocalGameRecord | LocalDraftRecord;

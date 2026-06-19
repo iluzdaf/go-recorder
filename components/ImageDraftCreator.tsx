@@ -7,6 +7,7 @@ import { Loader2, X } from "lucide-react";
 import { createBoardDraftInputFromDetection } from "../lib/boardDetectionDraft";
 import { detectBoard } from "../lib/detectBoardClient";
 import { createLocalDraft } from "../lib/localGames";
+import { storeImageSource } from "../lib/localImageStorage";
 import { navigateWithinApp } from "../lib/fullscreenNavigation";
 import { t } from "../lib/i18n";
 import {
@@ -17,6 +18,15 @@ import {
     type CornerIndex,
     type OrderedCorners,
 } from "../lib/imageCorners";
+
+function readFileAsDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+    });
+}
 
 type ImageDraftCreatorProps = {
     onClose: () => void;
@@ -169,17 +179,37 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
         setError(null);
 
         try {
-            const detection = await detectBoard(
-                createImageDetectionRequest({
-                    file: image.file,
+            const naturalWidth = element.naturalWidth;
+            const naturalHeight = element.naturalHeight;
+
+            const [detection, dataUrl] = await Promise.all([
+                detectBoard(
+                    createImageDetectionRequest({
+                        file: image.file,
+                        corners,
+                        naturalWidth,
+                        naturalHeight,
+                    })
+                ),
+                readFileAsDataUrl(image.file),
+            ]);
+
+            let imageSourceId: string | null = null;
+            try {
+                imageSourceId = await storeImageSource({
+                    dataUrl,
+                    naturalWidth,
+                    naturalHeight,
                     corners,
-                    naturalWidth: element.naturalWidth,
-                    naturalHeight: element.naturalHeight,
-                })
-            );
-            const draft = createLocalDraft(
-                createBoardDraftInputFromDetection(detection)
-            );
+                });
+            } catch {
+                // Non-fatal: draft is still created; overlay will be unavailable
+            }
+
+            const draft = createLocalDraft({
+                ...createBoardDraftInputFromDetection(detection),
+                imageSourceId,
+            });
             navigateWithinApp({
                 path: `/drafts/${draft.id}`,
                 push: router.push,

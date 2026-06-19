@@ -33,6 +33,7 @@ export type CreateLocalDraftInput = {
     parentShareSlug?: string | null;
     baseMoveCount?: number | null;
     positionView?: PositionView | null;
+    imageSourceId?: string | null;
 };
 
 function getLocalStorage() {
@@ -101,6 +102,10 @@ function isLocalGameRecord(value: unknown): value is LocalGameRecord {
     );
 }
 
+function isOptionalNullableImageSourceId(value: unknown) {
+    return value === undefined || value === null || typeof value === "string";
+}
+
 function isLocalDraftRecord(value: unknown): value is LocalDraftRecord {
     if (typeof value !== "object" || value === null) return false;
 
@@ -112,7 +117,8 @@ function isLocalDraftRecord(value: unknown): value is LocalDraftRecord {
         !hasValidLocalRecordBase(record) ||
         !isNullableString(record.parentShareSlug) ||
         !isValidBaseMoveCount(record.baseMoveCount) ||
-        !isOptionalPositionView(record.positionView, record.boardSize)
+        !isOptionalPositionView(record.positionView, record.boardSize) ||
+        !isOptionalNullableImageSourceId(record.imageSourceId)
     ) {
         return false;
     }
@@ -168,6 +174,7 @@ export function createLocalDraft({
     parentShareSlug = null,
     baseMoveCount = null,
     positionView = null,
+    imageSourceId = null,
 }: CreateLocalDraftInput) {
     const now = new Date().toISOString();
     const record: LocalDraftRecord = {
@@ -185,6 +192,7 @@ export function createLocalDraft({
         parentShareSlug,
         baseMoveCount,
         positionView,
+        imageSourceId,
     };
 
     if (!isLocalDraftRecord(record)) {
