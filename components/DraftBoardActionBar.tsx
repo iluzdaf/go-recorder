@@ -2,6 +2,8 @@
 
 import {
     Circle,
+    Eye,
+    EyeOff,
     FilePen,
     Settings,
     SquareArrowUpRight,
@@ -34,6 +36,7 @@ type DraftBoardActionBarProps = {
     onToggleColor?: () => void;
     onTogglePositionViewSettings?: () => void;
     onToggleShareMenu: () => void;
+    onToggleSourceImage?: () => void;
     positionViewSettingsTriggerRef?: RefObject<HTMLButtonElement | null>;
     onUndo?: () => void;
     railRef: RefObject<HTMLDivElement | null>;
@@ -41,6 +44,8 @@ type DraftBoardActionBarProps = {
     shareMenuOpen: boolean;
     shareTriggerRef: RefObject<HTMLButtonElement | null>;
     showPlacementZoomControl?: boolean;
+    showSourceImageToggle?: boolean;
+    sourceImageVisible?: boolean;
 };
 
 export default function DraftBoardActionBar({
@@ -60,6 +65,7 @@ export default function DraftBoardActionBar({
     onToggleColor,
     onTogglePositionViewSettings,
     onToggleShareMenu,
+    onToggleSourceImage,
     positionViewSettingsTriggerRef,
     onUndo,
     railRef,
@@ -67,6 +73,8 @@ export default function DraftBoardActionBar({
     shareMenuOpen,
     shareTriggerRef,
     showPlacementZoomControl = false,
+    showSourceImageToggle = false,
+    sourceImageVisible = false,
 }: DraftBoardActionBarProps) {
     const overlay =
         showPlacementZoomControl || hasStoneCorrectionSelection ? (
@@ -147,6 +155,18 @@ export default function DraftBoardActionBar({
                     >
                         <Settings size={18} />
                     </button>
+                    {showSourceImageToggle ? (
+                        <button
+                            type="button"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                            onClick={onToggleSourceImage}
+                            aria-label={sourceImageVisible ? t("hideSourceImage") : t("showSourceImage")}
+                            title={sourceImageVisible ? t("hideSourceImage") : t("showSourceImage")}
+                            aria-pressed={sourceImageVisible}
+                        >
+                            {sourceImageVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                    ) : null}
                 </>
             )}
             <button
