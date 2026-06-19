@@ -207,5 +207,5 @@
 - Use strict TypeScript.
 - Keep helper inputs as narrow as practical.
 - Check `lib/messages/en.json` for user-facing copy changes.
-- Usually update `content/changelog/en.json` for user-facing behavior changes.
+- Do not update `content/changelog/en.json` or bump the version in `package.json` unless explicitly asked.
 - Never modify hosted Supabase directly.

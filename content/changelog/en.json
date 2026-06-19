@@ -1,16 +1,5 @@
 [
     {
-        "version": "0.6.0",
-        "date": "2026-06-19",
-        "title": "Play on the second line in the endgame.",
-        "items": [
-            {
-                "id": "image-source-stored",
-                "text": "Drafts created from photos now store the source image locally for later use."
-            }
-        ]
-    },
-    {
         "version": "0.5.0",
         "date": "2026-06-16",
         "title": "There is death in the hane.",
