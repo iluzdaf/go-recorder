@@ -46,3 +46,6 @@ __pycache__/
 *.pyc
 .venv/
 .pytest_cache/
+
+# Claude Code
+.claude/
