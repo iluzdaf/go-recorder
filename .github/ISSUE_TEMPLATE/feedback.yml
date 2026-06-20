@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this for rough feedback, bugs, usability friction, or feature ideas. An agent can triage it into an implementation-ready task or ask clarifying questions.
+        Use this for rough feedback, bugs, usability friction, or feature ideas. An agent can triage it into a candidate task, ask clarifying questions, and then wait for human approval before implementation starts.
   - type: textarea
     id: feedback
     attributes:
