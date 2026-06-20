@@ -12,10 +12,13 @@
 
 - `needs-triage`
   - Raw feedback that has not been converted into an actionable task.
+- `needs-approval`
+  - Triage has converted feedback into a candidate task.
+  - A human must confirm scope before an agent may start implementation.
 - `needs-clarification`
   - Triage found open questions that must be answered before implementation.
 - `ready-for-agent`
-  - Triage is complete on the feedback issue.
+  - Human approval is complete on the feedback issue.
   - The issue has enough detail for an implementation agent to start.
 - `needs-plan`
   - PR label.
@@ -41,6 +44,7 @@
 ## Default Flow
 
 - `needs-triage`
+- `needs-approval`
 - `ready-for-agent`
 - draft PR with `needs-plan`
 - `needs-plan-approval`
@@ -75,6 +79,7 @@
 - Read the issue body and all comments before deciding whether open questions are answered.
 - Preserve the original feedback body and comments.
 - Append triage in a new comment instead of overwriting existing feedback.
+- Ask at least three concise clarification questions during triage before moving the issue forward.
 - Include:
   - Type.
   - Problem.
@@ -88,11 +93,13 @@
 - State relevant files as guidance, not certainty.
 - Add `needs-clarification` when requirements are unclear.
 - Ask concise concrete questions when requirements are unclear.
-- Do not mark a task `ready-for-agent` until ambiguity is removed.
+- Do not mark a task `ready-for-agent` until human approval is recorded.
+- Move the feedback issue to `needs-approval` after triage is complete but before human approval is recorded.
 - Keep the feedback issue as the task record by default.
 - Do not create a separate Agent Task issue unless broad feedback must be split into multiple independently actionable tasks.
 - Rename the feedback issue title to indicate triage completion when helpful, for example `[Triaged Feedback]: ...`.
-- Keep `ready-for-agent` on the feedback issue until work is claimed in a PR.
+- Keep `needs-approval` on the feedback issue until the human approval gate is satisfied.
+- Move the feedback issue to `ready-for-agent` only after human approval is recorded.
 - Remove `needs-triage` after triage is complete; use `needs-clarification` on the feedback issue only when open questions remain.
 
 ## Recommended Triage Record
@@ -103,6 +110,7 @@
   - The desired outcome.
   - Acceptance criteria.
   - Open questions, if any.
+- If the issue remains ambiguous, ask at least three concise clarification questions in the thread before moving past triage.
 - Keep implementation planning, approvals, and execution updates in the PR after handoff.
 
 ## Prioritization
