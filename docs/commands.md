@@ -12,7 +12,6 @@
     ```
     NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<local anon key from npx supabase status>
-    SUPABASE_SERVICE_ROLE_KEY=<local service role key from npx supabase status>
     NEXT_PUBLIC_SITE_URL=http://localhost:3000
     DETECTION_SERVICE_URL=https://go-board-detection-795978602142.asia-southeast1.run.app
     DETECTION_API_KEY=op://Development/go-recorder-local/DETECTION_API_KEY
