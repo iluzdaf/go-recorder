@@ -5,7 +5,7 @@
 - Install the [1Password CLI](https://developer.1password.com/docs/cli/get-started/) and sign in.
 - Secrets live in the `Development` vault, one item per environment:
   - `go-recorder-local`: `DETECTION_API_KEY` (local/dev detection key)
-  - `go-recorder-prod`: `SUPABASE_SERVICE_ROLE_KEY`, `DETECTION_API_KEY`
+  - `go-recorder-prod`: `SUPABASE_SERVICE_ROLE_KEY`, `DETECTION_API_KEY`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`
 - Field names in 1Password must match the env var names exactly.
 
 ## Development
@@ -39,6 +39,12 @@
   - If it hangs, report that and rely on `pnpm typecheck`, focused tests, and `git diff --check`.
 - `git diff --check`
   - Checks for whitespace errors.
+
+## Supabase CLI (hosted)
+
+- `op run --env-file=.env.supabase-cli.tpl -- npx supabase <command>`
+  - Runs any Supabase CLI command with `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD` injected from 1Password.
+  - Requires 1Password CLI signed in.
 
 ## Detection Service (Python)
 
