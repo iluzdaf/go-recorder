@@ -30,6 +30,13 @@
     SUPABASE_DB_PASSWORD=op://Development/go-recorder-prod/SUPABASE_DB_PASSWORD
     ```
 
+## E2E Tests
+
+- `pnpm test:e2e`
+  - Starts local services, runs the Playwright E2E suite against Chromium, then stops services.
+  - Requires Docker (or Colima) and the detection service venv (see Local Services section).
+  - Runs automatically in CI on every push to `main` (not a merge gate).
+
 ## Local Services
 
 - `pnpm services:start`
