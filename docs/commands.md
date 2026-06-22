@@ -7,6 +7,10 @@
   - `go-recorder-local`: `DETECTION_API_KEY` (local/dev detection key)
   - `go-recorder-prod`: `SUPABASE_SERVICE_ROLE_KEY`, `DETECTION_API_KEY`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`
 - Field names in 1Password must match the env var names exactly.
+- Create local template files (gitignored; not in the repo):
+  - `.env.app.local.tpl` — non-secret local Supabase values as plain text; `DETECTION_API_KEY=op://Development/go-recorder-local/DETECTION_API_KEY`
+  - `.env.app.prod.tpl` — non-secret prod values as plain text; `SUPABASE_SERVICE_ROLE_KEY` and `DETECTION_API_KEY` as `op://Development/go-recorder-prod/...`
+  - `.env.supabase-cli.tpl` — `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD` as `op://Development/go-recorder-prod/...`
 
 ## Development
 

@@ -33,15 +33,11 @@
 - Set `SUPABASE_SERVICE_ROLE_KEY` to the local service role key.
 - Set `NEXT_PUBLIC_SITE_URL` to `http://localhost:3000`.
 
-## Environment Templates
+## Local Environment
 
-- `.env.app.local.tpl`
-  - Local app environment template; use with `pnpm dev:local`.
-- `.env.app.prod.tpl`
-  - Production app environment template; use with `pnpm dev:prod`.
-- `.env.supabase-cli.tpl`
-  - Supabase CLI credentials template; use with `op run --env-file=.env.supabase-cli.tpl -- npx supabase <command>`.
-- See `docs/commands.md` for 1Password setup and usage.
+- Environment variables are set on Vercel directly for deployed environments.
+- For local development, create gitignored `.tpl` files using `op://` references and run via `pnpm dev:local` or `pnpm dev:prod`.
+- See `docs/commands.md` for 1Password setup and template structure.
 
 ## Migrations
 
