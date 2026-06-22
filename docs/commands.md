@@ -3,14 +3,34 @@
 ## 1Password Setup (one-time)
 
 - Install the [1Password CLI](https://developer.1password.com/docs/cli/get-started/) and sign in.
-- Secrets live in the `Development` vault, one item per environment:
+- Secrets live in the `Development` vault:
   - `go-recorder-local`: `DETECTION_API_KEY` (local/dev detection key)
   - `go-recorder-prod`: `SUPABASE_SERVICE_ROLE_KEY`, `DETECTION_API_KEY`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`
 - Field names in 1Password must match the env var names exactly.
 - Create local template files (gitignored; not in the repo):
-  - `.env.app.local.tpl` — non-secret local Supabase values as plain text; `DETECTION_API_KEY=op://Development/go-recorder-local/DETECTION_API_KEY`
-  - `.env.app.prod.tpl` — non-secret prod values as plain text; `SUPABASE_SERVICE_ROLE_KEY` and `DETECTION_API_KEY` as `op://Development/go-recorder-prod/...`
-  - `.env.supabase-cli.tpl` — `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD` as `op://Development/go-recorder-prod/...`
+  - `.env.app.local.tpl`:
+    ```
+    NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<local anon key from npx supabase status>
+    SUPABASE_SERVICE_ROLE_KEY=op://Development/go-recorder-prod/SUPABASE_SERVICE_ROLE_KEY
+    NEXT_PUBLIC_SITE_URL=http://localhost:3000
+    DETECTION_SERVICE_URL=https://go-board-detection-795978602142.asia-southeast1.run.app
+    DETECTION_API_KEY=op://Development/go-recorder-local/DETECTION_API_KEY
+    ```
+  - `.env.app.prod.tpl`:
+    ```
+    NEXT_PUBLIC_SUPABASE_URL=https://kdzcrtneovamqrzgipvj.supabase.co
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_bQ35lxoi09uvnx_VLonb0w_lmA7LpKd
+    SUPABASE_SERVICE_ROLE_KEY=op://Development/go-recorder-prod/SUPABASE_SERVICE_ROLE_KEY
+    NEXT_PUBLIC_SITE_URL=http://localhost:3000
+    DETECTION_SERVICE_URL=https://go-board-detection-795978602142.asia-southeast1.run.app
+    DETECTION_API_KEY=op://Development/go-recorder-prod/DETECTION_API_KEY
+    ```
+  - `.env.supabase-cli.tpl`:
+    ```
+    SUPABASE_ACCESS_TOKEN=op://Development/go-recorder-prod/SUPABASE_ACCESS_TOKEN
+    SUPABASE_DB_PASSWORD=op://Development/go-recorder-prod/SUPABASE_DB_PASSWORD
+    ```
 
 ## Development
 
