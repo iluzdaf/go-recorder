@@ -155,8 +155,7 @@
 - Move the PR from `needs-plan` to `needs-plan-approval`.
 - Wait for human approval before editing code.
 - Move the PR to `in-progress` after approval.
-- Implement the approved plan one step at a time.
-- Stop after completing each approved step and wait for further instructions before starting the next step.
+- Implement the approved plan.
 - Prefer one focused commit per plan step.
 - Run type checks, focused tests, and lint on changed files.
 - Run the app locally and verify as many smoke tests as possible.
