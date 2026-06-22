@@ -30,6 +30,17 @@
     SUPABASE_DB_PASSWORD=op://Development/go-recorder-prod/SUPABASE_DB_PASSWORD
     ```
 
+## Local Services
+
+- `pnpm services:start`
+  - Starts local Supabase and the detection service.
+  - Requires Docker (or Colima) to be running.
+  - Requires the detection service venv to exist at `services/detection/.venv/` (see Detection Service section below).
+  - Health-checks both services before returning.
+  - After this, run `pnpm dev:local` to start the Next.js app.
+- `pnpm services:stop`
+  - Stops the detection service and local Supabase.
+
 ## Development
 
 - `pnpm dev:local`

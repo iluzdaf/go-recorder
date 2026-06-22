@@ -54,5 +54,9 @@ __pycache__/
 .venv/
 .pytest_cache/
 
+# local services
+.local-detection.pid
+.local-detection.log
+
 # Claude Code
 .claude/

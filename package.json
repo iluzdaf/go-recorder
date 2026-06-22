@@ -8,9 +8,11 @@
     "dev:prod": "op run --env-file=.env.app.prod.tpl -- next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-"lint": "eslint",
+    "lint": "eslint",
     "test": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "services:start": "bash scripts/start-local-services.sh",
+    "services:stop": "bash scripts/stop-local-services.sh"
   },
   "dependencies": {
     "@openai/codex": "^0.133.0",
