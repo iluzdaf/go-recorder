@@ -33,17 +33,11 @@
 - Set `SUPABASE_SERVICE_ROLE_KEY` to the local service role key.
 - Set `NEXT_PUBLIC_SITE_URL` to `http://localhost:3000`.
 
-## Environment Snapshots
+## Local Environment
 
-- `.env.app.local`
-  - Local app environment snapshot.
-- `.env.app.prod`
-  - Production app environment snapshot.
-- `pnpm env:local`
-  - Copies `.env.app.local` to `.env.local`.
-- `pnpm env:prod`
-  - Copies `.env.app.prod` to `.env.local`.
-- Restart `pnpm dev`, `npm run build`, or `npm start` after switching environments.
+- Environment variables are set on Vercel directly for deployed environments.
+- For local development, create gitignored `.tpl` files using `op://` references and run via `pnpm dev:local` or `pnpm dev:prod`.
+- See `docs/commands.md` for 1Password setup and template structure.
 
 ## Migrations
 
