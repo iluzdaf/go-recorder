@@ -1,15 +1,29 @@
 # Commands
 
+## 1Password Setup (one-time)
+
+- Install the [1Password CLI](https://developer.1password.com/docs/cli/get-started/) and sign in.
+- Secrets live in the `Development` vault, one item per environment:
+  - `go-recorder-local`: `DETECTION_API_KEY` (local/dev detection key)
+  - `go-recorder-prod`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DETECTION_API_KEY`
+- Field names in 1Password must match the env var names exactly.
+
 ## Development
 
+- `pnpm dev:local`
+  - Starts Next.js against local Supabase with secrets injected via 1Password CLI.
+  - Requires 1Password CLI signed in.
+- `pnpm dev:prod`
+  - Starts Next.js against hosted Supabase with secrets injected via 1Password CLI.
+  - Requires 1Password CLI signed in.
 - `pnpm dev`
-  - Starts Next.js with webpack.
+  - Starts Next.js with webpack using whatever `.env.local` is present.
 - `pnpm build`
   - Builds the production app with webpack.
 - `pnpm env:local`
-  - Copies `.env.app.local` to `.env.local`.
+  - Copies `.env.app.local` to `.env.local` (fallback if not using 1Password CLI).
 - `pnpm env:prod`
-  - Copies `.env.app.prod` to `.env.local`.
+  - Copies `.env.app.prod` to `.env.local` (fallback if not using 1Password CLI).
 
 ## Verification
 

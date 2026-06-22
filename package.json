@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
+    "dev:local": "op run --env-file=.env.app.local.tpl -- next dev --webpack",
+    "dev:prod": "op run --env-file=.env.app.prod.tpl -- next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
     "env:local": "cp .env.app.local .env.local",
