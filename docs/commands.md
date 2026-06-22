@@ -8,13 +8,12 @@
   - `go-recorder-prod`: `SUPABASE_SERVICE_ROLE_KEY`, `DETECTION_API_KEY`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`
 - Field names in 1Password must match the env var names exactly.
 - Create local template files (gitignored; not in the repo):
-  - `.env.app.local.tpl`:
+  - `.env.app.local.tpl` — no secrets; all plain values:
     ```
     NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<local anon key from npx supabase status>
     NEXT_PUBLIC_SITE_URL=http://localhost:3000
-    DETECTION_SERVICE_URL=https://go-board-detection-795978602142.asia-southeast1.run.app
-    DETECTION_API_KEY=op://Development/go-recorder-local/DETECTION_API_KEY
+    DETECTION_SERVICE_URL=http://localhost:8000
     ```
   - `.env.app.prod.tpl`:
     ```
@@ -34,8 +33,8 @@
 ## Development
 
 - `pnpm dev:local`
-  - Starts Next.js against local Supabase with secrets injected via 1Password CLI.
-  - Requires 1Password CLI signed in.
+  - Starts Next.js against local Supabase using `.env.app.local.tpl`.
+  - No secrets — all values are plain. Requires the local Supabase and detection service to be running.
 - `pnpm dev:prod`
   - Starts Next.js against hosted Supabase with secrets injected via 1Password CLI.
   - Requires 1Password CLI signed in.
