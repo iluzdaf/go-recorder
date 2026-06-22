@@ -17,13 +17,9 @@
   - Starts Next.js against hosted Supabase with secrets injected via 1Password CLI.
   - Requires 1Password CLI signed in.
 - `pnpm dev`
-  - Starts Next.js with webpack using whatever `.env.local` is present.
+  - Starts Next.js with webpack (used by Vercel and CI; requires env vars to be set externally).
 - `pnpm build`
   - Builds the production app with webpack.
-- `pnpm env:local`
-  - Copies `.env.app.local` to `.env.local` (fallback if not using 1Password CLI).
-- `pnpm env:prod`
-  - Copies `.env.app.prod` to `.env.local` (fallback if not using 1Password CLI).
 
 ## Verification
 
