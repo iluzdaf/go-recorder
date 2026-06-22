@@ -37,6 +37,9 @@ yarn-error.log*
 
 # env files
 .env*
+!.env.app.local.tpl
+!.env.app.prod.tpl
+!.env.supabase-cli.tpl
 
 # vercel
 .vercel
