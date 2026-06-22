@@ -3,8 +3,6 @@ name: CI (detection service)
 on:
   pull_request:
     branches: [main]
-    paths:
-      - services/detection/**
 
 jobs:
   pytest:
