@@ -12,7 +12,8 @@
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "services:start": "bash scripts/start-local-services.sh",
-    "services:stop": "bash scripts/stop-local-services.sh"
+    "services:stop": "bash scripts/stop-local-services.sh",
+    "test:e2e": "bash scripts/run-e2e.sh"
   },
   "dependencies": {
     "@openai/codex": "^0.133.0",
