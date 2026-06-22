@@ -5,7 +5,7 @@
 - Install the [1Password CLI](https://developer.1password.com/docs/cli/get-started/) and sign in.
 - Secrets live in the `Development` vault, one item per environment:
   - `go-recorder-local`: `DETECTION_API_KEY` (local/dev detection key)
-  - `go-recorder-prod`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DETECTION_API_KEY`
+  - `go-recorder-prod`: `SUPABASE_SERVICE_ROLE_KEY`, `DETECTION_API_KEY`
 - Field names in 1Password must match the env var names exactly.
 
 ## Development
