@@ -944,7 +944,7 @@ export default function AppShell({
                         <ChangelogReleaseList limit={2} />
                         <Link
                             href="/changelog"
-                            className="mt-3 inline-flex text-sm font-semibold text-zinc-700 underline underline-offset-4 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
+                            className="ml-auto mt-3 flex w-fit text-sm font-semibold text-zinc-700 underline underline-offset-4 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
                             onClick={() => setIsChangelogOpen(false)}
                         >
                             {t("showMoreChangelog")}
