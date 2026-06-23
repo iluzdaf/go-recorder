@@ -108,11 +108,6 @@ export default function ShareMenu({
                         </>
                     ) : (
                         <>
-                            {message ? (
-                                <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-zinc-300">
-                                    {message}
-                                </div>
-                            ) : null}
                             {isCreating ? null : (
                                 <button
                                     type="button"
@@ -132,6 +127,11 @@ export default function ShareMenu({
                             )}
                         </>
                     )}
+                    {message ? (
+                        <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-zinc-300">
+                            {message}
+                        </div>
+                    ) : null}
                 </div>
 
                 {hasCreatedShare ? (

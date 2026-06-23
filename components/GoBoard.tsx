@@ -101,9 +101,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     const [loadError, setLoadError] = useState<string | null>(null);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
-    const shareMenu = useEditableShareMenuController({
-        onStatus: setShareStatus,
-    });
+    const shareMenu = useEditableShareMenuController({});
     const {
         canAutoCreateNow,
         clearShareLink,
@@ -610,7 +608,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                             canShareGame={canShareGame}
                             isCreating={shareMenu.isCreating}
                             menuRef={shareMenu.menuRef}
-                            message={shareMenu.message}
+                            message={shareMenu.displayMessage}
                             mode={shareMenu.mode}
                             onCreateShare={() => {
                                 void handleShare();

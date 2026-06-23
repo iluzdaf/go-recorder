@@ -480,7 +480,9 @@ export function useStoneCorrection<
 
         selectedIdsRef.current = result.selectedIds;
         setSelectedIds(result.selectedIds);
-        onStatus(result.status);
+        if (result.status !== null) {
+            onStatus(result.status);
+        }
     };
 
     const startStoneSelectionHandleDrag = (

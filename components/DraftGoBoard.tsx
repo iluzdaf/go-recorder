@@ -151,7 +151,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     const [shareStatus, setShareStatus] = useState<string | null>(null);
     const shareMenu = useEditableShareMenuController({
         initialShareSlug: draft?.lastShareSlug ?? null,
-        onStatus: setShareStatus,
     });
     const {
         canAutoCreateNow,
@@ -890,7 +889,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                         canShareGame={canShareCurrentDraft}
                         isCreating={shareMenu.isCreating}
                         menuRef={shareMenu.menuRef}
-                        message={shareMenu.message}
+                        message={shareMenu.displayMessage}
                         mode={shareMenu.mode}
                         onCreateShare={handleShare}
                         onDownloadSgf={handleDownloadSgfFromShareMenu}
