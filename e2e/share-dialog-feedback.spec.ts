@@ -13,11 +13,17 @@ async function createShareableDraft(page: Page) {
 
 async function openShareAndCreateLink(page: Page) {
   await page.click('button[aria-label="Share"]')
-  await page.click('button[aria-label="Create link"]')
-  // Wait for Supabase to create the share and the dialog to switch to created mode
-  await expect(
-    page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
-  ).toBeVisible({ timeout: 15000 })
+
+  const copyLink = page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
+  const createLink = page.locator('#share-menu').getByRole('button', { name: 'Create link' })
+
+  // Draft boards may auto-create the share on open; handle both paths
+  await expect(copyLink.or(createLink)).toBeVisible({ timeout: 5000 })
+  if (await createLink.isVisible()) {
+    await createLink.click()
+  }
+
+  await expect(copyLink).toBeVisible({ timeout: 15000 })
 }
 
 test('link copied feedback appears inside the share dialog', async ({ page }) => {
