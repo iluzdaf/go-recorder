@@ -71,6 +71,7 @@
     "stoneCorrectionFailed": "That stone edit could not be applied.",
     "changelog": "Changelog",
     "closeChangelog": "Close changelog",
+    "githubProject": "GitHub project",
     "showMoreChangelog": "Show more",
     "version": "Version",
     "games": "Games",

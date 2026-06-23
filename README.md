@@ -1,12 +1,5 @@
 # Go Recorder
 
-- Lightweight Go and Baduk board recorder.
-- Built with Next.js, React, Tailwind CSS, Vitest, and Supabase.
-- Designed for:
-  - Recording games.
-  - Correcting recorded moves.
-  - Drafting board positions.
-  - Sharing immutable board states.
-  - Reviewing positions on touch-first interfaces.
-- Documentation starts at `docs/index.md`.
-- License details are in `LICENSE`.
+- A simple Go and Baduk recorder for capturing games, correcting mistakes, and sharing board states.
+- Built around the community need for an easier way to record real-board games and share review positions.
+- Local games and drafts stay on your device unless you create an immutable share link.
