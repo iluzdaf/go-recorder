@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { shouldAutoCreateShare } from "../lib/shareMenu";
 import type { ShareMenuMode } from "./ShareMenu";
@@ -9,26 +9,32 @@ import useShareMenu from "./useShareMenu";
 type UseEditableShareMenuControllerOptions = {
     canAutoCreate?: boolean;
     initialShareSlug?: string | null;
-    onStatus: (status: string) => void;
 };
 
 export default function useEditableShareMenuController({
     canAutoCreate = true,
     initialShareSlug = null,
-    onStatus,
 }: UseEditableShareMenuControllerOptions) {
     const [shareSlug, setShareSlug] = useState<string | null>(initialShareSlug);
     const [mode, setMode] = useState<ShareMenuMode>(
         initialShareSlug ? "created" : "chooser"
     );
     const [message, setMessage] = useState<string | null>(null);
+    const [statusMessage, setStatusMessage] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [hasAutoCreateAttempted, setHasAutoCreateAttempted] = useState(false);
     const sharePath = shareSlug ? `/shares/${shareSlug}` : null;
 
+    useEffect(() => {
+        if (!statusMessage) return;
+        const id = window.setTimeout(() => setStatusMessage(null), 4000);
+        return () => window.clearTimeout(id);
+    }, [statusMessage]);
+
     const resetTransientState = useCallback(() => {
         setHasAutoCreateAttempted(false);
         setMessage(null);
+        setStatusMessage(null);
         setIsCreating(false);
     }, []);
 
@@ -43,7 +49,7 @@ export default function useEditableShareMenuController({
         triggerRef,
     } = useShareMenu({
         onClose: resetTransientState,
-        onStatus,
+        onStatus: setStatusMessage,
         sharePath,
         shouldGenerateQrCode: mode === "created",
     });
@@ -120,12 +126,12 @@ export default function useEditableShareMenuController({
             clearShareLink,
             close,
             copyShareLink,
+            displayMessage: statusMessage ?? message,
             finishCreated,
             isCreating,
             isOpen,
             markAutoCreateAttempted,
             menuRef,
-            message,
             mode,
             open,
             qrCodeDataUrl,
@@ -157,6 +163,7 @@ export default function useEditableShareMenuController({
             setError,
             sharePath,
             shareSlug,
+            statusMessage,
             toggle,
             triggerRef,
         ]

@@ -7,47 +7,10 @@ import {
     resolveShowBoardCoordinatesPreference,
     resolveTwoStepPlacementPreference,
     shouldAnchorHeaderDialogsToViewportTop,
-    shouldUseOverlayHeader,
     updateAppNavigationStateForPath,
 } from "../components/AppShell";
 
-describe("shouldUseOverlayHeader", () => {
-    it.each(["/games/game123", "/drafts/draft123", "/shares/share123"])(
-        "always uses the overlay header for %s on board routes",
-        (pathname) => {
-            expect(
-                shouldUseOverlayHeader({
-                    isShortViewport: false,
-                    pathname,
-                })
-            ).toBe(true);
-            expect(
-                shouldUseOverlayHeader({
-                    isShortViewport: true,
-                    pathname,
-                })
-            ).toBe(true);
-        }
-    );
-
-    it.each(["/", "/games", "/drafts", "/changelog"])(
-        "uses the overlay header for %s only on short viewports",
-        (pathname) => {
-            expect(
-                shouldUseOverlayHeader({
-                    isShortViewport: true,
-                    pathname,
-                })
-            ).toBe(true);
-            expect(
-                shouldUseOverlayHeader({
-                    isShortViewport: false,
-                    pathname,
-                })
-            ).toBe(false);
-        }
-    );
-
+describe("app navigation targets", () => {
     it("allows a back target to home from a non-home route", () => {
         expect(
             getAppNavigationTargets({

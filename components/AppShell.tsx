@@ -76,7 +76,6 @@ const boardDisplaySettingsListeners = new Set<() => void>();
 const THEME_CHANGE_EVENT = "go-recorder:theme-change";
 const BOARD_DISPLAY_SETTINGS_CHANGE_EVENT =
     "go-recorder:board-display-settings-change";
-const SHORT_VIEWPORT_QUERY = "(max-height: 640px)";
 const APP_NAVIGATION_STORAGE_KEY = "go-recorder:app-navigation";
 
 type AppNavigationState = {
@@ -210,20 +209,6 @@ function isBoardRoute(pathname: string | null | undefined) {
             pathname?.startsWith("/drafts/") ||
             pathname?.startsWith("/shares/")
     );
-}
-
-export function shouldUseOverlayHeader({
-    isShortViewport,
-    pathname,
-}: {
-    isShortViewport: boolean;
-    pathname: string | null | undefined;
-}) {
-    if (isBoardRoute(pathname)) {
-        return true;
-    }
-
-    return isShortViewport;
 }
 
 export function getChangelogDialogClassName({
@@ -496,38 +481,6 @@ export default function AppShell({
         getIsFullscreenSupported,
         () => false
     );
-    const [isShortViewport, setIsShortViewport] = useState(false);
-
-    useEffect(() => {
-        const update = () => {
-            setIsShortViewport(window.matchMedia(SHORT_VIEWPORT_QUERY).matches);
-        };
-
-        update();
-
-        const query = window.matchMedia(SHORT_VIEWPORT_QUERY);
-        query.addEventListener("change", update);
-        window.addEventListener("resize", update);
-        window.visualViewport?.addEventListener("resize", update);
-
-        let orientationTimeoutId: ReturnType<typeof setTimeout> | null = null;
-        const handleOrientationChange = () => {
-            if (orientationTimeoutId !== null) clearTimeout(orientationTimeoutId);
-            orientationTimeoutId = setTimeout(() => {
-                window.scrollTo(0, 0);
-                update();
-            }, 100);
-        };
-        window.addEventListener("orientationchange", handleOrientationChange);
-
-        return () => {
-            query.removeEventListener("change", update);
-            window.removeEventListener("resize", update);
-            window.visualViewport?.removeEventListener("resize", update);
-            window.removeEventListener("orientationchange", handleOrientationChange);
-            if (orientationTimeoutId !== null) clearTimeout(orientationTimeoutId);
-        };
-    }, []);
     const isDarkMode = useSyncExternalStore(
         (onStoreChange) => {
             themeListeners.add(onStoreChange);
@@ -807,12 +760,8 @@ export default function AppShell({
         };
     }, [closeSettings, isSettingsOpen]);
 
-    const usesOverlayHeader = shouldUseOverlayHeader({
-        isShortViewport,
-        pathname,
-    });
-    const isHeaderVisible =
-        !usesOverlayHeader || isHeaderExpanded || Boolean(headerStatus) || !isShortViewport;
+    const usesOverlayHeader = true;
+    const isHeaderVisible = isHeaderExpanded;
     const areHeaderDialogsAnchoredToViewportTop =
         shouldAnchorHeaderDialogsToViewportTop({
             isHeaderVisible,
@@ -909,7 +858,6 @@ export default function AppShell({
                         </div>
 
                         <div className="relative flex min-w-0 flex-1 items-center justify-center px-3">
-                            {headerStatus}
                             {headerActions}
                         </div>
 
@@ -942,17 +890,15 @@ export default function AppShell({
                                 <Settings size={18} />
                             </button>
 
-                            {usesOverlayHeader && isShortViewport ? (
-                                <button
-                                    type="button"
-                                    className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
-                                    aria-label={t("hideHeader")}
-                                    title={t("hideHeader")}
-                                    onClick={() => setIsHeaderExpanded(false)}
-                                >
-                                    <X size={18} />
-                                </button>
-                            ) : null}
+                            <button
+                                type="button"
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
+                                aria-label={t("hideHeader")}
+                                title={t("hideHeader")}
+                                onClick={() => setIsHeaderExpanded(false)}
+                            >
+                                <X size={18} />
+                            </button>
                         </div>
                     </header>
                 ) : null}
@@ -1095,6 +1041,11 @@ export default function AppShell({
                                 </div>
                             </div>
                         </div>
+                    </div>
+                ) : null}
+                {headerStatus ? (
+                    <div className="pointer-events-none fixed inset-0 z-40">
+                        {headerStatus}
                     </div>
                 ) : null}
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

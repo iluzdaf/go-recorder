@@ -12,7 +12,6 @@ import type { ShareRecord } from "./types";
 import { downloadSgf } from "./sgf";
 import {
     useBoardDisplaySettings,
-    useHeaderStatus,
     useHeaderVisibility,
     useTheme,
 } from "./AppShell";
@@ -38,7 +37,6 @@ import {
     type CapturedVariationMoveCaptionEntry,
     type MoveNumberMarker,
 } from "../lib/variationDraft";
-import BoardStatusMessage from "./BoardStatusMessage";
 import ShareBoardActionBar from "./ShareBoardActionBar";
 import ShareMenu from "./ShareMenu";
 import useActionBarDrag from "./useActionBarDrag";
@@ -134,7 +132,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const router = useRouter();
     const { isDarkMode } = useTheme();
     const { showBoardCoordinates } = useBoardDisplaySettings();
-    const { setHeaderStatus } = useHeaderStatus();
     const { isOverlayHeader } = useHeaderVisibility();
     const positionView = getShareBoardPositionView(share);
     const displayBoardSize = getPositionViewDisplaySize({
@@ -151,7 +148,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         showCoordinates: showBoardCoordinates,
     });
     const actionBar = useActionBarDrag();
-    const [shareStatus, setShareStatus] = useState<string | null>(null);
+    const [shareMenuStatus, setShareMenuStatus] = useState<string | null>(null);
     const [pendingVariationInput, setPendingVariationInput] =
         useState<CreateLocalDraftInput | null>(null);
     const sharePath = `/shares/${share.slug}`;
@@ -164,9 +161,15 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         toggle: toggleShareMenu,
         triggerRef: shareTriggerRef,
     } = useShareMenu({
-        onStatus: setShareStatus,
+        onStatus: setShareMenuStatus,
         sharePath,
     });
+
+    useEffect(() => {
+        if (!shareMenuStatus) return;
+        const id = window.setTimeout(() => setShareMenuStatus(null), 4000);
+        return () => window.clearTimeout(id);
+    }, [shareMenuStatus]);
     const [visibleMoveCount, setVisibleMoveCount] = useState(
         share.gameState.moves.length
     );
@@ -220,8 +223,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
               })
             : [];
 
-    const dismissShareStatus = useCallback(() => setShareStatus(null), []);
-
     const getGridMetrics = useCallback(() => {
         const gobanWrapper = gobanWrapperRef.current;
         if (!gobanWrapper) return null;
@@ -268,19 +269,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         boardSize: share.boardSize,
         positionView,
     });
-
-    useEffect(() => {
-        setHeaderStatus(
-            shareStatus ? (
-                <BoardStatusMessage
-                    message={shareStatus}
-                    onDismiss={dismissShareStatus}
-                />
-            ) : null
-        );
-
-        return () => setHeaderStatus(null);
-    }, [dismissShareStatus, setHeaderStatus, shareStatus]);
 
     const handleDownloadSgf = useCallback(() => {
         downloadSgf({
@@ -422,7 +410,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                         canShareGame
                         isCreating={false}
                         menuRef={shareMenuRef}
-                        message={null}
+                        message={shareMenuStatus}
                         mode="created"
                         onCreateShare={() => {}}
                         onDownloadSgf={handleDownloadSgfFromShareMenu}
