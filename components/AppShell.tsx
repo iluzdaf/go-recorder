@@ -1044,7 +1044,7 @@ export default function AppShell({
                     </div>
                 ) : null}
                 {headerStatus ? (
-                    <div className="pointer-events-none fixed inset-0 z-40">
+                    <div className="pointer-events-none fixed inset-0 z-[55]">
                         {headerStatus}
                     </div>
                 ) : null}
