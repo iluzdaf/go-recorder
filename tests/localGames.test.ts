@@ -197,6 +197,7 @@ describe("local game storage", () => {
             blackPlayerName: "Black",
             whitePlayerName: "White",
             handicap: 2,
+            komi: 6.5,
             createdAt: "2026-05-28T00:00:00.000Z",
             updatedAt: "2026-05-28T00:02:00.000Z",
             lastShareSlug: null,

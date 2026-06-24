@@ -3,7 +3,6 @@
 import {
     ChevronLeft,
     ChevronRight,
-    FileText,
     SkipBack,
     SkipForward,
     SquareArrowUpRight,
@@ -28,8 +27,10 @@ type ShareBoardActionBarProps = {
     onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
     onPointerUp: (event: ReactPointerEvent<HTMLDivElement>) => void;
     onPreviousMove: () => void;
+    onToggleSgfInfo: () => void;
     onToggleShareMenu: () => void;
     railRef: RefObject<HTMLDivElement | null>;
+    sgfInfoOpen: boolean;
     shareMenuOpen: boolean;
     shareTriggerRef: RefObject<HTMLButtonElement | null>;
     totalMoveCount: number;
@@ -48,8 +49,10 @@ export default function ShareBoardActionBar({
     onPointerMove,
     onPointerUp,
     onPreviousMove,
+    onToggleSgfInfo,
     onToggleShareMenu,
     railRef,
+    sgfInfoOpen,
     shareMenuOpen,
     shareTriggerRef,
     totalMoveCount,
@@ -64,12 +67,6 @@ export default function ShareBoardActionBar({
             dragX={dragX}
             railRef={railRef}
         >
-            <div
-                className="inline-flex h-11 w-11 items-center justify-center text-zinc-700 dark:text-zinc-200"
-                aria-hidden="true"
-            >
-                <FileText size={18} />
-            </div>
             <button
                 type="button"
                 className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
@@ -109,6 +106,16 @@ export default function ShareBoardActionBar({
                 disabled={isAtEnd}
             >
                 <SkipForward size={18} />
+            </button>
+            <button
+                type="button"
+                onClick={onToggleSgfInfo}
+                aria-label={t("sgfMetadata")}
+                aria-expanded={sgfInfoOpen}
+                title={t("sgfMetadata")}
+                className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+            >
+                {t("sgfMetadata")}
             </button>
             <button
                 type="button"

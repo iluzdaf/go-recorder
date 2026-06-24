@@ -71,6 +71,7 @@ export type LocalGameRecord = {
     blackPlayerName: string | null;
     whitePlayerName: string | null;
     handicap: number;
+    komi?: number;
     createdAt: string;
     updatedAt: string;
     lastShareSlug?: string | null;
@@ -103,6 +104,7 @@ export type LocalDraftRecord = {
     blackPlayerName: string | null;
     whitePlayerName: string | null;
     handicap: number;
+    komi?: number;
     createdAt: string;
     updatedAt: string;
     lastShareSlug: string | null;
@@ -124,6 +126,7 @@ export type ShareRecord = {
     blackPlayerName: string | null;
     whitePlayerName: string | null;
     handicap: number;
+    komi?: number | null;
     parentShareSlug?: string | null;
     baseMoveCount?: number | null;
     positionView?: PositionView | null;
@@ -138,6 +141,7 @@ export type CreateShareInput = {
     blackPlayerName: string | null;
     whitePlayerName: string | null;
     handicap: number;
+    komi?: number | null;
     parentShareSlug?: string | null;
     baseMoveCount?: number | null;
     positionView?: PositionView | null;

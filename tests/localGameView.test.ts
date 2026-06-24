@@ -32,6 +32,7 @@ describe("createLoadedLocalGame", () => {
                 blackPlayerName: null,
                 whitePlayerName: null,
                 handicap: 0,
+                komi: 0,
             },
             snapshot:
                 '{"size":19,"gameState":{"setupStones":[],"moves":[],"currentPlayer":"B"}}',
@@ -65,6 +66,21 @@ describe("createLoadedLocalGame", () => {
                 handicap: 2,
             },
         });
+    });
+
+    it("defaults komi to 0 for older local records without komi", () => {
+        const legacyRecord = {
+            ...baseRecord,
+        } as unknown as LocalGameRecord;
+        delete (legacyRecord as { komi?: number }).komi;
+
+        expect(createLoadedLocalGame(legacyRecord).metadata.komi).toBe(0);
+    });
+
+    it("loads komi from the record", () => {
+        expect(
+            createLoadedLocalGame({ ...baseRecord, komi: 6.5 }).metadata.komi
+        ).toBe(6.5);
     });
 
     it("fills missing setup stones for older local records", () => {

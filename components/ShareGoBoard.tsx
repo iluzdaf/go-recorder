@@ -38,6 +38,7 @@ import {
     type MoveNumberMarker,
 } from "../lib/variationDraft";
 import ShareBoardActionBar from "./ShareBoardActionBar";
+import SgfMetadataInfo from "./SgfMetadataInfo";
 import ShareMenu from "./ShareMenu";
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
@@ -148,6 +149,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         showCoordinates: showBoardCoordinates,
     });
     const actionBar = useActionBarDrag();
+    const [sgfInfoOpen, setSgfInfoOpen] = useState(false);
     const [shareMenuStatus, setShareMenuStatus] = useState<string | null>(null);
     const [pendingVariationInput, setPendingVariationInput] =
         useState<CreateLocalDraftInput | null>(null);
@@ -276,6 +278,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
             moves: share.gameState.moves,
             setupStones: share.gameState.setupStones,
             handicap: share.handicap,
+            komi: share.komi ?? undefined,
             blackPlayerName: share.blackPlayerName,
             whitePlayerName: share.whitePlayerName,
         });
@@ -285,6 +288,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         share.gameState.moves,
         share.gameState.setupStones,
         share.handicap,
+        share.komi,
         share.whitePlayerName,
     ]);
 
@@ -404,6 +408,14 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                 ref={boardAreaRef}
                 className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
             >
+                {sgfInfoOpen ? (
+                    <SgfMetadataInfo
+                        alignToViewportTop={isOverlayHeader}
+                        blackPlayerName={share.blackPlayerName}
+                        whitePlayerName={share.whitePlayerName}
+                        komi={share.komi}
+                    />
+                ) : null}
                 {shareMenuOpen ? (
                     <ShareMenu
                         alignToViewportTop={isOverlayHeader}
@@ -473,8 +485,10 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                     onPointerMove={actionBar.dragHandlers.onPointerMove}
                     onPointerUp={actionBar.dragHandlers.onPointerUp}
                     onPreviousMove={handlePreviousMove}
+                    onToggleSgfInfo={() => setSgfInfoOpen((v) => !v)}
                     onToggleShareMenu={toggleShareMenu}
                     railRef={actionBar.railRef}
+                    sgfInfoOpen={sgfInfoOpen}
                     shareMenuOpen={shareMenuOpen}
                     shareTriggerRef={shareTriggerRef}
                     totalMoveCount={share.gameState.moves.length}

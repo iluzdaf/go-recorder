@@ -142,6 +142,53 @@ describe("exportSgf", () => {
         );
     });
 
+    it("exports komi", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+            komi: 6.5,
+        });
+
+        expect(sgf).toBe(
+            "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19]KM[6.5])"
+        );
+    });
+
+    it("exports zero komi", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+            komi: 0,
+        });
+
+        expect(sgf).toBe(
+            "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19]KM[0])"
+        );
+    });
+
+    it("omits KM when komi is null", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+            komi: null,
+        });
+
+        expect(sgf).toBe(
+            "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19])"
+        );
+    });
+
+    it("omits KM when komi is undefined", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+        });
+
+        expect(sgf).toBe(
+            "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19])"
+        );
+    });
+
     it("exports handicap setup stones before normal moves", () => {
         const sgf = exportSgf({
             boardSize: 19,
@@ -163,6 +210,54 @@ describe("exportSgf", () => {
         expect(sgf).toBe(
             "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19]HA[2]AB[dp][pd];W[jj])"
         );
+    });
+});
+
+describe("player name swap in exportSgf", () => {
+    it("reflects swapped player names in SGF output", () => {
+        const original = exportSgf({
+            boardSize: 19,
+            moves: [],
+            blackPlayerName: "Alice",
+            whitePlayerName: "Bob",
+        });
+        const swapped = exportSgf({
+            boardSize: 19,
+            moves: [],
+            blackPlayerName: "Bob",
+            whitePlayerName: "Alice",
+        });
+
+        expect(original).toContain("PB[Alice]");
+        expect(original).toContain("PW[Bob]");
+        expect(swapped).toContain("PB[Bob]");
+        expect(swapped).toContain("PW[Alice]");
+    });
+
+    it("handles swap when one player name is empty", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+            blackPlayerName: null,
+            whitePlayerName: "Alice",
+        });
+
+        expect(sgf).not.toContain("PB[");
+        expect(sgf).toContain("PW[Alice]");
+    });
+
+    it("does not change komi when player names are swapped", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+            blackPlayerName: "Bob",
+            whitePlayerName: "Alice",
+            komi: 6.5,
+        });
+
+        expect(sgf).toContain("KM[6.5]");
+        expect(sgf).toContain("PB[Bob]");
+        expect(sgf).toContain("PW[Alice]");
     });
 });
 

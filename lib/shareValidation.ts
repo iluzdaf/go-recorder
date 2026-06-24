@@ -87,6 +87,10 @@ function isValidHandicap(value: unknown) {
     return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
 
+function isValidShareKomi(value: unknown) {
+    return value === undefined || value === null || (typeof value === "number" && isFinite(value));
+}
+
 function isNullableString(value: unknown) {
     return value === null || typeof value === "string";
 }
@@ -166,6 +170,7 @@ export function validateCreateShareInput(
         isOptionalPlayerName(input.blackPlayerName) &&
         isOptionalPlayerName(input.whitePlayerName) &&
         isValidHandicap(input.handicap) &&
+        isValidShareKomi(input.komi) &&
         hasValidShareDraftMetadata(input)
     );
 }

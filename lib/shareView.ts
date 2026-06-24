@@ -12,6 +12,7 @@ type ShareRow = {
     black_player_name: string | null;
     white_player_name: string | null;
     handicap: number;
+    komi?: number | null;
     parent_share_slug?: string | null;
     base_move_count?: number | null;
     position_view?: unknown;
@@ -31,6 +32,7 @@ export function mapShareRowToShareRecord(row: ShareRow): ShareRecord {
         blackPlayerName: row.black_player_name ?? null,
         whitePlayerName: row.white_player_name ?? null,
         handicap: row.handicap,
+        komi: row.komi ?? null,
         parentShareSlug: row.parent_share_slug ?? null,
         baseMoveCount: row.base_move_count ?? null,
         positionView:

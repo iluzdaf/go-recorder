@@ -21,6 +21,7 @@ export type CreateLocalGameInput = {
     blackPlayerName?: string | null;
     whitePlayerName?: string | null;
     handicap?: number;
+    komi?: number;
 };
 
 export type CreateLocalDraftInput = {
@@ -30,6 +31,7 @@ export type CreateLocalDraftInput = {
     blackPlayerName?: string | null;
     whitePlayerName?: string | null;
     handicap?: number;
+    komi?: number;
     parentShareSlug?: string | null;
     baseMoveCount?: number | null;
     positionView?: PositionView | null;
@@ -74,6 +76,10 @@ function isOptionalPositionView(
     );
 }
 
+function isValidKomi(value: unknown) {
+    return value === undefined || (typeof value === "number" && isFinite(value));
+}
+
 function hasValidLocalRecordBase(
     record: Partial<LocalEditableRecord>
 ) {
@@ -85,6 +91,7 @@ function hasValidLocalRecordBase(
         isNullableString(record.whitePlayerName) &&
         typeof record.handicap === "number" &&
         Number.isInteger(record.handicap) &&
+        isValidKomi(record.komi) &&
         typeof record.createdAt === "string" &&
         typeof record.updatedAt === "string" &&
         isOptionalNullableString(record.lastShareSlug)
@@ -144,6 +151,7 @@ export function createLocalGame({
     blackPlayerName = null,
     whitePlayerName = null,
     handicap = 0,
+    komi = 6.5,
 }: CreateLocalGameInput) {
     const now = new Date().toISOString();
     const record: LocalGameRecord = {
@@ -154,6 +162,7 @@ export function createLocalGame({
         blackPlayerName,
         whitePlayerName,
         handicap,
+        komi,
         createdAt: now,
         updatedAt: now,
         lastShareSlug: null,
@@ -171,6 +180,7 @@ export function createLocalDraft({
     blackPlayerName = null,
     whitePlayerName = null,
     handicap = 0,
+    komi = 6.5,
     parentShareSlug = null,
     baseMoveCount = null,
     positionView = null,
@@ -186,6 +196,7 @@ export function createLocalDraft({
         blackPlayerName,
         whitePlayerName,
         handicap,
+        komi,
         createdAt: now,
         updatedAt: now,
         lastShareSlug: null,

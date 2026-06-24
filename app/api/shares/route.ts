@@ -43,6 +43,7 @@ export async function POST(request: Request) {
             black_player_name: body.blackPlayerName,
             white_player_name: body.whitePlayerName,
             handicap: body.handicap,
+            komi: body.komi ?? null,
             parent_share_slug: body.parentShareSlug ?? null,
             base_move_count: body.baseMoveCount ?? null,
             position_view: body.positionView ?? null,

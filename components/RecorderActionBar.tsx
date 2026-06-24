@@ -29,9 +29,11 @@ type RecorderActionBarProps = {
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
     onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
     onPointerUp: (event: ReactPointerEvent<HTMLDivElement>) => void;
+    onToggleSgfEditor: () => void;
     onToggleShareMenu: () => void;
     onUndo: () => void;
     railRef: RefObject<HTMLDivElement | null>;
+    sgfEditorOpen: boolean;
     shareMenuOpen: boolean;
     shareTriggerRef: RefObject<HTMLButtonElement | null>;
     showPlacementZoomControl: boolean;
@@ -51,9 +53,11 @@ export default function RecorderActionBar({
     onPointerDown,
     onPointerMove,
     onPointerUp,
+    onToggleSgfEditor,
     onToggleShareMenu,
     onUndo,
     railRef,
+    sgfEditorOpen,
     shareMenuOpen,
     shareTriggerRef,
     showPlacementZoomControl,
@@ -119,6 +123,16 @@ export default function RecorderActionBar({
                 title={t("pass")}
             >
                 <Hand size={18} />
+            </button>
+            <button
+                type="button"
+                onClick={onToggleSgfEditor}
+                aria-label={t("editSgfMetadata")}
+                aria-expanded={sgfEditorOpen}
+                title={t("editSgfMetadata")}
+                className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+            >
+                {t("sgfMetadata")}
             </button>
             <button
                 type="button"
