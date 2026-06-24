@@ -42,6 +42,7 @@ export function toCreateShareInput(
         blackPlayerName: localRecord.blackPlayerName,
         whitePlayerName: localRecord.whitePlayerName,
         handicap: localRecord.handicap,
+        komi: localRecord.komi ?? null,
         parentShareSlug:
             localRecord.recordKind === "draft"
                 ? localRecord.parentShareSlug

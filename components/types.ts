@@ -126,6 +126,7 @@ export type ShareRecord = {
     blackPlayerName: string | null;
     whitePlayerName: string | null;
     handicap: number;
+    komi?: number | null;
     parentShareSlug?: string | null;
     baseMoveCount?: number | null;
     positionView?: PositionView | null;
@@ -140,6 +141,7 @@ export type CreateShareInput = {
     blackPlayerName: string | null;
     whitePlayerName: string | null;
     handicap: number;
+    komi?: number | null;
     parentShareSlug?: string | null;
     baseMoveCount?: number | null;
     positionView?: PositionView | null;

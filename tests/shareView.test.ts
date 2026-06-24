@@ -29,6 +29,7 @@ describe("mapShareRowToShareRecord", () => {
             blackPlayerName: "Black",
             whitePlayerName: null,
             handicap: 0,
+            komi: null,
             parentShareSlug: null,
             baseMoveCount: null,
             positionView: null,
