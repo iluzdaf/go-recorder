@@ -14,10 +14,10 @@
 ## Production Migration CI
 
 - `.github/workflows/supabase-migrate.yml` runs `supabase db push` on every push to `main`.
-- Requires three GitHub Actions secrets: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`.
-  - `SUPABASE_ACCESS_TOKEN`: generate at supabase.com → Account → Access Tokens.
-  - `SUPABASE_PROJECT_REF`: the project reference ID from the Supabase dashboard URL.
-  - `SUPABASE_DB_PASSWORD`: the database password set when the project was created.
+- Requires two GitHub Actions secrets and one variable:
+  - Secret `SUPABASE_ACCESS_TOKEN`: generate at supabase.com → Account → Access Tokens.
+  - Secret `SUPABASE_DB_PASSWORD`: the database password set when the project was created.
+  - Variable `SUPABASE_PROJECT_REF`: the project reference ID from the Supabase dashboard URL (not a secret — already public in the Supabase URL).
 - Migrations must be backward-compatible (additive, nullable, or have a default) to avoid a race with Vercel's independent deploy.
 
 ## Local Requirements
