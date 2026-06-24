@@ -10,7 +10,6 @@ type SgfMetadataEditorProps = {
     alignToViewportTop?: boolean;
     blackPlayerName: string | null;
     komi: number;
-    onClose: () => void;
     onSave: (values: {
         blackPlayerName: string | null;
         whitePlayerName: string | null;
@@ -23,7 +22,6 @@ export default function SgfMetadataEditor({
     alignToViewportTop = false,
     blackPlayerName,
     komi,
-    onClose,
     onSave,
     whitePlayerName,
 }: SgfMetadataEditorProps) {
@@ -33,19 +31,20 @@ export default function SgfMetadataEditor({
         KOMI_OPTIONS.includes(komi as (typeof KOMI_OPTIONS)[number]) ? komi : 6.5
     );
 
-    function handleSave() {
-        const trimmedBlack = localBlack.trim();
-        const trimmedWhite = localWhite.trim();
+    function save(black: string, white: string, komiVal: number) {
+        const trimmedBlack = black.trim();
+        const trimmedWhite = white.trim();
         onSave({
             blackPlayerName: trimmedBlack.length > 0 ? trimmedBlack : null,
             whitePlayerName: trimmedWhite.length > 0 ? trimmedWhite : null,
-            komi: localKomi,
+            komi: komiVal,
         });
     }
 
     function handleSwap() {
         setLocalBlack(localWhite);
         setLocalWhite(localBlack);
+        save(localWhite, localBlack, localKomi);
     }
 
     return (
@@ -67,6 +66,7 @@ export default function SgfMetadataEditor({
                         type="text"
                         value={localBlack}
                         onChange={(e) => setLocalBlack(e.target.value)}
+                        onBlur={() => save(localBlack, localWhite, localKomi)}
                         placeholder={t("blackPlayerPlaceholder")}
                         className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
                     />
@@ -92,6 +92,7 @@ export default function SgfMetadataEditor({
                         type="text"
                         value={localWhite}
                         onChange={(e) => setLocalWhite(e.target.value)}
+                        onBlur={() => save(localBlack, localWhite, localKomi)}
                         placeholder={t("whitePlayerPlaceholder")}
                         className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
                     />
@@ -103,7 +104,11 @@ export default function SgfMetadataEditor({
                     </span>
                     <select
                         value={localKomi}
-                        onChange={(e) => setLocalKomi(Number(e.target.value))}
+                        onChange={(e) => {
+                            const newKomi = Number(e.target.value);
+                            setLocalKomi(newKomi);
+                            save(localBlack, localWhite, newKomi);
+                        }}
                         className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
                     >
                         {KOMI_OPTIONS.map((value) => (
@@ -114,13 +119,6 @@ export default function SgfMetadataEditor({
                     </select>
                 </label>
 
-                <button
-                    type="button"
-                    onClick={handleSave}
-                    className="mt-1 rounded bg-sky-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-600"
-                >
-                    {t("saveAndClose")}
-                </button>
             </div>
         </div>
     );

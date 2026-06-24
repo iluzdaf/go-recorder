@@ -28,7 +28,9 @@ test('SGF editor persists player names and komi; swap leaves komi unchanged', as
   await openSgfEditor(page)
 
   await page.fill('input[placeholder="Black"]', 'Hana')
+  await page.locator('input[placeholder="Black"]').blur()
   await page.fill('input[placeholder="White"]', 'Taro')
+  await page.locator('input[placeholder="White"]').blur()
   await page.selectOption('select', '6.5')
 
   // Swap should exchange only the names
@@ -37,7 +39,8 @@ test('SGF editor persists player names and komi; swap leaves komi unchanged', as
   await expect(page.locator('input[placeholder="White"]')).toHaveValue('Hana')
   await expect(page.locator('select')).toHaveValue('6.5')
 
-  await page.click('button:has-text("Save")')
+  // Close by toggling the editor button, then reopen to verify persistence
+  await page.click('button[aria-label="Edit SGF metadata"]')
   await expect(page.locator('text=Edit SGF metadata')).not.toBeVisible()
 
   // Values survive a close/reopen cycle
@@ -52,7 +55,7 @@ test('downloaded SGF contains PB, PW, and KM matching editor values', async ({ p
 
   await openSgfEditor(page)
   await page.selectOption('select', '7.5')
-  await page.click('button:has-text("Save")')
+  await page.click('button[aria-label="Edit SGF metadata"]')
 
   await placeMoveOnBoard(page)
 
