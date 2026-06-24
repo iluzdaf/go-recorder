@@ -1,13 +1,11 @@
 "use client";
 
-import { X } from "lucide-react";
 import { t } from "../lib/i18n";
 
 type SgfMetadataInfoProps = {
     alignToViewportTop?: boolean;
     blackPlayerName: string | null;
     komi?: number | null;
-    onClose: () => void;
     whitePlayerName: string | null;
 };
 
@@ -15,7 +13,6 @@ export default function SgfMetadataInfo({
     alignToViewportTop = false,
     blackPlayerName,
     komi,
-    onClose,
     whitePlayerName,
 }: SgfMetadataInfoProps) {
     return (
@@ -26,17 +23,8 @@ export default function SgfMetadataInfo({
                     : "fixed right-4 top-16 z-50 w-64 rounded-lg border border-zinc-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
             }
         >
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3">
                 <span className="text-sm font-medium">{t("sgfMetadata")}</span>
-                <button
-                    type="button"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-neutral-800"
-                    onClick={onClose}
-                    aria-label={t("closeSgfEditor")}
-                    title={t("closeSgfEditor")}
-                >
-                    <X size={16} />
-                </button>
             </div>
 
             <dl className="flex flex-col gap-2">

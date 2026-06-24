@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, X } from "lucide-react";
+import { ArrowLeftRight } from "lucide-react";
 import { useState } from "react";
 import { t } from "../lib/i18n";
 
@@ -54,17 +54,8 @@ export default function SgfMetadataEditor({
                 ? "absolute right-4 top-4 z-50 w-64 rounded-lg border border-zinc-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
                 : "fixed right-4 top-16 z-50 w-64 rounded-lg border border-zinc-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
         }>
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3">
                 <span className="text-sm font-medium">{t("editSgfMetadata")}</span>
-                <button
-                    type="button"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-neutral-800"
-                    onClick={onClose}
-                    aria-label={t("closeSgfEditor")}
-                    title={t("closeSgfEditor")}
-                >
-                    <X size={16} />
-                </button>
             </div>
 
             <div className="flex flex-col gap-3">

@@ -414,7 +414,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                         blackPlayerName={share.blackPlayerName}
                         whitePlayerName={share.whitePlayerName}
                         komi={share.komi}
-                        onClose={() => setSgfInfoOpen(false)}
                     />
                 ) : null}
                 {shareMenuOpen ? (
