@@ -213,6 +213,54 @@ describe("exportSgf", () => {
     });
 });
 
+describe("player name swap in exportSgf", () => {
+    it("reflects swapped player names in SGF output", () => {
+        const original = exportSgf({
+            boardSize: 19,
+            moves: [],
+            blackPlayerName: "Alice",
+            whitePlayerName: "Bob",
+        });
+        const swapped = exportSgf({
+            boardSize: 19,
+            moves: [],
+            blackPlayerName: "Bob",
+            whitePlayerName: "Alice",
+        });
+
+        expect(original).toContain("PB[Alice]");
+        expect(original).toContain("PW[Bob]");
+        expect(swapped).toContain("PB[Bob]");
+        expect(swapped).toContain("PW[Alice]");
+    });
+
+    it("handles swap when one player name is empty", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+            blackPlayerName: null,
+            whitePlayerName: "Alice",
+        });
+
+        expect(sgf).not.toContain("PB[");
+        expect(sgf).toContain("PW[Alice]");
+    });
+
+    it("does not change komi when player names are swapped", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+            blackPlayerName: "Bob",
+            whitePlayerName: "Alice",
+            komi: 6.5,
+        });
+
+        expect(sgf).toContain("KM[6.5]");
+        expect(sgf).toContain("PB[Bob]");
+        expect(sgf).toContain("PW[Alice]");
+    });
+});
+
 describe("createSgfFilename", () => {
     it("uses a readable timestamp and both player names", () => {
         const date = new Date(2026, 5, 3, 10, 24, 42);
