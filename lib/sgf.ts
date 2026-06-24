@@ -5,6 +5,7 @@ export type ExportSgfInput = {
     moves: Move[];
     setupStones?: SetupStone[];
     handicap?: number;
+    komi?: number | null;
     blackPlayerName?: string | null;
     whitePlayerName?: string | null;
 };
@@ -88,10 +89,12 @@ export function exportSgf({
     moves,
     setupStones = [],
     handicap = 0,
+    komi,
     blackPlayerName,
     whitePlayerName,
 }: ExportSgfInput) {
     const handicapText = handicap > 0 ? formatProperty("HA", handicap) : "";
+    const komiText = komi != null && isFinite(komi) ? formatProperty("KM", komi) : "";
     const setupStoneText =
         setupStones.length > 0
             ? `AB${setupStones.map((stone) => `[${toSgfCoord(stone.x, stone.y)}]`).join("")}`
@@ -107,7 +110,7 @@ export function exportSgf({
         })
         .join("");
 
-    return `(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[${boardSize}]${formatProperty("PB", blackPlayerName)}${formatProperty("PW", whitePlayerName)}${handicapText}${setupStoneText}${moveText})`;
+    return `(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[${boardSize}]${formatProperty("PB", blackPlayerName)}${formatProperty("PW", whitePlayerName)}${handicapText}${komiText}${setupStoneText}${moveText})`;
 }
 
 export function downloadSgf(

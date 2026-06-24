@@ -142,6 +142,53 @@ describe("exportSgf", () => {
         );
     });
 
+    it("exports komi", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+            komi: 6.5,
+        });
+
+        expect(sgf).toBe(
+            "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19]KM[6.5])"
+        );
+    });
+
+    it("exports zero komi", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+            komi: 0,
+        });
+
+        expect(sgf).toBe(
+            "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19]KM[0])"
+        );
+    });
+
+    it("omits KM when komi is null", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+            komi: null,
+        });
+
+        expect(sgf).toBe(
+            "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19])"
+        );
+    });
+
+    it("omits KM when komi is undefined", () => {
+        const sgf = exportSgf({
+            boardSize: 19,
+            moves: [],
+        });
+
+        expect(sgf).toBe(
+            "(;GM[1]FF[4]CA[UTF-8]AP[go-recorder]SZ[19])"
+        );
+    });
+
     it("exports handicap setup stones before normal moves", () => {
         const sgf = exportSgf({
             boardSize: 19,

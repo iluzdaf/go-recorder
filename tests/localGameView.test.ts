@@ -32,6 +32,7 @@ describe("createLoadedLocalGame", () => {
                 blackPlayerName: null,
                 whitePlayerName: null,
                 handicap: 0,
+                komi: 0,
             },
             snapshot:
                 '{"size":19,"gameState":{"setupStones":[],"moves":[],"currentPlayer":"B"}}',
