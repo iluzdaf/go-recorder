@@ -577,7 +577,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                 whitePlayerName,
                 komi,
             }));
-            setSgfEditorOpen(false);
         },
         []
     );
@@ -714,7 +713,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                             blackPlayerName={gameMetadata.blackPlayerName}
                             whitePlayerName={gameMetadata.whitePlayerName}
                             komi={gameMetadata.komi}
-                            onClose={() => setSgfEditorOpen(false)}
                             onSave={handleSaveSgfMetadata}
                         />
                     ) : null}
