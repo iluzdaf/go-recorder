@@ -107,5 +107,11 @@
     "cancelImport": "Cancel",
     "retryDetection": "Try Again",
     "showSourceImage": "Show source image",
-    "hideSourceImage": "Hide source image"
+    "hideSourceImage": "Hide source image",
+    "swapPlayers": "Swap players",
+    "sgfMetadata": "SGF",
+    "editSgfMetadata": "Edit SGF metadata",
+    "closeSgfEditor": "Close SGF editor",
+    "komi": "Komi",
+    "saveAndClose": "Save"
 }

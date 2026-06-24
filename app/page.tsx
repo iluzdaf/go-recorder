@@ -9,7 +9,7 @@ import {
     createDefaultLocalBoardDraftInput,
     createLocalGameInputFromForm,
 } from "@/lib/localGameSetup";
-import { Grid3x3, Image as ImageIcon } from "lucide-react";
+import { ArrowLeftRight, Grid3x3, Image as ImageIcon } from "lucide-react";
 import { GameBoardThumbnail, getDraftTitle, getGameTitle } from "@/components/GameListItem";
 import ImageDraftCreator from "@/components/ImageDraftCreator";
 import { navigateWithinApp } from "@/lib/fullscreenNavigation";
@@ -80,20 +80,31 @@ export default function Home() {
           onSubmit={handleRecordGame}
           className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
         >
-          <label className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">{t("boardSize")}</span>
-            <select
-              value={boardSize}
-              onChange={(event) => {
-                setBoardSize(Number(event.target.value) as BoardSize);
-              }}
-              className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-            >
-              <option value={9}>9 x 9</option>
-              <option value={13}>13 x 13</option>
-              <option value={19}>19 x 19</option>
-            </select>
-          </label>
+            <div className="flex gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-900">
+              {([9, 13, 19] as BoardSize[]).map((size) => {
+                const label = `${size} × ${size}`;
+                return (
+                  <button
+                    key={size}
+                    type="button"
+                    aria-label={label}
+                    aria-pressed={boardSize === size}
+                    disabled={isCreatingGame || isCreatingDraft}
+                    onClick={() => setBoardSize(size)}
+                    className={`flex flex-1 items-center justify-center rounded-md px-3 py-2 text-sm disabled:opacity-50 ${
+                      boardSize === size
+                        ? "bg-white font-medium text-zinc-950 shadow-sm dark:bg-neutral-700 dark:text-white"
+                        : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">{t("blackPlayer")}</span>
@@ -107,6 +118,22 @@ export default function Home() {
               className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
             />
           </label>
+
+          <div className="flex justify-center">
+            <button
+              type="button"
+              aria-label={t("swapPlayers")}
+              title={t("swapPlayers")}
+              disabled={isCreatingGame || isCreatingDraft}
+              onClick={() => {
+                setBlackPlayerName(whitePlayerName);
+                setWhitePlayerName(blackPlayerName);
+              }}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-zinc-400 dark:hover:bg-neutral-800 dark:hover:text-zinc-200"
+            >
+              <ArrowLeftRight size={14} />
+            </button>
+          </div>
 
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">{t("whitePlayer")}</span>
