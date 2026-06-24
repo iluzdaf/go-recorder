@@ -646,6 +646,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                 >
                     {sgfEditorOpen ? (
                         <SgfMetadataEditor
+                            alignToViewportTop={isOverlayHeader}
                             blackPlayerName={gameMetadata.blackPlayerName}
                             whitePlayerName={gameMetadata.whitePlayerName}
                             komi={gameMetadata.komi}

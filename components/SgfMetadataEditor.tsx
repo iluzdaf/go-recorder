@@ -7,6 +7,7 @@ import { t } from "../lib/i18n";
 const KOMI_OPTIONS = [0, 0.5, 5.5, 6.5, 7.5] as const;
 
 type SgfMetadataEditorProps = {
+    alignToViewportTop?: boolean;
     blackPlayerName: string | null;
     komi: number;
     onClose: () => void;
@@ -19,6 +20,7 @@ type SgfMetadataEditorProps = {
 };
 
 export default function SgfMetadataEditor({
+    alignToViewportTop = false,
     blackPlayerName,
     komi,
     onClose,
@@ -47,7 +49,11 @@ export default function SgfMetadataEditor({
     }
 
     return (
-        <div className="absolute bottom-20 left-1/2 z-40 w-64 -translate-x-1/2 rounded-xl border border-zinc-200 bg-white p-4 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 sm:bottom-24">
+        <div className={
+            alignToViewportTop
+                ? "absolute right-4 top-4 z-50 w-64 rounded-lg border border-zinc-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
+                : "fixed right-4 top-16 z-50 w-64 rounded-lg border border-zinc-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
+        }>
             <div className="mb-3 flex items-center justify-between">
                 <span className="text-sm font-medium">{t("editSgfMetadata")}</span>
                 <button
