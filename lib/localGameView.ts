@@ -9,6 +9,7 @@ export type LoadedLocalGame = {
         blackPlayerName: string | null;
         whitePlayerName: string | null;
         handicap: number;
+        komi: number;
     };
     snapshot: string;
 };
@@ -27,6 +28,7 @@ export function createLoadedLocalGame(record: LocalGameRecord): LoadedLocalGame 
             blackPlayerName: record.blackPlayerName,
             whitePlayerName: record.whitePlayerName,
             handicap: record.handicap,
+            komi: record.komi ?? 0,
         },
         snapshot: createGameSnapshot(record.boardSize, gameState),
     };

@@ -71,6 +71,7 @@ export type LocalGameRecord = {
     blackPlayerName: string | null;
     whitePlayerName: string | null;
     handicap: number;
+    komi?: number;
     createdAt: string;
     updatedAt: string;
     lastShareSlug?: string | null;
@@ -103,6 +104,7 @@ export type LocalDraftRecord = {
     blackPlayerName: string | null;
     whitePlayerName: string | null;
     handicap: number;
+    komi?: number;
     createdAt: string;
     updatedAt: string;
     lastShareSlug: string | null;
