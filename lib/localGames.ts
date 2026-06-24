@@ -151,7 +151,7 @@ export function createLocalGame({
     blackPlayerName = null,
     whitePlayerName = null,
     handicap = 0,
-    komi = 0,
+    komi = 6.5,
 }: CreateLocalGameInput) {
     const now = new Date().toISOString();
     const record: LocalGameRecord = {
@@ -180,7 +180,7 @@ export function createLocalDraft({
     blackPlayerName = null,
     whitePlayerName = null,
     handicap = 0,
-    komi = 0,
+    komi = 6.5,
     parentShareSlug = null,
     baseMoveCount = null,
     positionView = null,
