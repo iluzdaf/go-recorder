@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { BoardSize } from "@/components/types";
 import { createLocalDraft, createLocalGame, getAllLocalDrafts, getAllLocalGames } from "@/lib/localGames";
 import type { LocalDraftRecord, LocalGameRecord } from "@/lib/localGames";
@@ -14,6 +14,7 @@ import { GameBoardThumbnail, getDraftTitle, getGameTitle } from "@/components/Ga
 import ImageDraftCreator from "@/components/ImageDraftCreator";
 import { navigateWithinApp } from "@/lib/fullscreenNavigation";
 import { t } from "@/lib/i18n";
+import { loadHomeSetup, saveHomeSetup } from "@/lib/homeSetup";
 
 const RECENT_GAME_LIMIT = 3;
 
@@ -29,8 +30,17 @@ export default function Home() {
   const [draftSource, setDraftSource] = useState<"blank" | "image">("blank");
   const [recentGames, setRecentGames] = useState<LocalGameRecord[]>([]);
   const [recentDrafts, setRecentDrafts] = useState<LocalDraftRecord[]>([]);
+  const setupLoaded = useRef(false);
 
   useEffect(() => {
+    const saved = loadHomeSetup();
+    setBoardSize(saved.boardSize);
+    setBlackPlayerName(saved.blackPlayerName);
+    setWhitePlayerName(saved.whitePlayerName);
+    setHandicap(saved.handicap);
+    setDraftSource(saved.draftSource);
+    setupLoaded.current = true;
+
     const timeoutId = window.setTimeout(() => {
       setRecentGames(getAllLocalGames().slice(0, RECENT_GAME_LIMIT));
       setRecentDrafts(getAllLocalDrafts().slice(0, RECENT_GAME_LIMIT));
@@ -38,6 +48,11 @@ export default function Home() {
 
     return () => window.clearTimeout(timeoutId);
   }, []);
+
+  useEffect(() => {
+    if (!setupLoaded.current) return;
+    saveHomeSetup({ boardSize, blackPlayerName, whitePlayerName, handicap, draftSource });
+  }, [boardSize, blackPlayerName, whitePlayerName, handicap, draftSource]);
 
   function handleRecordGame(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
