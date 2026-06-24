@@ -23,6 +23,22 @@ async function placeMoveOnBoard(page: Page) {
   await page.mouse.click(box.x + box.width * 0.25, box.y + box.height * 0.25)
 }
 
+test('dialog has no save button and stays open after auto-saving', async ({ page }) => {
+  await startGameWithPlayers(page, 'Alice', 'Bob')
+  await openSgfEditor(page)
+
+  await expect(page.locator('button:has-text("Save")')).not.toBeVisible()
+
+  // Komi change auto-saves and dialog stays open
+  await page.selectOption('select', '7.5')
+  await expect(page.locator('text=Edit SGF metadata')).toBeVisible()
+
+  // Name blur auto-saves and dialog stays open
+  await page.fill('input[placeholder="Black"]', 'Alice')
+  await page.locator('input[placeholder="Black"]').blur()
+  await expect(page.locator('text=Edit SGF metadata')).toBeVisible()
+})
+
 test('SGF editor persists player names and komi; swap leaves komi unchanged', async ({ page }) => {
   await startGameWithPlayers(page, 'Hana', 'Taro')
   await openSgfEditor(page)
