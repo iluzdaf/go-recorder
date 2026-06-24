@@ -26,6 +26,7 @@ import {
 } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
 import RecorderActionBar from "./RecorderActionBar";
+import SgfMetadataEditor from "./SgfMetadataEditor";
 import ShareMenu from "./ShareMenu";
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
@@ -126,10 +127,12 @@ export default function GoBoard({ id }: GoBoardProps) {
             window.localStorage.setItem(getActionBarStorageKey(id), nextAnchor);
         },
     });
+    const [sgfEditorOpen, setSgfEditorOpen] = useState(false);
     const [gameMetadata, setGameMetadata] = useState({
         blackPlayerName: null as string | null,
         whitePlayerName: null as string | null,
         handicap: 0,
+        komi: 0,
     });
     const [gameState, setGameState] = useState<GameState>({
         setupStones: [],
@@ -177,7 +180,12 @@ export default function GoBoard({ id }: GoBoardProps) {
             setSize(loadedGame.size);
             setGameState(loadedGame.gameState);
             setUpdatedAt(loadedGame.updatedAt);
-            setGameMetadata(loadedGame.metadata);
+            setGameMetadata({
+                blackPlayerName: loadedGame.metadata.blackPlayerName,
+                whitePlayerName: loadedGame.metadata.whitePlayerName,
+                handicap: loadedGame.metadata.handicap,
+                komi: loadedGame.metadata.komi,
+            });
             lastSavedSnapshotRef.current = loadedGame.snapshot;
             setHasUnsavedChanges(false);
             setLoadError(null);
@@ -507,12 +515,45 @@ export default function GoBoard({ id }: GoBoardProps) {
         setHasUnsavedChanges(true);
     };
 
+    const handleSaveSgfMetadata = useCallback(
+        ({
+            blackPlayerName,
+            whitePlayerName,
+            komi,
+        }: {
+            blackPlayerName: string | null;
+            whitePlayerName: string | null;
+            komi: number;
+        }) => {
+            const localGameRecord = localGameRecordRef.current;
+            if (!localGameRecord) return;
+
+            const updatedRecord = saveLocalEditableRecord({
+                record: localGameRecord,
+                blackPlayerName,
+                whitePlayerName,
+                komi,
+            });
+
+            localGameRecordRef.current = updatedRecord;
+            setGameMetadata((prev) => ({
+                ...prev,
+                blackPlayerName,
+                whitePlayerName,
+                komi,
+            }));
+            setSgfEditorOpen(false);
+        },
+        []
+    );
+
     const handleDownloadSgf = useCallback(() => {
         downloadSgf({
             boardSize: size,
             moves: gameState.moves,
             setupStones: gameState.setupStones,
             handicap: gameMetadata.handicap,
+            komi: gameMetadata.komi,
             blackPlayerName: gameMetadata.blackPlayerName,
             whitePlayerName: gameMetadata.whitePlayerName,
         });
@@ -520,6 +561,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         gameMetadata.blackPlayerName,
         gameMetadata.whitePlayerName,
         gameMetadata.handicap,
+        gameMetadata.komi,
         gameState.moves,
         gameState.setupStones,
         size,
@@ -602,6 +644,15 @@ export default function GoBoard({ id }: GoBoardProps) {
                     ref={boardAreaRef}
                     className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
                 >
+                    {sgfEditorOpen ? (
+                        <SgfMetadataEditor
+                            blackPlayerName={gameMetadata.blackPlayerName}
+                            whitePlayerName={gameMetadata.whitePlayerName}
+                            komi={gameMetadata.komi}
+                            onClose={() => setSgfEditorOpen(false)}
+                            onSave={handleSaveSgfMetadata}
+                        />
+                    ) : null}
                     {shareMenu.isOpen ? (
                         <ShareMenu
                             alignToViewportTop={isOverlayHeader}
@@ -639,9 +690,11 @@ export default function GoBoard({ id }: GoBoardProps) {
                         onPointerDown={actionBar.dragHandlers.onPointerDown}
                         onPointerMove={actionBar.dragHandlers.onPointerMove}
                         onPointerUp={actionBar.dragHandlers.onPointerUp}
+                        onToggleSgfEditor={() => setSgfEditorOpen((v) => !v)}
                         onToggleShareMenu={shareMenu.toggle}
                         onUndo={handleUndo}
                         railRef={actionBar.railRef}
+                        sgfEditorOpen={sgfEditorOpen}
                         shareMenuOpen={shareMenu.isOpen}
                         shareTriggerRef={shareMenu.triggerRef}
                         showPlacementZoomControl={Boolean(

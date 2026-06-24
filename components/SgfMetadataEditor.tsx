@@ -1,0 +1,130 @@
+"use client";
+
+import { ArrowLeftRight, X } from "lucide-react";
+import { useState } from "react";
+import { t } from "../lib/i18n";
+
+const KOMI_OPTIONS = [0, 0.5, 5.5, 6.5, 7.5] as const;
+
+type SgfMetadataEditorProps = {
+    blackPlayerName: string | null;
+    komi: number;
+    onClose: () => void;
+    onSave: (values: {
+        blackPlayerName: string | null;
+        whitePlayerName: string | null;
+        komi: number;
+    }) => void;
+    whitePlayerName: string | null;
+};
+
+export default function SgfMetadataEditor({
+    blackPlayerName,
+    komi,
+    onClose,
+    onSave,
+    whitePlayerName,
+}: SgfMetadataEditorProps) {
+    const [localBlack, setLocalBlack] = useState(blackPlayerName ?? "");
+    const [localWhite, setLocalWhite] = useState(whitePlayerName ?? "");
+    const [localKomi, setLocalKomi] = useState(
+        KOMI_OPTIONS.includes(komi as (typeof KOMI_OPTIONS)[number]) ? komi : 6.5
+    );
+
+    function handleSave() {
+        const trimmedBlack = localBlack.trim();
+        const trimmedWhite = localWhite.trim();
+        onSave({
+            blackPlayerName: trimmedBlack.length > 0 ? trimmedBlack : null,
+            whitePlayerName: trimmedWhite.length > 0 ? trimmedWhite : null,
+            komi: localKomi,
+        });
+    }
+
+    function handleSwap() {
+        setLocalBlack(localWhite);
+        setLocalWhite(localBlack);
+    }
+
+    return (
+        <div className="absolute bottom-20 left-1/2 z-40 w-64 -translate-x-1/2 rounded-xl border border-zinc-200 bg-white p-4 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 sm:bottom-24">
+            <div className="mb-3 flex items-center justify-between">
+                <span className="text-sm font-medium">{t("editSgfMetadata")}</span>
+                <button
+                    type="button"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-neutral-800"
+                    onClick={onClose}
+                    aria-label={t("closeSgfEditor")}
+                    title={t("closeSgfEditor")}
+                >
+                    <X size={16} />
+                </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+                <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                        {t("blackPlayer")}
+                    </span>
+                    <input
+                        type="text"
+                        value={localBlack}
+                        onChange={(e) => setLocalBlack(e.target.value)}
+                        placeholder={t("blackPlayerPlaceholder")}
+                        className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+                    />
+                </label>
+
+                <div className="flex justify-center">
+                    <button
+                        type="button"
+                        aria-label={t("swapPlayers")}
+                        title={t("swapPlayers")}
+                        onClick={handleSwap}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-zinc-400 dark:hover:bg-neutral-800 dark:hover:text-zinc-200"
+                    >
+                        <ArrowLeftRight size={13} />
+                    </button>
+                </div>
+
+                <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                        {t("whitePlayer")}
+                    </span>
+                    <input
+                        type="text"
+                        value={localWhite}
+                        onChange={(e) => setLocalWhite(e.target.value)}
+                        placeholder={t("whitePlayerPlaceholder")}
+                        className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+                    />
+                </label>
+
+                <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                        {t("komi")}
+                    </span>
+                    <select
+                        value={localKomi}
+                        onChange={(e) => setLocalKomi(Number(e.target.value))}
+                        className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+                    >
+                        {KOMI_OPTIONS.map((value) => (
+                            <option key={value} value={value}>
+                                {value}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+
+                <button
+                    type="button"
+                    onClick={handleSave}
+                    className="mt-1 rounded bg-sky-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-600"
+                >
+                    {t("saveAndClose")}
+                </button>
+            </div>
+        </div>
+    );
+}
