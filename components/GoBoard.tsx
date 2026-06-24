@@ -97,6 +97,8 @@ export default function GoBoard({ id }: GoBoardProps) {
     const hasLoadedGameRef = useRef(false);
     const lastSavedSnapshotRef = useRef("");
     const localGameRecordRef = useRef<LocalGameRecord | null>(null);
+    const hasExistingShareRef = useRef(false);
+    const [pendingEditFn, setPendingEditFn] = useState<(() => void) | null>(null);
     const [updatedAt, setUpdatedAt] = useState<string | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -176,6 +178,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             const loadedGame = createLoadedLocalGame(gameRecord);
 
             localGameRecordRef.current = gameRecord;
+            hasExistingShareRef.current = Boolean(gameRecord.lastShareSlug);
             resetToShareSlug(gameRecord.lastShareSlug ?? null);
             setSize(loadedGame.size);
             setGameState(loadedGame.gameState);
@@ -275,19 +278,29 @@ export default function GoBoard({ id }: GoBoardProps) {
         };
     };
 
+    const guardEdit = (fn: () => void) => {
+        if (hasExistingShareRef.current) {
+            setPendingEditFn(() => fn);
+        } else {
+            fn();
+        }
+    };
+
     const playMove = (x: number, y: number) => {
-        const result = playGameMove({
-            board,
-            gameState,
-            x,
-            y,
+        guardEdit(() => {
+            const result = playGameMove({
+                board,
+                gameState,
+                x,
+                y,
+            });
+
+            if (!result.ok) return;
+
+            clearCachedShareLink();
+            setGameState(result.gameState);
+            setHasUnsavedChanges(true);
         });
-
-        if (!result.ok) return;
-
-        clearCachedShareLink();
-        setGameState(result.gameState);
-        setHasUnsavedChanges(true);
     };
 
     const canShareGame = gameState.moves.some((move) => move.type === "play");
@@ -445,6 +458,15 @@ export default function GoBoard({ id }: GoBoardProps) {
                 };
             }
 
+            if (hasExistingShareRef.current) {
+                setPendingEditFn(() => () => {
+                    clearCachedShareLink();
+                    setGameState(result.gameState);
+                    setHasUnsavedChanges(true);
+                });
+                return { ok: false as const, error: "" };
+            }
+
             clearCachedShareLink();
             setGameState(result.gameState);
             setHasUnsavedChanges(true);
@@ -470,6 +492,17 @@ export default function GoBoard({ id }: GoBoardProps) {
         onStatus: setShareStatus,
     });
 
+    const handleConfirmEdit = () => {
+        hasExistingShareRef.current = false;
+        pendingEditFn?.();
+        correction.clearSelection();
+        setPendingEditFn(null);
+    };
+
+    const handleCancelEdit = () => {
+        setPendingEditFn(null);
+    };
+
     const createCurrentLocalGameRecord = useCallback(() => {
         const localGameRecord = localGameRecordRef.current;
         if (!localGameRecord) return null;
@@ -484,18 +517,19 @@ export default function GoBoard({ id }: GoBoardProps) {
     const handleUndo = () => {
         if (gameState.moves.length === 0) return;
 
-        clearCachedShareLink();
+        guardEdit(() => {
+            const previousMoves = gameState.moves.slice(0, -1);
+            const lastUndoneMove = gameState.moves.at(-1);
 
-        const previousMoves = gameState.moves.slice(0, -1);
-        const lastUndoneMove = gameState.moves.at(-1);
-
-        setGameState({
-            ...gameState,
-            moves: previousMoves,
-            currentPlayer: lastUndoneMove?.color ?? "B",
+            clearCachedShareLink();
+            setGameState({
+                ...gameState,
+                moves: previousMoves,
+                currentPlayer: lastUndoneMove?.color ?? "B",
+            });
+            correction.clearSelection();
+            setHasUnsavedChanges(true);
         });
-        correction.clearSelection();
-        setHasUnsavedChanges(true);
     };
 
     const handlePass = () => {
@@ -504,15 +538,16 @@ export default function GoBoard({ id }: GoBoardProps) {
             color: gameState.currentPlayer,
         };
 
-        clearCachedShareLink();
-
-        setGameState({
-            ...gameState,
-            moves: [...gameState.moves, newMove],
-            currentPlayer: gameState.currentPlayer === "B" ? "W" : "B",
+        guardEdit(() => {
+            clearCachedShareLink();
+            setGameState({
+                ...gameState,
+                moves: [...gameState.moves, newMove],
+                currentPlayer: gameState.currentPlayer === "B" ? "W" : "B",
+            });
+            correction.clearSelection();
+            setHasUnsavedChanges(true);
         });
-        correction.clearSelection();
-        setHasUnsavedChanges(true);
     };
 
     const handleSaveSgfMetadata = useCallback(
@@ -600,6 +635,7 @@ export default function GoBoard({ id }: GoBoardProps) {
             });
 
             localGameRecordRef.current = updatedLocalGame;
+            hasExistingShareRef.current = true;
             finishEditableShareCreated(slug);
         } catch (error) {
             setEditableShareError(
@@ -644,6 +680,34 @@ export default function GoBoard({ id }: GoBoardProps) {
                     ref={boardAreaRef}
                     className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
                 >
+                    {pendingEditFn ? (
+                        <div
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label={t("editAfterShareWarning")}
+                            className="absolute left-1/2 top-4 z-20 w-[min(calc(100%-2rem),20rem)] -translate-x-1/2 rounded-lg border border-zinc-200 bg-white p-3 text-zinc-950 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                        >
+                            <p className="text-sm font-medium">
+                                {t("editAfterShareWarning")}
+                            </p>
+                            <div className="mt-3 flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-sm text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                    onClick={handleCancelEdit}
+                                >
+                                    {t("cancel")}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="inline-flex h-9 items-center justify-center rounded-full bg-zinc-950 px-3 text-sm text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                                    onClick={handleConfirmEdit}
+                                >
+                                    {t("continueEditing")}
+                                </button>
+                            </div>
+                        </div>
+                    ) : null}
                     {sgfEditorOpen ? (
                         <SgfMetadataEditor
                             alignToViewportTop={isOverlayHeader}

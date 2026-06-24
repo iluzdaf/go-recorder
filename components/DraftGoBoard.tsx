@@ -137,6 +137,8 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     );
     const draftRef = useRef<LocalDraftRecord | null>(draft);
     const hasPendingSaveRef = useRef(false);
+    const hasExistingShareRef = useRef(Boolean(draft?.lastShareSlug));
+    const [pendingEditFn, setPendingEditFn] = useState<(() => void) | null>(null);
     const positionViewSettingsRef = useRef<HTMLDivElement | null>(null);
     const positionViewSettingsTriggerRef = useRef<HTMLButtonElement | null>(
         null
@@ -234,6 +236,14 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     const clearCachedShareLink = useCallback(() => {
         clearShareLink();
     }, [clearShareLink]);
+
+    const guardEdit = useCallback((fn: () => void) => {
+        if (hasExistingShareRef.current) {
+            setPendingEditFn(() => fn);
+        } else {
+            fn();
+        }
+    }, []);
 
     const updateDraft = useCallback((nextDraft: LocalDraftRecord) => {
         draftRef.current = nextDraft;
@@ -341,15 +351,17 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 return;
             }
 
-            clearCachedShareLink();
-            updateDraft(
-                clearDraftShareCache({
-                    ...currentDraft,
-                    positionView: nextPositionView,
-                })
-            );
+            guardEdit(() => {
+                clearCachedShareLink();
+                updateDraft(
+                    clearDraftShareCache({
+                        ...currentDraft,
+                        positionView: nextPositionView,
+                    })
+                );
+            });
         },
-        [clearCachedShareLink, updateDraft]
+        [clearCachedShareLink, guardEdit, updateDraft]
     );
 
     const handleDownloadSgf = useCallback(() => {
@@ -416,6 +428,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             draftRef.current = savedRecord;
             hasPendingSaveRef.current = false;
             setDraft(savedRecord);
+            hasExistingShareRef.current = true;
             finishEditableShareCreated(slug);
         } catch (error) {
             setEditableShareError(
@@ -666,6 +679,19 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 };
             }
 
+            if (hasExistingShareRef.current) {
+                setPendingEditFn(() => () => {
+                    clearCachedShareLink();
+                    updateDraft(
+                        clearDraftShareCache({
+                            ...currentDraft,
+                            gameState: result.gameState,
+                        })
+                    );
+                });
+                return { ok: false as const, error: "" };
+            }
+
             clearCachedShareLink();
             updateDraft(
                 clearDraftShareCache({
@@ -691,13 +717,15 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
             });
 
             if (result.ok) {
-                clearCachedShareLink();
-                updateDraft(
-                    clearDraftShareCache({
-                        ...currentDraft,
-                        gameState: result.gameState,
-                    })
-                );
+                guardEdit(() => {
+                    clearCachedShareLink();
+                    updateDraft(
+                        clearDraftShareCache({
+                            ...currentDraft,
+                            gameState: result.gameState,
+                        })
+                    );
+                });
             }
         },
     };
@@ -763,6 +791,19 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 return { ok: false as const, error: t("stoneCorrectionFailed") };
             }
 
+            if (hasExistingShareRef.current) {
+                setPendingEditFn(() => () => {
+                    clearCachedShareLink();
+                    updateDraft(
+                        clearDraftShareCache({
+                            ...currentDraft,
+                            gameState: result.gameState,
+                        })
+                    );
+                });
+                return { ok: false as const, error: "" };
+            }
+
             clearCachedShareLink();
             updateDraft(
                 clearDraftShareCache({
@@ -796,13 +837,15 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
 
             if (nextGameState === currentDraft.gameState) return;
 
-            clearCachedShareLink();
-            updateDraft(
-                clearDraftShareCache({
-                    ...currentDraft,
-                    gameState: nextGameState,
-                })
-            );
+            guardEdit(() => {
+                clearCachedShareLink();
+                updateDraft(
+                    clearDraftShareCache({
+                        ...currentDraft,
+                        gameState: nextGameState,
+                    })
+                );
+            });
         },
     };
 
@@ -823,6 +866,17 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         }
     );
 
+    const handleConfirmEdit = () => {
+        hasExistingShareRef.current = false;
+        pendingEditFn?.();
+        correction.clearSelection();
+        setPendingEditFn(null);
+    };
+
+    const handleCancelEdit = () => {
+        setPendingEditFn(null);
+    };
+
     const handleToggleSourceImage = useCallback(() => {
         setSourceImageVisible((v) => !v);
     }, []);
@@ -839,15 +893,17 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
 
         if (nextGameState === currentDraft.gameState) return;
 
-        correction.exitStoneEditMode();
-        clearCachedShareLink();
-        updateDraft(
-            clearDraftShareCache({
-                ...currentDraft,
-                gameState: nextGameState,
-            })
-        );
-    }, [clearCachedShareLink, correction, updateDraft]);
+        guardEdit(() => {
+            correction.exitStoneEditMode();
+            clearCachedShareLink();
+            updateDraft(
+                clearDraftShareCache({
+                    ...currentDraft,
+                    gameState: nextGameState,
+                })
+            );
+        });
+    }, [clearCachedShareLink, correction, guardEdit, updateDraft]);
 
     if (!draft) {
         return (
@@ -883,6 +939,34 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 ref={boardAreaRef}
                 className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
             >
+                {pendingEditFn ? (
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label={t("editAfterShareWarning")}
+                        className="absolute left-1/2 top-4 z-20 w-[min(calc(100%-2rem),20rem)] -translate-x-1/2 rounded-lg border border-zinc-200 bg-white p-3 text-zinc-950 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                    >
+                        <p className="text-sm font-medium">
+                            {t("editAfterShareWarning")}
+                        </p>
+                        <div className="mt-3 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-sm text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                                onClick={handleCancelEdit}
+                            >
+                                {t("cancel")}
+                            </button>
+                            <button
+                                type="button"
+                                className="inline-flex h-9 items-center justify-center rounded-full bg-zinc-950 px-3 text-sm text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                                onClick={handleConfirmEdit}
+                            >
+                                {t("continueEditing")}
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
                 {shareMenu.isOpen ? (
                     <ShareMenu
                         alignToViewportTop={isOverlayHeader}

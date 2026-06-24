@@ -113,5 +113,7 @@
     "editSgfMetadata": "Edit SGF metadata",
     "closeSgfEditor": "Close SGF editor",
     "komi": "Komi",
-    "saveAndClose": "Save"
+    "saveAndClose": "Save",
+    "editAfterShareWarning": "A share was created from this position. Continuing will make the local board differ from the shared link.",
+    "continueEditing": "Continue"
 }
