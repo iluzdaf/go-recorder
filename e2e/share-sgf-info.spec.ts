@@ -40,7 +40,7 @@ test('shared board SGF panel shows player names and komi', async ({ page }) => {
     await page.click('button[aria-label="Edit SGF metadata"]')
     await expect(page.locator('text=Edit SGF metadata')).toBeVisible()
     await page.selectOption('select', '7.5')
-    await page.click('button:has-text("Save")')
+    await page.click('button[aria-label="Edit SGF metadata"]')
 
     await placeMoveOnBoard(page)
     await navigateToSharePage(page)

@@ -49,7 +49,7 @@ test('warning appears on first edit after share, cancel keeps board unchanged', 
   const warning = page.getByRole('dialog', { name: /share was created/i })
 
   // Count stones before attempting the edit
-  const stonesBefore = await goban.locator('.shudan-stone').count()
+  const stonesBefore = await goban.locator('.shudan-vertex.shudan-sign_1, .shudan-vertex.shudan-sign_-1').count()
 
   // Tap a different cell — warning should appear
   const box = await goban.boundingBox()
@@ -60,7 +60,7 @@ test('warning appears on first edit after share, cancel keeps board unchanged', 
   // Cancel — board must be unchanged
   await warning.getByRole('button', { name: 'Cancel' }).click()
   await expect(warning).not.toBeVisible()
-  expect(await goban.locator('.shudan-stone').count()).toBe(stonesBefore)
+  expect(await goban.locator('.shudan-vertex.shudan-sign_1, .shudan-vertex.shudan-sign_-1').count()).toBe(stonesBefore)
 })
 
 test('warning reappears after cancel, then disappears after continue', async ({ page }) => {
@@ -85,10 +85,10 @@ test('warning reappears after cancel, then disappears after continue', async ({ 
   await expect(warning).toBeVisible()
 
   // Confirm — stone should be placed
-  const stonesBefore = await goban.locator('.shudan-stone').count()
+  const stonesBefore = await goban.locator('.shudan-vertex.shudan-sign_1, .shudan-vertex.shudan-sign_-1').count()
   await warning.getByRole('button', { name: 'Continue' }).click()
   await expect(warning).not.toBeVisible()
-  expect(await goban.locator('.shudan-stone').count()).toBeGreaterThan(stonesBefore)
+  expect(await goban.locator('.shudan-vertex.shudan-sign_1, .shudan-vertex.shudan-sign_-1').count()).toBeGreaterThan(stonesBefore)
 })
 
 test('no warning on subsequent edits after confirming once', async ({ page }) => {
@@ -135,14 +135,14 @@ test('game recording: warning → cancel → warning again → continue → no f
   const tapY = box.y + box.height * 0.6
 
   // First tap — warning appears
-  const stonesBefore = await goban.locator('.shudan-stone').count()
+  const stonesBefore = await goban.locator('.shudan-vertex.shudan-sign_1, .shudan-vertex.shudan-sign_-1').count()
   await page.mouse.click(tapX, tapY)
   await expect(warning).toBeVisible()
 
   // Cancel — move not placed, warning gone
   await warning.getByRole('button', { name: 'Cancel' }).click()
   await expect(warning).not.toBeVisible()
-  expect(await goban.locator('.shudan-stone').count()).toBe(stonesBefore)
+  expect(await goban.locator('.shudan-vertex.shudan-sign_1, .shudan-vertex.shudan-sign_-1').count()).toBe(stonesBefore)
 
   // Second tap — warning reappears
   await page.mouse.click(tapX, tapY)
@@ -151,7 +151,7 @@ test('game recording: warning → cancel → warning again → continue → no f
   // Confirm — move is placed
   await warning.getByRole('button', { name: 'Continue' }).click()
   await expect(warning).not.toBeVisible()
-  expect(await goban.locator('.shudan-stone').count()).toBeGreaterThan(stonesBefore)
+  expect(await goban.locator('.shudan-vertex.shudan-sign_1, .shudan-vertex.shudan-sign_-1').count()).toBeGreaterThan(stonesBefore)
 
   // Third tap — no warning
   await page.mouse.click(box.x + box.width * 0.4, box.y + box.height * 0.4)
