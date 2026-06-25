@@ -38,8 +38,7 @@ import {
     type MoveNumberMarker,
 } from "../lib/variationDraft";
 import ShareBoardActionBar from "./ShareBoardActionBar";
-import SgfMetadataInfo from "./SgfMetadataInfo";
-import ShareMenu from "./ShareMenu";
+import SgfShareInfoPanel from "./SgfShareInfoPanel";
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
 import useShareMenu from "./useShareMenu";
@@ -149,7 +148,6 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         showCoordinates: showBoardCoordinates,
     });
     const actionBar = useActionBarDrag();
-    const [sgfInfoOpen, setSgfInfoOpen] = useState(false);
     const [shareMenuStatus, setShareMenuStatus] = useState<string | null>(null);
     const [pendingVariationInput, setPendingVariationInput] =
         useState<CreateLocalDraftInput | null>(null);
@@ -408,28 +406,17 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                 ref={boardAreaRef}
                 className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
             >
-                {sgfInfoOpen ? (
-                    <SgfMetadataInfo
+                {shareMenuOpen ? (
+                    <SgfShareInfoPanel
                         alignToViewportTop={isOverlayHeader}
+                        menuRef={shareMenuRef}
                         blackPlayerName={share.blackPlayerName}
                         whitePlayerName={share.whitePlayerName}
                         komi={share.komi}
-                    />
-                ) : null}
-                {shareMenuOpen ? (
-                    <ShareMenu
-                        alignToViewportTop={isOverlayHeader}
-                        canShareGame
-                        isCreating={false}
-                        menuRef={shareMenuRef}
                         message={shareMenuStatus}
-                        mode="created"
-                        onCreateShare={() => {}}
                         onDownloadSgf={handleDownloadSgfFromShareMenu}
                         onCopyLink={copyShareLink}
                         qrCodeDataUrl={shareQrCodeDataUrl}
-                        showSharePageLink={false}
-                        sharePath={sharePath}
                     />
                 ) : null}
                 {pendingVariationInput ? (
@@ -485,11 +472,9 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                     onPointerMove={actionBar.dragHandlers.onPointerMove}
                     onPointerUp={actionBar.dragHandlers.onPointerUp}
                     onPreviousMove={handlePreviousMove}
-                    onToggleSgfInfo={() => setSgfInfoOpen((v) => !v)}
-                    onToggleShareMenu={toggleShareMenu}
+                    onTogglePanel={toggleShareMenu}
+                    panelOpen={shareMenuOpen}
                     railRef={actionBar.railRef}
-                    sgfInfoOpen={sgfInfoOpen}
-                    shareMenuOpen={shareMenuOpen}
                     shareTriggerRef={shareTriggerRef}
                     totalMoveCount={share.gameState.moves.length}
                     visibleMoveCount={visibleMoveCount}
