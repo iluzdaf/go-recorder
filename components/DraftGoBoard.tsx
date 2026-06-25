@@ -15,7 +15,6 @@ import type {
 import BoardStatusMessage from "./BoardStatusMessage";
 import DraftBoardActionBar from "./DraftBoardActionBar";
 import PositionViewSettingsDialog from "./PositionViewSettingsDialog";
-import ShareMenu from "./ShareMenu";
 import SgfSharePanel from "./SgfSharePanel";
 import { downloadSgf } from "./sgf";
 import {
@@ -386,6 +385,21 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         handleDownloadSgf();
         closeEditableShareMenu();
     }, [closeEditableShareMenu, handleDownloadSgf]);
+
+    const handleSaveDraftSgfMetadata = useCallback((values: {
+        blackPlayerName: string | null;
+        whitePlayerName: string | null;
+        komi: number;
+    }) => {
+        const currentDraft = draftRef.current;
+        if (!currentDraft) return;
+        updateDraft({
+            ...currentDraft,
+            blackPlayerName: values.blackPlayerName,
+            whitePlayerName: values.whitePlayerName,
+            komi: values.komi,
+        });
+    }, [updateDraft]);
 
     const handleShare = useCallback(async () => {
         const currentDraft = draftRef.current;
@@ -969,31 +983,16 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                         </div>
                     </div>
                 ) : null}
-                {shareMenu.isOpen && draft.draftKind === "variation" ? (
+                {shareMenu.isOpen ? (
                     <SgfSharePanel
                         alignToViewportTop={isOverlayHeader}
                         menuRef={shareMenu.menuRef}
                         blackPlayerName={draft.blackPlayerName}
                         whitePlayerName={draft.whitePlayerName}
                         komi={draft.komi}
-                        sgfReadOnly
+                        onSaveSgfMetadata={handleSaveDraftSgfMetadata}
                         canShareGame={canShareCurrentDraft}
                         isCreating={shareMenu.isCreating}
-                        message={shareMenu.displayMessage}
-                        mode={shareMenu.mode}
-                        onCreateShare={handleShare}
-                        onDownloadSgf={handleDownloadSgfFromShareMenu}
-                        onCopyLink={shareMenu.copyShareLink}
-                        qrCodeDataUrl={shareMenu.qrCodeDataUrl}
-                        sharePath={shareMenu.sharePath}
-                    />
-                ) : null}
-                {shareMenu.isOpen && draft.draftKind === "board" ? (
-                    <ShareMenu
-                        alignToViewportTop={isOverlayHeader}
-                        canShareGame={canShareCurrentDraft}
-                        isCreating={shareMenu.isCreating}
-                        menuRef={shareMenu.menuRef}
                         message={shareMenu.displayMessage}
                         mode={shareMenu.mode}
                         onCreateShare={handleShare}

@@ -6,7 +6,6 @@ import {
     Download,
     FileText,
     Link2,
-    SquareArrowUpRight,
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -65,7 +64,7 @@ export default function SgfSharePanel({
     showSharePageLink = true,
     sharePath,
 }: SgfSharePanelProps) {
-    const [activeTab, setActiveTab] = useState<Tab>("share");
+    const [activeTab, setActiveTab] = useState<Tab>("sgf");
     const [localBlack, setLocalBlack] = useState(blackPlayerName ?? "");
     const [localWhite, setLocalWhite] = useState(whitePlayerName ?? "");
     const [localKomi, setLocalKomi] = useState(
@@ -127,13 +126,13 @@ export default function SgfSharePanel({
                     onClick={() => setActiveTab("share")}
                     className={tabClass("share")}
                 >
-                    <SquareArrowUpRight size={15} />
+                    <Link2 size={15} />
                     <span>{t("share")}</span>
                 </button>
             </div>
 
             {activeTab === "sgf" && sgfReadOnly ? (
-                <div className="p-4">
+                <div className="flex flex-col gap-3 p-4">
                     <dl className="flex flex-col gap-2">
                         <div className="flex flex-col gap-0.5">
                             <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
@@ -170,6 +169,16 @@ export default function SgfSharePanel({
                             </div>
                         )}
                     </dl>
+                    <button
+                        type="button"
+                        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                        onClick={onDownloadSgf}
+                        aria-label={t("downloadSgf")}
+                        title={t("downloadSgf")}
+                    >
+                        <Download size={16} />
+                        <span>{t("downloadSgf")}</span>
+                    </button>
                 </div>
             ) : null}
 
@@ -235,6 +244,17 @@ export default function SgfSharePanel({
                             ))}
                         </select>
                     </label>
+
+                    <button
+                        type="button"
+                        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                        onClick={onDownloadSgf}
+                        aria-label={t("downloadSgf")}
+                        title={t("downloadSgf")}
+                    >
+                        <Download size={16} />
+                        <span>{t("downloadSgf")}</span>
+                    </button>
                 </div>
             ) : null}
 
@@ -248,16 +268,6 @@ export default function SgfSharePanel({
                         }
                     >
                         <div className="flex flex-col gap-2">
-                            <button
-                                type="button"
-                                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                onClick={onDownloadSgf}
-                                aria-label={t("downloadSgf")}
-                                title={t("downloadSgf")}
-                            >
-                                <Download size={16} />
-                                <span>{t("downloadSgf")}</span>
-                            </button>
                             {hasCreatedShare ? (
                                 <>
                                     <button
