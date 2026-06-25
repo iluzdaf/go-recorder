@@ -26,8 +26,7 @@ import {
 } from "./AppShell";
 import BoardStatusMessage from "./BoardStatusMessage";
 import RecorderActionBar from "./RecorderActionBar";
-import SgfMetadataEditor from "./SgfMetadataEditor";
-import ShareMenu from "./ShareMenu";
+import SgfSharePanel from "./SgfSharePanel";
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
 import useEditableShareMenuController from "./useEditableShareMenuController";
@@ -129,7 +128,6 @@ export default function GoBoard({ id }: GoBoardProps) {
             window.localStorage.setItem(getActionBarStorageKey(id), nextAnchor);
         },
     });
-    const [sgfEditorOpen, setSgfEditorOpen] = useState(false);
     const [gameMetadata, setGameMetadata] = useState({
         blackPlayerName: null as string | null,
         whitePlayerName: null as string | null,
@@ -708,21 +706,16 @@ export default function GoBoard({ id }: GoBoardProps) {
                             </div>
                         </div>
                     ) : null}
-                    {sgfEditorOpen ? (
-                        <SgfMetadataEditor
+                    {shareMenu.isOpen ? (
+                        <SgfSharePanel
                             alignToViewportTop={isOverlayHeader}
+                            menuRef={shareMenu.menuRef}
                             blackPlayerName={gameMetadata.blackPlayerName}
                             whitePlayerName={gameMetadata.whitePlayerName}
                             komi={gameMetadata.komi}
-                            onSave={handleSaveSgfMetadata}
-                        />
-                    ) : null}
-                    {shareMenu.isOpen ? (
-                        <ShareMenu
-                            alignToViewportTop={isOverlayHeader}
+                            onSaveSgfMetadata={handleSaveSgfMetadata}
                             canShareGame={canShareGame}
                             isCreating={shareMenu.isCreating}
-                            menuRef={shareMenu.menuRef}
                             message={shareMenu.displayMessage}
                             mode={shareMenu.mode}
                             onCreateShare={() => {
@@ -738,7 +731,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                     ) : null}
                     <RecorderActionBar
                         anchor={actionBar.anchor}
-                        canShareGame={canShareGame}
                         canUndo={gameState.moves.length > 0}
                         dragX={actionBar.dragX}
                         hasStoneCorrectionSelection={
@@ -754,12 +746,10 @@ export default function GoBoard({ id }: GoBoardProps) {
                         onPointerDown={actionBar.dragHandlers.onPointerDown}
                         onPointerMove={actionBar.dragHandlers.onPointerMove}
                         onPointerUp={actionBar.dragHandlers.onPointerUp}
-                        onToggleSgfEditor={() => setSgfEditorOpen((v) => !v)}
-                        onToggleShareMenu={shareMenu.toggle}
+                        onTogglePanel={shareMenu.toggle}
                         onUndo={handleUndo}
+                        panelOpen={shareMenu.isOpen}
                         railRef={actionBar.railRef}
-                        sgfEditorOpen={sgfEditorOpen}
-                        shareMenuOpen={shareMenu.isOpen}
                         shareTriggerRef={shareMenu.triggerRef}
                         showPlacementZoomControl={Boolean(
                             correction.placementZoomWindow
