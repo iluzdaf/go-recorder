@@ -935,19 +935,25 @@ export default function AppShell({
                         </div>
 
                         <div className="flex shrink-0 items-center gap-1.5">
-                            <button
-                                ref={changelogButtonRef}
-                                type="button"
-                                className="inline-flex h-11 items-center justify-center rounded-md px-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-neutral-800 dark:hover:text-white"
-                                aria-label={`${t("version")} ${appVersion}`}
-                                aria-controls="changelog-menu"
-                                aria-expanded={isChangelogOpen}
-                                aria-haspopup="dialog"
-                                title={t("changelog")}
-                                onClick={toggleChangelog}
-                            >
-                                v{appVersion}
-                            </button>
+                            {pathname === "/changelog" ? (
+                                <span className="inline-flex h-11 items-center justify-center rounded-md px-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                    v{appVersion}
+                                </span>
+                            ) : (
+                                <button
+                                    ref={changelogButtonRef}
+                                    type="button"
+                                    className="inline-flex h-11 items-center justify-center rounded-md px-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+                                    aria-label={`${t("version")} ${appVersion}`}
+                                    aria-controls="changelog-menu"
+                                    aria-expanded={isChangelogOpen}
+                                    aria-haspopup="dialog"
+                                    title={t("changelog")}
+                                    onClick={toggleChangelog}
+                                >
+                                    v{appVersion}
+                                </button>
+                            )}
 
                             <button
                                 ref={settingsButtonRef}
