@@ -8,6 +8,7 @@ import { getAllLocalGames, deleteLocalRecord } from "@/lib/localGames";
 import { GameBoardThumbnail, getGameTitle } from "@/components/GameListItem";
 import { navigateWithinApp } from "@/lib/fullscreenNavigation";
 import { t } from "@/lib/i18n";
+import { LOCAL_DATA_MIGRATION_CHANGE_EVENT } from "@/lib/localDataMigration";
 
 export default function GamesPage() {
     const router = useRouter();
@@ -16,12 +17,28 @@ export default function GamesPage() {
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     useEffect(() => {
-        const timeoutId = window.setTimeout(() => {
+        const refreshGames = () => {
             setGames(getAllLocalGames());
             setLoaded(true);
-        }, 0);
+        };
 
-        return () => window.clearTimeout(timeoutId);
+        const timeoutId = window.setTimeout(refreshGames, 0);
+        const handleLocalDataChange = () => {
+            refreshGames();
+        };
+
+        window.addEventListener(
+            LOCAL_DATA_MIGRATION_CHANGE_EVENT,
+            handleLocalDataChange
+        );
+
+        return () => {
+            window.clearTimeout(timeoutId);
+            window.removeEventListener(
+                LOCAL_DATA_MIGRATION_CHANGE_EVENT,
+                handleLocalDataChange
+            );
+        };
     }, []);
 
     function handleDeleteRequest(id: string) {

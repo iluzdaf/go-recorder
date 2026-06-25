@@ -324,3 +324,10 @@ export function saveLocalRecord(record: LocalEditableRecord) {
 
     return updatedRecord;
 }
+
+export function writeImportedLocalRecord(record: LocalEditableRecord) {
+    getLocalStorage().setItem(
+        getStorageKey(record.id),
+        JSON.stringify(record)
+    );
+}
