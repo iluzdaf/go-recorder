@@ -322,6 +322,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     const geometry: StoneCorrectionGeometry = {
         gridMetrics,
         measure: measureGeometry,
+        getContainerHeight: () => boardAreaRef.current?.clientHeight ?? Infinity,
         vertexFromPointer: ({ clientX, clientY, geometry: grid }) =>
             getVertexFromBoardPointer({ clientX, clientY, grid }),
         createDragState: ({ geometry: grid, origin, pointerId, pointerX, pointerY }) =>

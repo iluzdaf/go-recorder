@@ -55,6 +55,8 @@ export type StoneCorrectionGeometry<TGeometry = BoardGridGeometry> = {
     gridMetrics: BoardGridMetrics;
     /** Measure the live grid; also refreshes gridMetrics. */
     measure: () => TGeometry | null;
+    /** Returns the board area container height in px for safe-area handle placement. */
+    getContainerHeight: () => number;
     vertexFromPointer: (args: {
         clientX: number;
         clientY: number;
@@ -277,10 +279,25 @@ export function useStoneCorrection<
     const stoneCorrectionAnchorVertex = getStoneCorrectionHandleAnchor(
         stoneCorrectionHandleVertices
     );
+    const stoneCorrectionMinY = stoneCorrectionHandleVertices.reduce(
+        (min, v) => Math.min(min, v.y),
+        stoneCorrectionAnchorVertex?.y ?? 0
+    );
+    const safeAreaBottomPx =
+        typeof window !== "undefined"
+            ? parseFloat(
+                  getComputedStyle(document.documentElement).getPropertyValue(
+                      "--safe-area-inset-bottom"
+                  )
+              ) || 0
+            : 0;
     const stoneCorrectionHandlePosition = getStoneCorrectionHandlePosition({
         anchor: stoneCorrectionAnchorVertex,
         gapPx: STONE_CORRECTION_PILL_GAP_PX,
         grid: gridMetrics,
+        minY: stoneCorrectionMinY,
+        containerHeight: geometry.getContainerHeight(),
+        safeAreaBottomPx,
     });
     const hasStoneCorrectionSelection = Boolean(stoneCorrectionHandlePosition);
     const placementZoomVertexSize = placementZoomWindow

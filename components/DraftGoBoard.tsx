@@ -504,6 +504,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         {
             gridMetrics: correctionGridMetrics,
             measure: measureGeometry,
+            getContainerHeight: () => boardAreaRef.current?.clientHeight ?? Infinity,
             vertexFromPointer: ({ clientX, clientY, geometry: grid }) =>
                 getVertexFromPositionViewPointer({ clientX, clientY, grid }),
             createDragState: ({
