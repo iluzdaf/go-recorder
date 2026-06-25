@@ -990,7 +990,8 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                         blackPlayerName={draft.blackPlayerName}
                         whitePlayerName={draft.whitePlayerName}
                         komi={draft.komi}
-                        onSaveSgfMetadata={handleSaveDraftSgfMetadata}
+                        sgfReadOnly={draft.draftKind === "variation"}
+                        onSaveSgfMetadata={draft.draftKind === "board" ? handleSaveDraftSgfMetadata : undefined}
                         canShareGame={canShareCurrentDraft}
                         isCreating={shareMenu.isCreating}
                         message={shareMenu.displayMessage}
