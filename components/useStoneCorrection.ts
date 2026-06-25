@@ -296,7 +296,9 @@ export function useStoneCorrection<
         gapPx: STONE_CORRECTION_PILL_GAP_PX,
         grid: gridMetrics,
         minY: stoneCorrectionMinY,
-        containerHeight: geometry.getContainerHeight(),
+        containerHeight: didStartStoneSelectionDrag
+            ? Infinity
+            : geometry.getContainerHeight(),
         safeAreaBottomPx,
     });
     const hasStoneCorrectionSelection = Boolean(stoneCorrectionHandlePosition);
