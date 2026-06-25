@@ -24,14 +24,11 @@ async function navigateToSharePage(page: Page) {
     await expect(copyLink).toBeVisible({ timeout: 15000 })
     await page.click('button[aria-label="Go to share page"]')
     await expect(page).toHaveURL(/\/shares\//)
-    // next dev portal intercepts synthesized pointer events; use native click
     await page.locator('button[aria-label="SGF"]').waitFor()
 }
 
 async function clickSgfButton(page: Page) {
-    await page.evaluate(() =>
-        (document.querySelector('button[aria-label="SGF"]') as HTMLElement).click()
-    )
+    await page.locator('button[aria-label="SGF"]').click()
 }
 
 test('shared board SGF panel shows player names and komi', async ({ page }) => {
