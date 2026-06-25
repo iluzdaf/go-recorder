@@ -38,7 +38,7 @@ import {
     type MoveNumberMarker,
 } from "../lib/variationDraft";
 import ShareBoardActionBar from "./ShareBoardActionBar";
-import SgfShareInfoPanel from "./SgfShareInfoPanel";
+import SgfSharePanel from "./SgfSharePanel";
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
 import useShareMenu from "./useShareMenu";
@@ -407,16 +407,23 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                 className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
             >
                 {shareMenuOpen ? (
-                    <SgfShareInfoPanel
+                    <SgfSharePanel
                         alignToViewportTop={isOverlayHeader}
                         menuRef={shareMenuRef}
                         blackPlayerName={share.blackPlayerName}
                         whitePlayerName={share.whitePlayerName}
                         komi={share.komi}
+                        sgfReadOnly
+                        canShareGame
+                        isCreating={false}
                         message={shareMenuStatus}
+                        mode="created"
+                        onCreateShare={() => {}}
                         onDownloadSgf={handleDownloadSgfFromShareMenu}
                         onCopyLink={copyShareLink}
                         qrCodeDataUrl={shareQrCodeDataUrl}
+                        showSharePageLink={false}
+                        sharePath={sharePath}
                     />
                 ) : null}
                 {pendingVariationInput ? (
