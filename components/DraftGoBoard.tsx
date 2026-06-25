@@ -16,6 +16,7 @@ import BoardStatusMessage from "./BoardStatusMessage";
 import DraftBoardActionBar from "./DraftBoardActionBar";
 import PositionViewSettingsDialog from "./PositionViewSettingsDialog";
 import ShareMenu from "./ShareMenu";
+import SgfSharePanel from "./SgfSharePanel";
 import { downloadSgf } from "./sgf";
 import {
     useBoardDisplaySettings,
@@ -968,7 +969,26 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                         </div>
                     </div>
                 ) : null}
-                {shareMenu.isOpen ? (
+                {shareMenu.isOpen && draft.draftKind === "variation" ? (
+                    <SgfSharePanel
+                        alignToViewportTop={isOverlayHeader}
+                        menuRef={shareMenu.menuRef}
+                        blackPlayerName={draft.blackPlayerName}
+                        whitePlayerName={draft.whitePlayerName}
+                        komi={draft.komi}
+                        sgfReadOnly
+                        canShareGame={canShareCurrentDraft}
+                        isCreating={shareMenu.isCreating}
+                        message={shareMenu.displayMessage}
+                        mode={shareMenu.mode}
+                        onCreateShare={handleShare}
+                        onDownloadSgf={handleDownloadSgfFromShareMenu}
+                        onCopyLink={shareMenu.copyShareLink}
+                        qrCodeDataUrl={shareMenu.qrCodeDataUrl}
+                        sharePath={shareMenu.sharePath}
+                    />
+                ) : null}
+                {shareMenu.isOpen && draft.draftKind === "board" ? (
                     <ShareMenu
                         alignToViewportTop={isOverlayHeader}
                         canShareGame={canShareCurrentDraft}

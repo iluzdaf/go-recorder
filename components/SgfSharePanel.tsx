@@ -25,9 +25,10 @@ type SgfSharePanelProps = {
     menuRef: RefObject<HTMLDivElement | null>;
     // SGF tab
     blackPlayerName: string | null;
-    komi: number;
+    komi?: number | null;
+    sgfReadOnly?: boolean;
     whitePlayerName: string | null;
-    onSaveSgfMetadata: (values: {
+    onSaveSgfMetadata?: (values: {
         blackPlayerName: string | null;
         whitePlayerName: string | null;
         komi: number;
@@ -50,6 +51,7 @@ export default function SgfSharePanel({
     menuRef,
     blackPlayerName,
     komi,
+    sgfReadOnly = false,
     whitePlayerName,
     onSaveSgfMetadata,
     canShareGame,
@@ -67,7 +69,7 @@ export default function SgfSharePanel({
     const [localBlack, setLocalBlack] = useState(blackPlayerName ?? "");
     const [localWhite, setLocalWhite] = useState(whitePlayerName ?? "");
     const [localKomi, setLocalKomi] = useState(
-        KOMI_OPTIONS.includes(komi as (typeof KOMI_OPTIONS)[number]) ? komi : 6.5
+        KOMI_OPTIONS.includes(komi as (typeof KOMI_OPTIONS)[number]) ? komi ?? 6.5 : 6.5
     );
 
     const router = useRouter();
@@ -77,7 +79,7 @@ export default function SgfSharePanel({
     function save(black: string, white: string, komiVal: number) {
         const trimmedBlack = black.trim();
         const trimmedWhite = white.trim();
-        onSaveSgfMetadata({
+        onSaveSgfMetadata?.({
             blackPlayerName: trimmedBlack.length > 0 ? trimmedBlack : null,
             whitePlayerName: trimmedWhite.length > 0 ? trimmedWhite : null,
             komi: komiVal,
@@ -130,7 +132,48 @@ export default function SgfSharePanel({
                 </button>
             </div>
 
-            {activeTab === "sgf" ? (
+            {activeTab === "sgf" && sgfReadOnly ? (
+                <div className="p-4">
+                    <dl className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-0.5">
+                            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                                {t("blackPlayer")}
+                            </dt>
+                            <dd className="text-sm text-zinc-950 dark:text-white">
+                                {blackPlayerName ?? (
+                                    <span className="italic text-zinc-400 dark:text-zinc-500">
+                                        {t("blackPlayerPlaceholder")}
+                                    </span>
+                                )}
+                            </dd>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                            <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                                {t("whitePlayer")}
+                            </dt>
+                            <dd className="text-sm text-zinc-950 dark:text-white">
+                                {whitePlayerName ?? (
+                                    <span className="italic text-zinc-400 dark:text-zinc-500">
+                                        {t("whitePlayerPlaceholder")}
+                                    </span>
+                                )}
+                            </dd>
+                        </div>
+                        {komi != null && (
+                            <div className="flex flex-col gap-0.5">
+                                <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                                    {t("komi")}
+                                </dt>
+                                <dd className="text-sm text-zinc-950 dark:text-white">
+                                    {komi}
+                                </dd>
+                            </div>
+                        )}
+                    </dl>
+                </div>
+            ) : null}
+
+            {activeTab === "sgf" && !sgfReadOnly ? (
                 <div className="flex flex-col gap-3 p-4">
                     <label className="flex flex-col gap-1">
                         <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
