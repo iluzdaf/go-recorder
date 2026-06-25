@@ -113,6 +113,7 @@ export function getStoneCorrectionHandlePosition({
     minY = anchor?.y ?? 0,
     containerHeight = Infinity,
     safeAreaBottomPx = 0,
+    forceAbove = null,
 }: {
     anchor: Vertex | null;
     gapPx: number;
@@ -120,13 +121,17 @@ export function getStoneCorrectionHandlePosition({
     minY?: number;
     containerHeight?: number;
     safeAreaBottomPx?: number;
+    /** Freeze the above/below orientation during a drag. Null means auto-detect. */
+    forceAbove?: boolean | null;
 }): StoneCorrectionHandlePosition | null {
     if (!anchor) return null;
 
     const left = grid.left + anchor.x * grid.cellSize + grid.cellSize / 2;
     const belowTop = grid.top + (anchor.y + 1) * grid.cellSize + gapPx;
+    const shouldFlip =
+        forceAbove ?? (belowTop + HANDLE_HEIGHT_PX > containerHeight - safeAreaBottomPx);
 
-    if (belowTop + HANDLE_HEIGHT_PX > containerHeight - safeAreaBottomPx) {
+    if (shouldFlip) {
         return {
             left,
             top: grid.top + minY * grid.cellSize - gapPx,

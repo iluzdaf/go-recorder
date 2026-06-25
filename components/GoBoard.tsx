@@ -835,6 +835,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 }}
                             >
                                 <button
+                                    data-testid="stone-correction-handle"
                                     type="button"
                                     className="inline-flex h-11 w-11 cursor-grab items-center justify-center active:cursor-grabbing"
                                     onPointerDown={
