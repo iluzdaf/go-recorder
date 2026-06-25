@@ -55,6 +55,8 @@ export type StoneCorrectionGeometry<TGeometry = BoardGridGeometry> = {
     gridMetrics: BoardGridMetrics;
     /** Measure the live grid; also refreshes gridMetrics. */
     measure: () => TGeometry | null;
+    /** Returns the board area container height in px for safe-area handle placement. */
+    getContainerHeight: () => number;
     vertexFromPointer: (args: {
         clientX: number;
         clientY: number;
@@ -174,6 +176,8 @@ export function useStoneCorrection<
 }: UseStoneCorrectionParams<TMarker, TGeometry>) {
     const strokeStateRef = useRef<StoneCorrectionStrokeState | null>(null);
     const stoneSelectTimeoutRef = useRef<number | null>(null);
+    const lastHandleFlippedRef = useRef(false);
+    const handleFlippedAtDragStartRef = useRef<boolean | null>(null);
     const stoneSelectOriginRef = useRef<Vertex | null>(null);
     const selectedGroupDragOriginRef = useRef<Vertex | null>(null);
     const stoneSelectionDragStateRef = useRef<StoneSelectionDragState | null>(
@@ -277,11 +281,33 @@ export function useStoneCorrection<
     const stoneCorrectionAnchorVertex = getStoneCorrectionHandleAnchor(
         stoneCorrectionHandleVertices
     );
+    const stoneCorrectionMinY = stoneCorrectionHandleVertices.reduce(
+        (min, v) => Math.min(min, v.y),
+        stoneCorrectionAnchorVertex?.y ?? 0
+    );
+    const safeAreaBottomPx =
+        typeof window !== "undefined"
+            ? parseFloat(
+                  getComputedStyle(document.documentElement).getPropertyValue(
+                      "--safe-area-inset-bottom"
+                  )
+              ) || 0
+            : 0;
     const stoneCorrectionHandlePosition = getStoneCorrectionHandlePosition({
         anchor: stoneCorrectionAnchorVertex,
         gapPx: STONE_CORRECTION_PILL_GAP_PX,
         grid: gridMetrics,
+        minY: stoneCorrectionMinY,
+        containerHeight: geometry.getContainerHeight(),
+        safeAreaBottomPx,
+        forceAbove:
+            didStartStoneSelectionDrag && handleFlippedAtDragStartRef.current !== null
+                ? handleFlippedAtDragStartRef.current
+                : null,
     });
+
+    lastHandleFlippedRef.current =
+        stoneCorrectionHandlePosition?.transform.includes("translateY(-100%)") ?? false;
     const hasStoneCorrectionSelection = Boolean(stoneCorrectionHandlePosition);
     const placementZoomVertexSize = placementZoomWindow
         ? gridMetrics.boardSizePx / placementZoomWindow.size
@@ -415,6 +441,7 @@ export function useStoneCorrection<
         stoneSelectionDragStartIdRef.current = null;
         stoneSelectionDragVisitedIdsRef.current.clear();
         touchPreviewVertexRef.current = null;
+        handleFlippedAtDragStartRef.current = null;
     };
 
     const toggleSelectedId = (id: number) => {
@@ -497,6 +524,7 @@ export function useStoneCorrection<
         event.preventDefault();
         event.stopPropagation();
         event.currentTarget.setPointerCapture(event.pointerId);
+        handleFlippedAtDragStartRef.current = lastHandleFlippedRef.current;
 
         const geometryResult = geometry.measure();
         if (!geometryResult) return;

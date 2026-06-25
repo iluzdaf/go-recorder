@@ -2,8 +2,8 @@ import { defineConfig, devices } from '@playwright/test'
 
 // In CI the env vars are injected by the workflow; locally op reads them from the template.
 const webServerCommand = process.env.CI
-  ? './node_modules/.bin/next dev --webpack'
-  : 'op run --env-file=.env.app.local.tpl -- ./node_modules/.bin/next dev --webpack'
+  ? './node_modules/.bin/next build && ./node_modules/.bin/next start'
+  : 'op run --env-file=.env.app.local.tpl -- sh -c "./node_modules/.bin/next build && ./node_modules/.bin/next start"'
 
 export default defineConfig({
   testDir: './e2e',

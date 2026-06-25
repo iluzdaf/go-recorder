@@ -9,7 +9,7 @@ import {
     createDefaultLocalBoardDraftInput,
     createLocalGameInputFromForm,
 } from "@/lib/localGameSetup";
-import { ArrowLeftRight, Grid3x3, Image as ImageIcon } from "lucide-react";
+import { Grid3x3, Image as ImageIcon } from "lucide-react";
 import { GameBoardThumbnail, getDraftTitle, getGameTitle } from "@/components/GameListItem";
 import ImageDraftCreator from "@/components/ImageDraftCreator";
 import { navigateWithinApp } from "@/lib/fullscreenNavigation";
@@ -22,8 +22,6 @@ const RECENT_GAME_LIMIT = 3;
 export default function Home() {
   const router = useRouter();
   const [boardSize, setBoardSize] = useState<BoardSize>(19);
-  const [blackPlayerName, setBlackPlayerName] = useState("");
-  const [whitePlayerName, setWhitePlayerName] = useState("");
   const [handicap, setHandicap] = useState(0);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
@@ -36,8 +34,6 @@ export default function Home() {
   useEffect(() => {
     const saved = loadHomeSetup();
     setBoardSize(saved.boardSize);
-    setBlackPlayerName(saved.blackPlayerName);
-    setWhitePlayerName(saved.whitePlayerName);
     setHandicap(saved.handicap);
     setDraftSource(saved.draftSource);
     setupLoaded.current = true;
@@ -68,8 +64,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!setupLoaded.current) return;
-    saveHomeSetup({ boardSize, blackPlayerName, whitePlayerName, handicap, draftSource });
-  }, [boardSize, blackPlayerName, whitePlayerName, handicap, draftSource]);
+    saveHomeSetup({ boardSize, handicap, draftSource });
+  }, [boardSize, handicap, draftSource]);
 
   function handleRecordGame(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,8 +74,8 @@ export default function Home() {
 
     const game = createLocalGame(createLocalGameInputFromForm({
         boardSize,
-        blackPlayerName,
-        whitePlayerName,
+        blackPlayerName: "",
+        whitePlayerName: "",
         handicap,
     }));
 
@@ -107,13 +103,12 @@ export default function Home() {
 
   return (
     <main className="flex min-h-0 flex-1 items-start justify-center overflow-auto bg-zinc-100 p-6 text-zinc-950 dark:bg-neutral-900 dark:text-white">
-      <div className="grid w-full max-w-3xl gap-4 sm:grid-cols-2 sm:items-start">
+      <div className="grid w-full max-w-3xl gap-4 mt-8 sm:grid-cols-2 sm:items-start">
         <form
           onSubmit={handleRecordGame}
           className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
         >
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">{t("boardSize")}</span>
             <div className="flex gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-900">
               {([9, 13, 19] as BoardSize[]).map((size) => {
                 const label = `${size} × ${size}`;
@@ -137,48 +132,6 @@ export default function Home() {
               })}
             </div>
           </div>
-
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">{t("blackPlayer")}</span>
-            <input
-              type="text"
-              value={blackPlayerName}
-              onChange={(event) => {
-                setBlackPlayerName(event.target.value);
-              }}
-              placeholder={t("blackPlayerPlaceholder")}
-              className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-            />
-          </label>
-
-          <div className="flex justify-center">
-            <button
-              type="button"
-              aria-label={t("swapPlayers")}
-              title={t("swapPlayers")}
-              disabled={isCreatingGame || isCreatingDraft}
-              onClick={() => {
-                setBlackPlayerName(whitePlayerName);
-                setWhitePlayerName(blackPlayerName);
-              }}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-zinc-400 dark:hover:bg-neutral-800 dark:hover:text-zinc-200"
-            >
-              <ArrowLeftRight size={14} />
-            </button>
-          </div>
-
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">{t("whitePlayer")}</span>
-            <input
-              type="text"
-              value={whitePlayerName}
-              onChange={(event) => {
-                setWhitePlayerName(event.target.value);
-              }}
-              placeholder={t("whitePlayerPlaceholder")}
-              className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-            />
-          </label>
 
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">{t("handicap")}</span>

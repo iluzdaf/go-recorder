@@ -71,7 +71,8 @@ export default function FloatingBoardActionBar({
     return (
         <div
             ref={railRef}
-            className="pointer-events-none absolute inset-x-3 bottom-3 z-40 h-14 select-none sm:bottom-4"
+            className="pointer-events-none absolute inset-x-3 z-40 h-14 select-none"
+            style={{ bottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
         >
             <div className="relative h-full w-full">
                 <div

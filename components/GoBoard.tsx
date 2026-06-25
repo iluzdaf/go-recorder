@@ -322,6 +322,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     const geometry: StoneCorrectionGeometry = {
         gridMetrics,
         measure: measureGeometry,
+        getContainerHeight: () => boardAreaRef.current?.clientHeight ?? Infinity,
         vertexFromPointer: ({ clientX, clientY, geometry: grid }) =>
             getVertexFromBoardPointer({ clientX, clientY, grid }),
         createDragState: ({ geometry: grid, origin, pointerId, pointerX, pointerY }) =>
@@ -834,6 +835,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                                 }}
                             >
                                 <button
+                                    data-testid="stone-correction-handle"
                                     type="button"
                                     className="inline-flex h-11 w-11 cursor-grab items-center justify-center active:cursor-grabbing"
                                     onPointerDown={

@@ -504,6 +504,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         {
             gridMetrics: correctionGridMetrics,
             measure: measureGeometry,
+            getContainerHeight: () => boardAreaRef.current?.clientHeight ?? Infinity,
             vertexFromPointer: ({ clientX, clientY, geometry: grid }) =>
                 getVertexFromPositionViewPointer({ clientX, clientY, grid }),
             createDragState: ({
@@ -1104,6 +1105,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                             }}
                         >
                             <button
+                                data-testid="stone-correction-handle"
                                 type="button"
                                 className="inline-flex h-11 w-11 cursor-grab items-center justify-center active:cursor-grabbing"
                                 onPointerDown={

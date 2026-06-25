@@ -34,7 +34,7 @@ export type BoardGridGeometry = {
 export type StoneCorrectionHandlePosition = {
     left: number;
     top: number;
-    transform: "translateX(-50%)";
+    transform: string;
 };
 
 type StoneCorrectionHandleGrid = Pick<
@@ -104,22 +104,44 @@ export function getStoneCorrectionHandleAnchor(vertices: Vertex[]): Vertex | nul
     };
 }
 
+const HANDLE_HEIGHT_PX = 44;
+
 export function getStoneCorrectionHandlePosition({
     anchor,
     gapPx,
     grid,
+    minY = anchor?.y ?? 0,
+    containerHeight = Infinity,
+    safeAreaBottomPx = 0,
+    forceAbove = null,
 }: {
     anchor: Vertex | null;
     gapPx: number;
     grid: StoneCorrectionHandleGrid;
+    minY?: number;
+    containerHeight?: number;
+    safeAreaBottomPx?: number;
+    /** Freeze the above/below orientation during a drag. Null means auto-detect. */
+    forceAbove?: boolean | null;
 }): StoneCorrectionHandlePosition | null {
     if (!anchor) return null;
 
     const left = grid.left + anchor.x * grid.cellSize + grid.cellSize / 2;
+    const belowTop = grid.top + (anchor.y + 1) * grid.cellSize + gapPx;
+    const shouldFlip =
+        forceAbove ?? (belowTop + HANDLE_HEIGHT_PX > containerHeight - safeAreaBottomPx);
+
+    if (shouldFlip) {
+        return {
+            left,
+            top: grid.top + minY * grid.cellSize - gapPx,
+            transform: "translateX(-50%) translateY(-100%)",
+        };
+    }
 
     return {
         left,
-        top: grid.top + (anchor.y + 1) * grid.cellSize + gapPx,
+        top: belowTop,
         transform: "translateX(-50%)",
     };
 }

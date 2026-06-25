@@ -5,6 +5,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 html {

@@ -5,16 +5,12 @@ const HOME_SETUP_STORAGE_KEY = "go-recorder:home-setup";
 
 export type HomeSetup = {
     boardSize: BoardSize;
-    blackPlayerName: string;
-    whitePlayerName: string;
     handicap: number;
     draftSource: "blank" | "image";
 };
 
 const DEFAULTS: HomeSetup = {
     boardSize: 19,
-    blackPlayerName: "",
-    whitePlayerName: "",
     handicap: 0,
     draftSource: "blank",
 };
@@ -39,8 +35,6 @@ export function loadHomeSetup(): HomeSetup {
         const obj = parsed as Record<string, unknown>;
         return {
             boardSize: isValidBoardSize(obj.boardSize) ? (obj.boardSize as BoardSize) : DEFAULTS.boardSize,
-            blackPlayerName: typeof obj.blackPlayerName === "string" ? obj.blackPlayerName : DEFAULTS.blackPlayerName,
-            whitePlayerName: typeof obj.whitePlayerName === "string" ? obj.whitePlayerName : DEFAULTS.whitePlayerName,
             handicap: isValidHandicap(obj.handicap) ? obj.handicap : DEFAULTS.handicap,
             draftSource: isValidDraftSource(obj.draftSource) ? obj.draftSource : DEFAULTS.draftSource,
         };
