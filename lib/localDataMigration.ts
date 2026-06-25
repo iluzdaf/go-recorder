@@ -1,4 +1,5 @@
 import type {
+    BoardSize,
     ImageSourceMetadata,
     LocalDraftRecord,
     LocalGameRecord,
@@ -46,11 +47,11 @@ function isNullableString(value: unknown) {
     return value === null || typeof value === "string";
 }
 
-function isFiniteNumber(value: unknown) {
+function isFiniteNumber(value: unknown): value is number {
     return typeof value === "number" && Number.isFinite(value);
 }
 
-function isIntegerNumber(value: unknown) {
+function isIntegerNumber(value: unknown): value is number {
     return typeof value === "number" && Number.isInteger(value);
 }
 
@@ -62,10 +63,12 @@ function isValidImageSourceMetadata(value: unknown): value is ImageSourceMetadat
     if (!isPlainObject(value)) return false;
     if (typeof value.id !== "string") return false;
     if (typeof value.dataUrl !== "string") return false;
-    if (!isFiniteNumber(value.naturalWidth) || value.naturalWidth <= 0) {
+    const naturalWidth = value.naturalWidth;
+    const naturalHeight = value.naturalHeight;
+    if (!isFiniteNumber(naturalWidth) || naturalWidth <= 0) {
         return false;
     }
-    if (!isFiniteNumber(value.naturalHeight) || value.naturalHeight <= 0) {
+    if (!isFiniteNumber(naturalHeight) || naturalHeight <= 0) {
         return false;
     }
     if (!Array.isArray(value.corners) || value.corners.length !== 4) {
@@ -88,7 +91,7 @@ function isValidImportedGameRecord(value: unknown): value is LocalGameRecord {
     return (
         typeof value.id === "string" &&
         isValidGameState(value.gameState) &&
-        [9, 13, 19].includes(value.boardSize) &&
+        [9, 13, 19].includes(value.boardSize as number) &&
         isNullableString(value.blackPlayerName) &&
         isNullableString(value.whitePlayerName) &&
         isIntegerNumber(value.handicap) &&
@@ -109,7 +112,7 @@ function isValidImportedDraftRecord(value: unknown): value is LocalDraftRecord {
     return (
         typeof value.id === "string" &&
         isValidGameState(value.gameState) &&
-        [9, 13, 19].includes(value.boardSize) &&
+        [9, 13, 19].includes(value.boardSize as number) &&
         isNullableString(value.blackPlayerName) &&
         isNullableString(value.whitePlayerName) &&
         isIntegerNumber(value.handicap) &&
@@ -122,7 +125,7 @@ function isValidImportedDraftRecord(value: unknown): value is LocalDraftRecord {
         (value.positionView === undefined ||
             value.positionView === null ||
             (typeof value.boardSize === "number" &&
-                isValidPositionView(value.positionView, value.boardSize))) &&
+                isValidPositionView(value.positionView, value.boardSize as BoardSize))) &&
         (value.imageSourceId === undefined ||
             value.imageSourceId === null ||
             typeof value.imageSourceId === "string")
