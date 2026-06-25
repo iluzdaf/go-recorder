@@ -15,6 +15,7 @@ import ImageDraftCreator from "@/components/ImageDraftCreator";
 import { navigateWithinApp } from "@/lib/fullscreenNavigation";
 import { t } from "@/lib/i18n";
 import { loadHomeSetup, saveHomeSetup } from "@/lib/homeSetup";
+import { LOCAL_DATA_MIGRATION_CHANGE_EVENT } from "@/lib/localDataMigration";
 
 const RECENT_GAME_LIMIT = 3;
 
@@ -41,12 +42,28 @@ export default function Home() {
     setDraftSource(saved.draftSource);
     setupLoaded.current = true;
 
-    const timeoutId = window.setTimeout(() => {
+    const refreshLocalData = () => {
       setRecentGames(getAllLocalGames().slice(0, RECENT_GAME_LIMIT));
       setRecentDrafts(getAllLocalDrafts().slice(0, RECENT_GAME_LIMIT));
-    }, 0);
+    };
 
-    return () => window.clearTimeout(timeoutId);
+    const timeoutId = window.setTimeout(refreshLocalData, 0);
+    const handleLocalDataChange = () => {
+      refreshLocalData();
+    };
+
+    window.addEventListener(
+      LOCAL_DATA_MIGRATION_CHANGE_EVENT,
+      handleLocalDataChange
+    );
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener(
+        LOCAL_DATA_MIGRATION_CHANGE_EVENT,
+        handleLocalDataChange
+      );
+    };
   }, []);
 
   useEffect(() => {

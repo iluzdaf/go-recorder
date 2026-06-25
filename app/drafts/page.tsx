@@ -8,6 +8,7 @@ import { getAllLocalDrafts, deleteLocalRecord } from "@/lib/localGames";
 import { GameBoardThumbnail, getDraftTitle } from "@/components/GameListItem";
 import { navigateWithinApp } from "@/lib/fullscreenNavigation";
 import { t } from "@/lib/i18n";
+import { LOCAL_DATA_MIGRATION_CHANGE_EVENT } from "@/lib/localDataMigration";
 
 export default function DraftsPage() {
     const router = useRouter();
@@ -16,12 +17,28 @@ export default function DraftsPage() {
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     useEffect(() => {
-        const timeoutId = window.setTimeout(() => {
+        const refreshDrafts = () => {
             setDrafts(getAllLocalDrafts());
             setLoaded(true);
-        }, 0);
+        };
 
-        return () => window.clearTimeout(timeoutId);
+        const timeoutId = window.setTimeout(refreshDrafts, 0);
+        const handleLocalDataChange = () => {
+            refreshDrafts();
+        };
+
+        window.addEventListener(
+            LOCAL_DATA_MIGRATION_CHANGE_EVENT,
+            handleLocalDataChange
+        );
+
+        return () => {
+            window.clearTimeout(timeoutId);
+            window.removeEventListener(
+                LOCAL_DATA_MIGRATION_CHANGE_EVENT,
+                handleLocalDataChange
+            );
+        };
     }, []);
 
     function handleDeleteRequest(id: string) {
