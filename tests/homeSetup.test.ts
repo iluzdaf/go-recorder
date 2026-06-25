@@ -17,8 +17,6 @@ function createStorageMock() {
 
 const DEFAULTS = {
     boardSize: 19,
-    blackPlayerName: "",
-    whitePlayerName: "",
     handicap: 0,
     draftSource: "blank",
 };
@@ -35,8 +33,6 @@ describe("loadHomeSetup", () => {
     it("returns a previously saved setup", () => {
         const setup = {
             boardSize: 9 as const,
-            blackPlayerName: "Alice",
-            whitePlayerName: "Bob",
             handicap: 3,
             draftSource: "image" as const,
         };
@@ -85,25 +81,13 @@ describe("saveHomeSetup", () => {
     });
 
     it("persists all fields", () => {
-        saveHomeSetup({
-            boardSize: 13,
-            blackPlayerName: "X",
-            whitePlayerName: "Y",
-            handicap: 2,
-            draftSource: "image",
-        });
-        expect(loadHomeSetup()).toEqual({
-            boardSize: 13,
-            blackPlayerName: "X",
-            whitePlayerName: "Y",
-            handicap: 2,
-            draftSource: "image",
-        });
+        saveHomeSetup({ boardSize: 13, handicap: 2, draftSource: "image" });
+        expect(loadHomeSetup()).toEqual({ boardSize: 13, handicap: 2, draftSource: "image" });
     });
 
     it("overwrites a previously saved setup", () => {
-        saveHomeSetup({ boardSize: 9, blackPlayerName: "", whitePlayerName: "", handicap: 0, draftSource: "blank" });
-        saveHomeSetup({ boardSize: 13, blackPlayerName: "A", whitePlayerName: "B", handicap: 4, draftSource: "image" });
+        saveHomeSetup({ boardSize: 9, handicap: 0, draftSource: "blank" });
+        saveHomeSetup({ boardSize: 13, handicap: 4, draftSource: "image" });
         expect(loadHomeSetup().boardSize).toBe(13);
         expect(loadHomeSetup().handicap).toBe(4);
     });
