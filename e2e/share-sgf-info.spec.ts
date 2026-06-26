@@ -1,13 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-
-async function startGameWithPlayers(page: Page, black: string, white: string) {
-    await page.goto('/')
-    await page.fill('input[placeholder="Black"]', black)
-    await page.fill('input[placeholder="White"]', white)
-    await page.click('button:has-text("Record Game")')
-    await expect(page).toHaveURL(/\/games\//)
-    await expect(page.locator('.shudan-goban')).toBeVisible()
-}
+import { closeDetailsPanel, openDetailsPanel, openShareTab, setSgfMetadata, startGame, startGameWithMetadata } from './helpers'
 
 async function placeMoveOnBoard(page: Page) {
     const box = await page.locator('.shudan-goban').boundingBox()
@@ -16,30 +8,29 @@ async function placeMoveOnBoard(page: Page) {
 }
 
 async function navigateToSharePage(page: Page) {
-    await page.click('button[aria-label="Details"]')
-    await expect(page.locator('#share-menu')).toBeVisible()
+    await openDetailsPanel(page)
+    await openShareTab(page)
     const createLink = page.locator('#share-menu button[aria-label="Create link"]')
     const copyLink = page.locator('#share-menu button[aria-label="Copy link"]')
     if (await createLink.isVisible()) await createLink.click()
     await expect(copyLink).toBeVisible({ timeout: 15000 })
     await page.click('button[aria-label="Go to share page"]')
     await expect(page).toHaveURL(/\/shares\//)
-    await page.locator('button[aria-label="SGF"]').waitFor()
+    await page.locator('button[aria-label="Details"]').waitFor()
 }
 
 async function clickSgfButton(page: Page) {
-    await page.locator('button[aria-label="SGF"]').click()
+    await page.locator('button[aria-label="Details"]').click()
 }
 
 test('shared board SGF panel shows player names and komi', async ({ page }) => {
-    await startGameWithPlayers(page, 'AlphaGo', 'Lee Sedol')
-
-    await page.click('button[aria-label="Details"]')
-    await expect(page.locator('#share-menu')).toBeVisible()
-    await page.locator('#share-menu').getByRole('button', { name: 'Rules' }).click()
-    await page.locator('#share-menu select').selectOption('7.5')
-    await page.click('button[aria-label="Details"]')
-    await expect(page.locator('#share-menu')).not.toBeVisible()
+    await startGame(page)
+    await setSgfMetadata(page, {
+        black: 'AlphaGo',
+        komi: '7.5',
+        white: 'Lee Sedol',
+    })
+    await closeDetailsPanel(page)
 
     await placeMoveOnBoard(page)
     await navigateToSharePage(page)
@@ -53,7 +44,7 @@ test('shared board SGF panel shows player names and komi', async ({ page }) => {
 })
 
 test('shared board SGF button toggles the panel open and closed', async ({ page }) => {
-    await startGameWithPlayers(page, 'AlphaGo', 'Lee Sedol')
+    await startGameWithMetadata(page, 'AlphaGo', 'Lee Sedol')
     await placeMoveOnBoard(page)
     await navigateToSharePage(page)
 
@@ -65,11 +56,7 @@ test('shared board SGF button toggles the panel open and closed', async ({ page 
 })
 
 test('shared board SGF panel shows placeholders when player names are absent', async ({ page }) => {
-    await page.goto('/')
-    await page.fill('input[placeholder="Black"]', '')
-    await page.fill('input[placeholder="White"]', '')
-    await page.click('button:has-text("Record Game")')
-    await expect(page).toHaveURL(/\/games\//)
+    await startGame(page)
 
     await placeMoveOnBoard(page)
     await navigateToSharePage(page)

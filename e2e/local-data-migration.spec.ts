@@ -9,6 +9,11 @@ async function openSettings(page: Page) {
     await page.click('button[aria-label="Settings"]')
 }
 
+async function closeSettings(page: Page) {
+    await page.keyboard.press('Escape')
+    await expect(page.locator('#settings-menu')).not.toBeVisible()
+}
+
 async function clearLocalGameRecords(page: Page) {
     await page.evaluate(() => {
         const keys: string[] = []
@@ -135,7 +140,7 @@ test('export and import restores local games and drafts', async ({ page }) => {
     await expect(page.locator('text=Imported local data')).toBeVisible()
 
     // Close settings and verify records appear on home page
-    await page.click('button[aria-label="Hide header"]')
+    await closeSettings(page)
     await expect(page.locator('text=MigrationTestBlack')).toBeVisible()
     await expect(page.locator('button[aria-label="Draft"]')).toBeVisible()
 })
@@ -235,7 +240,7 @@ test('export and import preserves image source for image-created draft', async (
     expect(await getImageSourceCount(page)).toBe(1)
 
     // Navigate to the imported draft and verify the source image overlay is available
-    await page.click('button[aria-label="Hide header"]')
+    await closeSettings(page)
     await page.locator('button[aria-label="Draft"]').first().click()
     await expect(page).toHaveURL(/\/drafts\//)
     await expect(page.locator('button[aria-label="Show source image"]')).toBeVisible()

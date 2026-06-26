@@ -1,21 +1,15 @@
 import { test, expect, type Page } from '@playwright/test'
+import { openSharePanelAndCreateLink, openShareTab, startGame } from './helpers'
 
 async function createGameWithShare(page: Page) {
-  await page.goto('/')
-  await page.click('button:has-text("Record Game")')
-  await expect(page).toHaveURL(/\/games\//)
-  await expect(page.locator('.shudan-goban')).toBeVisible()
+  await startGame(page)
 
   // Place a move so the game is shareable
   const box = await page.locator('.shudan-goban').boundingBox()
   if (!box) throw new Error('goban not found')
   await page.mouse.click(box.x + box.width * 0.25, box.y + box.height * 0.25)
 
-  // Open share menu — the share auto-creates
-  await page.click('button[aria-label="Details"]')
-  await expect(
-    page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
-  ).toBeVisible({ timeout: 15000 })
+  await openSharePanelAndCreateLink(page)
 
   // Close the share menu
   await page.keyboard.press('Escape')
@@ -31,11 +25,7 @@ async function createDraftWithShare(page: Page) {
   // Place a stone so the draft is shareable
   await page.locator('.shudan-goban').click()
 
-  // Open share menu — the share auto-creates
-  await page.click('button[aria-label="Details"]')
-  await expect(
-    page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
-  ).toBeVisible({ timeout: 15000 })
+  await openSharePanelAndCreateLink(page)
 
   // Close the share menu by clicking outside
   await page.keyboard.press('Escape')
@@ -174,7 +164,7 @@ test('editing player name after share shows confirm dialog', async ({ page }) =>
   // Confirming resets the share — Share tab should show Create link, not Copy link
   await dialog.getByRole('button', { name: /continue/i }).click()
   await expect(dialog).not.toBeVisible()
-  await page.locator('#share-menu').getByRole('tab', { name: 'Share' }).click()
+  await openShareTab(page)
   await expect(
     page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
   ).not.toBeVisible()

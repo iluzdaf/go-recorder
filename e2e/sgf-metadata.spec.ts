@@ -2,23 +2,15 @@ import { test, expect, type Page } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
+import { openDetailsPanel, startGameWithMetadata } from './helpers'
 
-async function startGameWithPlayers(page: Page, black: string, white: string) {
-  await page.goto('/')
-  await page.fill('input[placeholder="Black"]', black)
-  await page.fill('input[placeholder="White"]', white)
-  await page.click('button:has-text("Record Game")')
-  await expect(page).toHaveURL(/\/games\//)
-  await expect(page.locator('.shudan-goban')).toBeVisible()
-}
-
-async function openDetailsPanel(page: Page) {
-  await page.click('button[aria-label="Details"]')
-  await expect(page.locator('#share-menu')).toBeVisible()
-}
 
 async function expandRules(page: Page) {
   await page.locator('#share-menu').getByRole('button', { name: 'Rules' }).click()
+}
+
+async function expandPlayers(page: Page) {
+  await page.locator('#share-menu').getByRole('button', { name: 'Players' }).click()
 }
 
 async function placeMoveOnBoard(page: Page) {
@@ -28,7 +20,7 @@ async function placeMoveOnBoard(page: Page) {
 }
 
 test('panel has no save button and stays open after auto-saving', async ({ page }) => {
-  await startGameWithPlayers(page, 'Alice', 'Bob')
+  await startGameWithMetadata(page, 'Alice', 'Bob')
   await openDetailsPanel(page)
 
   await expect(page.locator('button:has-text("Save")')).not.toBeVisible()
@@ -39,13 +31,14 @@ test('panel has no save button and stays open after auto-saving', async ({ page 
   await expect(page.locator('#share-menu')).toBeVisible()
 
   // Name blur auto-saves and panel stays open
+  await expandPlayers(page)
   await page.locator('#share-menu input[placeholder="Black"]').fill('Alice')
   await page.locator('#share-menu input[placeholder="Black"]').blur()
   await expect(page.locator('#share-menu')).toBeVisible()
 })
 
 test('SGF panel persists player names and komi; swap leaves komi unchanged', async ({ page }) => {
-  await startGameWithPlayers(page, 'Hana', 'Taro')
+  await startGameWithMetadata(page, 'Hana', 'Taro')
   await openDetailsPanel(page)
 
   await page.locator('#share-menu input[placeholder="Black"]').fill('Hana')
@@ -56,9 +49,11 @@ test('SGF panel persists player names and komi; swap leaves komi unchanged', asy
   await page.locator('#share-menu select').selectOption('6.5')
 
   // Swap should exchange only the names
+  await expandPlayers(page)
   await page.locator('#share-menu').getByRole('button', { name: 'Swap players' }).click()
   await expect(page.locator('#share-menu input[placeholder="Black"]')).toHaveValue('Taro')
   await expect(page.locator('#share-menu input[placeholder="White"]')).toHaveValue('Hana')
+  await expandRules(page)
   await expect(page.locator('#share-menu select')).toHaveValue('6.5')
 
   // Close and reopen to verify persistence
@@ -73,7 +68,7 @@ test('SGF panel persists player names and komi; swap leaves komi unchanged', asy
 })
 
 test('downloaded SGF contains PB, PW, and KM matching panel values', async ({ page }) => {
-  await startGameWithPlayers(page, 'Hana', 'Taro')
+  await startGameWithMetadata(page, 'Hana', 'Taro')
 
   await openDetailsPanel(page)
   await expandRules(page)

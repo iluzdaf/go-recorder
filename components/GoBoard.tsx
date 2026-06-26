@@ -494,6 +494,7 @@ export default function GoBoard({ id }: GoBoardProps) {
 
     const handleConfirmEdit = () => {
         hasExistingShareRef.current = false;
+        clearCachedShareLink();
         pendingEditFn?.();
         correction.clearSelection();
         setPendingEditFn(null);

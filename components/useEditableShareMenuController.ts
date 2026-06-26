@@ -68,7 +68,10 @@ export default function useEditableShareMenuController({
 
     const clearShareLink = useCallback(() => {
         resetToShareSlug(null);
-    }, [resetToShareSlug]);
+        if (isOpen) {
+            setHasAutoCreateAttempted(true);
+        }
+    }, [isOpen, resetToShareSlug]);
 
     const open = useCallback(() => {
         setMode(shareSlug ? "created" : "chooser");
