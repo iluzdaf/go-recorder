@@ -40,7 +40,6 @@
     "gameNotFound": "Game not found on this device.",
     "gameNotLoaded": "Game is not loaded.",
     "addMoveBeforeSharing": "Add at least one move before sharing.",
-    "shareInvalidatedByEdit": "Share link was reset. Create a new link to share your changes.",
     "creatingShare": "Creating share...",
     "shareCreated": "Share created",
     "failedToCreateShare": "Failed to create share",

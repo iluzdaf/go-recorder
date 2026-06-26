@@ -158,7 +158,7 @@ test('game recording: warning → cancel → warning again → continue → no f
   await expect(warning).not.toBeVisible({ timeout: 1000 })
 })
 
-test('editing player name after share resets link and shows warning on Share tab', async ({ page }) => {
+test('editing player name after share shows confirm dialog', async ({ page }) => {
   await createDraftWithShare(page)
 
   // Open Details panel and edit the black player name
@@ -167,15 +167,23 @@ test('editing player name after share resets link and shows warning on Share tab
   await page.locator('#share-menu input[placeholder="Black"]').fill('New Name')
   await page.locator('#share-menu input[placeholder="Black"]').blur()
 
-  // Switch to the Share tab — should show invalidation message, not Copy link
+  // Confirm dialog should appear
+  const dialog = page.getByRole('dialog', { name: /share was created/i })
+  await expect(dialog).toBeVisible()
+
+  // Confirming resets the share — Share tab should show Create link, not Copy link
+  await dialog.getByRole('button', { name: /continue/i }).click()
+  await expect(dialog).not.toBeVisible()
   await page.locator('#share-menu').getByRole('tab', { name: 'Share' }).click()
   await expect(
     page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
   ).not.toBeVisible()
-  await expect(page.locator('#share-menu').getByText('Share link was reset')).toBeVisible()
+  await expect(
+    page.locator('#share-menu').getByRole('button', { name: 'Create link' })
+  ).toBeVisible()
 })
 
-test('editing komi after share resets link and shows warning on Share tab', async ({ page }) => {
+test('editing komi after share shows confirm dialog', async ({ page }) => {
   await createDraftWithShare(page)
 
   // Open Details panel and change komi via the Rules section
@@ -184,10 +192,9 @@ test('editing komi after share resets link and shows warning on Share tab', asyn
   await page.locator('#share-menu').getByRole('button', { name: 'Rules' }).click()
   await page.locator('#share-menu select').selectOption('7.5')
 
-  // Switch to the Share tab — should show invalidation message, not Copy link
-  await page.locator('#share-menu').getByRole('tab', { name: 'Share' }).click()
-  await expect(
-    page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
-  ).not.toBeVisible()
-  await expect(page.locator('#share-menu').getByText('Share link was reset')).toBeVisible()
+  // Confirm dialog should appear
+  const dialog = page.getByRole('dialog', { name: /share was created/i })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: /cancel/i }).click()
+  await expect(dialog).not.toBeVisible()
 })
