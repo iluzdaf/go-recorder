@@ -10,10 +10,6 @@ export function t(key: MessageKey) {
     return messages[key];
 }
 
-export function formatShareCreated(path: string) {
-    return `${t("shareCreated")}: ${path}`;
-}
-
 export function formatMoveEditError(error: string) {
     if (error === "Edit changes future captures") {
         return t("stoneCorrectionChangesCaptures");

@@ -13,7 +13,7 @@ export function getDisplayPlayerName(name: string | null) {
     return trimmedName && trimmedName.length > 0 ? trimmedName : null;
 }
 
-export function getGenericShareTitle({
+function getGenericShareTitle({
     draftKind,
     sourceKind,
 }: {

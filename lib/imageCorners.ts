@@ -7,13 +7,6 @@ export type OrderedCorners = [
     BoardCorner,
 ];
 
-export const CORNER_LABELS = [
-    "topLeft",
-    "topRight",
-    "bottomRight",
-    "bottomLeft",
-] as const;
-
 export type CornerIndex = 0 | 1 | 2 | 3;
 
 type Size = {
