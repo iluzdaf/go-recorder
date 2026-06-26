@@ -24,7 +24,6 @@ import {
     Upload,
     Settings,
     Sun,
-    X,
 } from "lucide-react";
 import ChangelogReleaseList from "./ChangelogReleaseList";
 import useFloatingDialog from "./useFloatingDialog";
@@ -499,6 +498,7 @@ export default function AppShell({
         useState<AppNavigationState>(() => ({ entries: [], index: -1 }));
     const changelog = useFloatingDialog();
     const settings = useFloatingDialog();
+    const headerRef = useRef<HTMLElement | null>(null);
     const localDataFileInputRef = useRef<HTMLInputElement | null>(null);
     const isFullscreenSupported = useSyncExternalStore(
         () => () => {},
@@ -767,6 +767,31 @@ export default function AppShell({
 
     const usesOverlayHeader = true;
     const isHeaderVisible = isHeaderExpanded;
+
+    const { close: closeChangelog, dialogRef: changelogDialogRef } = changelog;
+    const { close: closeSettings, dialogRef: settingsDialogRef } = settings;
+
+    useEffect(() => {
+        if (!isHeaderVisible) return;
+
+        const handlePointerDown = (event: PointerEvent) => {
+            const target = event.target;
+            if (!(target instanceof Node)) return;
+            if (
+                !headerRef.current?.contains(target) &&
+                !changelogDialogRef.current?.contains(target) &&
+                !settingsDialogRef.current?.contains(target)
+            ) {
+                setIsHeaderExpanded(false);
+                closeChangelog();
+                closeSettings();
+            }
+        };
+
+        document.addEventListener("pointerdown", handlePointerDown);
+        return () => document.removeEventListener("pointerdown", handlePointerDown);
+    }, [isHeaderVisible, changelogDialogRef, settingsDialogRef, closeChangelog, closeSettings]);
+
     const areHeaderDialogsAnchoredToViewportTop =
         shouldAnchorHeaderDialogsToViewportTop({
             isHeaderVisible,
@@ -827,6 +852,7 @@ export default function AppShell({
 
                 {isHeaderVisible ? (
                     <header
+                        ref={headerRef}
                         className={
                             usesOverlayHeader
                                 ? "fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-zinc-200 bg-white/95 px-4 text-zinc-950 shadow-lg backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95 dark:text-white"
@@ -901,15 +927,6 @@ export default function AppShell({
                                 <Settings size={18} />
                             </button>
 
-                            <button
-                                type="button"
-                                className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
-                                aria-label={t("hideHeader")}
-                                title={t("hideHeader")}
-                                onClick={() => setIsHeaderExpanded(false)}
-                            >
-                                <X size={18} />
-                            </button>
                         </div>
                     </header>
                 ) : null}
