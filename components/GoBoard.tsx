@@ -562,6 +562,12 @@ export default function GoBoard({ id }: GoBoardProps) {
             const localGameRecord = localGameRecordRef.current;
             if (!localGameRecord) return;
 
+            if (hasExistingShareRef.current) {
+                clearCachedShareLink();
+                setEditableShareError(t("shareInvalidatedByEdit"));
+                hasExistingShareRef.current = false;
+            }
+
             const updatedRecord = saveLocalEditableRecord({
                 record: localGameRecord,
                 blackPlayerName,
@@ -577,7 +583,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                 komi,
             }));
         },
-        []
+        [clearCachedShareLink, setEditableShareError]
     );
 
     const handleDownloadSgf = useCallback(() => {

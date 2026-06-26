@@ -296,17 +296,20 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 return;
             }
 
-            guardEdit(() => {
-                clearCachedShareLink();
-                updateDraft(
-                    clearDraftShareCache({
-                        ...currentDraft,
-                        positionView: nextPositionView,
-                    })
-                );
-            });
+            if (hasExistingShareRef.current) {
+                setEditableShareError(t("shareInvalidatedByEdit"));
+                hasExistingShareRef.current = false;
+            }
+
+            clearCachedShareLink();
+            updateDraft(
+                clearDraftShareCache({
+                    ...currentDraft,
+                    positionView: nextPositionView,
+                })
+            );
         },
-        [clearCachedShareLink, guardEdit, updateDraft]
+        [clearCachedShareLink, setEditableShareError, updateDraft]
     );
 
     const handleDownloadSgf = useCallback(() => {
@@ -338,13 +341,20 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     }) => {
         const currentDraft = draftRef.current;
         if (!currentDraft) return;
-        updateDraft({
+
+        if (hasExistingShareRef.current) {
+            clearCachedShareLink();
+            setEditableShareError(t("shareInvalidatedByEdit"));
+            hasExistingShareRef.current = false;
+        }
+
+        updateDraft(clearDraftShareCache({
             ...currentDraft,
             blackPlayerName: values.blackPlayerName,
             whitePlayerName: values.whitePlayerName,
             komi: values.komi,
-        });
-    }, [updateDraft]);
+        }));
+    }, [clearCachedShareLink, setEditableShareError, updateDraft]);
 
     const handleShare = useCallback(async () => {
         const currentDraft = draftRef.current;
