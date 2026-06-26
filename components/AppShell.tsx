@@ -27,6 +27,7 @@ import {
     X,
 } from "lucide-react";
 import ChangelogReleaseList from "./ChangelogReleaseList";
+import useFloatingDialog from "./useFloatingDialog";
 import { t } from "../lib/i18n";
 import {
     downloadLocalDataExport,
@@ -490,18 +491,14 @@ export default function AppShell({
     const [headerActions, setHeaderActions] = useState<React.ReactNode>(null);
     const [headerStatus, setHeaderStatus] = useState<React.ReactNode>(null);
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
-    const [isChangelogOpen, setIsChangelogOpen] = useState(false);
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [localDataStatus, setLocalDataStatus] = useState<string | null>(
         null
     );
     const [isFullscreen, setIsFullscreen] = useState(() => getIsFullscreen());
     const [appNavigationState, setAppNavigationState] =
         useState<AppNavigationState>(() => ({ entries: [], index: -1 }));
-    const changelogButtonRef = useRef<HTMLButtonElement | null>(null);
-    const changelogMenuRef = useRef<HTMLDivElement | null>(null);
-    const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
-    const settingsMenuRef = useRef<HTMLDivElement | null>(null);
+    const changelog = useFloatingDialog();
+    const settings = useFloatingDialog();
     const localDataFileInputRef = useRef<HTMLInputElement | null>(null);
     const isFullscreenSupported = useSyncExternalStore(
         () => () => {},
@@ -711,23 +708,15 @@ export default function AppShell({
         });
     }, [router.push]);
 
-    const closeChangelog = useCallback(() => {
-        setIsChangelogOpen(false);
-    }, []);
-
     const toggleChangelog = useCallback(() => {
-        setIsChangelogOpen((nextIsChangelogOpen) => !nextIsChangelogOpen);
-        setIsSettingsOpen(false);
-    }, []);
-
-    const closeSettings = useCallback(() => {
-        setIsSettingsOpen(false);
-    }, []);
+        settings.close();
+        changelog.toggle();
+    }, [changelog, settings]);
 
     const toggleSettings = useCallback(() => {
-        setIsSettingsOpen((nextIsSettingsOpen) => !nextIsSettingsOpen);
-        setIsChangelogOpen(false);
-    }, []);
+        changelog.close();
+        settings.toggle();
+    }, [changelog, settings]);
 
     const handleExportLocalData = useCallback(async () => {
         try {
@@ -775,63 +764,6 @@ export default function AppShell({
         []
     );
 
-    useEffect(() => {
-        if (!isChangelogOpen) return;
-
-        const handlePointerDown = (event: PointerEvent) => {
-            if (
-                changelogButtonRef.current?.contains(event.target as Node) ||
-                changelogMenuRef.current?.contains(event.target as Node)
-            ) {
-                return;
-            }
-
-            closeChangelog();
-        };
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                closeChangelog();
-            }
-        };
-
-        document.addEventListener("pointerdown", handlePointerDown);
-        document.addEventListener("keydown", handleKeyDown);
-
-        return () => {
-            document.removeEventListener("pointerdown", handlePointerDown);
-            document.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [closeChangelog, isChangelogOpen]);
-
-    useEffect(() => {
-        if (!isSettingsOpen) return;
-
-        const handlePointerDown = (event: PointerEvent) => {
-            if (
-                settingsButtonRef.current?.contains(event.target as Node) ||
-                settingsMenuRef.current?.contains(event.target as Node)
-            ) {
-                return;
-            }
-
-            closeSettings();
-        };
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                closeSettings();
-            }
-        };
-
-        document.addEventListener("pointerdown", handlePointerDown);
-        document.addEventListener("keydown", handleKeyDown);
-
-        return () => {
-            document.removeEventListener("pointerdown", handlePointerDown);
-            document.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [closeSettings, isSettingsOpen]);
 
     const usesOverlayHeader = true;
     const isHeaderVisible = isHeaderExpanded;
@@ -941,12 +873,12 @@ export default function AppShell({
                                 </span>
                             ) : (
                                 <button
-                                    ref={changelogButtonRef}
+                                    ref={changelog.triggerRef}
                                     type="button"
                                     className="inline-flex h-11 items-center justify-center rounded-md px-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-neutral-800 dark:hover:text-white"
                                     aria-label={`${t("version")} ${appVersion}`}
                                     aria-controls="changelog-menu"
-                                    aria-expanded={isChangelogOpen}
+                                    aria-expanded={changelog.isOpen}
                                     aria-haspopup="dialog"
                                     title={t("changelog")}
                                     onClick={toggleChangelog}
@@ -956,12 +888,12 @@ export default function AppShell({
                             )}
 
                             <button
-                                ref={settingsButtonRef}
+                                ref={settings.triggerRef}
                                 type="button"
                                 className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
                                 aria-label={t("settings")}
                                 aria-controls="settings-menu"
-                                aria-expanded={isSettingsOpen}
+                                aria-expanded={settings.isOpen}
                                 aria-haspopup="dialog"
                                 title={t("settings")}
                                 onClick={toggleSettings}
@@ -981,10 +913,10 @@ export default function AppShell({
                         </div>
                     </header>
                 ) : null}
-                {isChangelogOpen ? (
+                {changelog.isOpen ? (
                     <div
                         id="changelog-menu"
-                        ref={changelogMenuRef}
+                        ref={changelog.dialogRef}
                         className={getChangelogDialogClassName({
                             alignToViewportTop:
                                 areHeaderDialogsAnchoredToViewportTop,
@@ -1009,16 +941,16 @@ export default function AppShell({
                         <Link
                             href="/changelog"
                             className="ml-auto mt-3 flex w-fit text-sm font-semibold text-zinc-700 underline underline-offset-4 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
-                            onClick={() => setIsChangelogOpen(false)}
+                            onClick={changelog.close}
                         >
                             {t("showMoreChangelog")}
                         </Link>
                     </div>
                 ) : null}
-                {isSettingsOpen ? (
+                {settings.isOpen ? (
                     <div
                         id="settings-menu"
-                        ref={settingsMenuRef}
+                        ref={settings.dialogRef}
                         role="dialog"
                         aria-modal="false"
                         aria-labelledby="settings-menu-title"

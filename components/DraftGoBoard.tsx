@@ -71,6 +71,7 @@ import {
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
 import useEditableShareMenuController from "./useEditableShareMenuController";
+import useFloatingDialog from "./useFloatingDialog";
 
 type DraftMarker = MoveNumberMarker | null | { type: "circle" };
 
@@ -139,13 +140,8 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     const hasPendingSaveRef = useRef(false);
     const hasExistingShareRef = useRef(Boolean(draft?.lastShareSlug));
     const [pendingEditFn, setPendingEditFn] = useState<(() => void) | null>(null);
-    const positionViewSettingsRef = useRef<HTMLDivElement | null>(null);
-    const positionViewSettingsTriggerRef = useRef<HTMLButtonElement | null>(
-        null
-    );
+    const positionViewSettings = useFloatingDialog();
     const [selectedColor, setSelectedColor] = useState<Stone>("B");
-    const [positionViewSettingsOpen, setPositionViewSettingsOpen] =
-        useState(false);
     const [imageSource, setImageSource] = useState<ImageSourceMetadata | null>(
         null
     );
@@ -282,57 +278,18 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         setSelectedColor((currentColor) => (currentColor === "B" ? "W" : "B"));
     }, []);
 
-    const handleClosePositionViewSettings = useCallback(() => {
-        setPositionViewSettingsOpen(false);
-    }, []);
-
     const handleTogglePositionViewSettings = useCallback(() => {
-        if (!positionViewSettingsOpen) {
+        if (!positionViewSettings.isOpen) {
             closeEditableShareMenu();
         }
 
-        setPositionViewSettingsOpen((isOpen) => !isOpen);
-    }, [closeEditableShareMenu, positionViewSettingsOpen]);
+        positionViewSettings.toggle();
+    }, [closeEditableShareMenu, positionViewSettings]);
 
     const handleToggleShareMenu = useCallback(() => {
-        setPositionViewSettingsOpen(false);
+        positionViewSettings.close();
         toggleEditableShareMenu();
-    }, [toggleEditableShareMenu]);
-
-    useEffect(() => {
-        if (!positionViewSettingsOpen) return;
-
-        const handlePointerDown = (event: PointerEvent) => {
-            const target = event.target;
-            if (!(target instanceof Node)) return;
-
-            const dialogElement = positionViewSettingsRef.current;
-            const triggerElement = positionViewSettingsTriggerRef.current;
-
-            if (
-                dialogElement?.contains(target) ||
-                triggerElement?.contains(target)
-            ) {
-                return;
-            }
-
-            handleClosePositionViewSettings();
-        };
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                handleClosePositionViewSettings();
-            }
-        };
-
-        window.addEventListener("pointerdown", handlePointerDown);
-        window.addEventListener("keydown", handleKeyDown);
-
-        return () => {
-            window.removeEventListener("pointerdown", handlePointerDown);
-            window.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [handleClosePositionViewSettings, positionViewSettingsOpen]);
+    }, [positionViewSettings, toggleEditableShareMenu]);
 
     const handleChangePositionViewSettings = useCallback(
         (nextPositionView: PositionView) => {
@@ -1029,7 +986,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                     showSourceImageToggle={imageSource !== null}
                     sourceImageVisible={sourceImageVisible}
                     positionViewSettingsTriggerRef={
-                        positionViewSettingsTriggerRef
+                        positionViewSettings.triggerRef
                     }
                     railRef={actionBar.railRef}
                     selectedColor={selectedColor}
@@ -1039,11 +996,11 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                         correction.placementZoomWindow
                     )}
                 />
-                {positionViewSettingsOpen && draft.draftKind === "board" ? (
+                {positionViewSettings.isOpen && draft.draftKind === "board" ? (
                     <PositionViewSettingsDialog
                         alignToViewportTop={isOverlayHeader}
                         boardSize={draft.boardSize}
-                        dialogRef={positionViewSettingsRef}
+                        dialogRef={positionViewSettings.dialogRef}
                         onChange={handleChangePositionViewSettings}
                         positionView={draft.positionView ?? null}
                     />
