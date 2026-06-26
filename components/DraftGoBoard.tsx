@@ -14,7 +14,6 @@ import type {
 } from "./types";
 import BoardStatusMessage from "./BoardStatusMessage";
 import DraftBoardActionBar from "./DraftBoardActionBar";
-import PositionViewSettingsDialog from "./PositionViewSettingsDialog";
 import SgfSharePanel from "./SgfSharePanel";
 import { downloadSgf } from "./sgf";
 import {
@@ -71,7 +70,6 @@ import {
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
 import useEditableShareMenuController from "./useEditableShareMenuController";
-import useFloatingDialog from "./useFloatingDialog";
 
 type DraftMarker = MoveNumberMarker | null | { type: "circle" };
 
@@ -140,7 +138,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     const hasPendingSaveRef = useRef(false);
     const hasExistingShareRef = useRef(Boolean(draft?.lastShareSlug));
     const [pendingEditFn, setPendingEditFn] = useState<(() => void) | null>(null);
-    const positionViewSettings = useFloatingDialog();
     const [selectedColor, setSelectedColor] = useState<Stone>("B");
     const [imageSource, setImageSource] = useState<ImageSourceMetadata | null>(
         null
@@ -278,18 +275,9 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         setSelectedColor((currentColor) => (currentColor === "B" ? "W" : "B"));
     }, []);
 
-    const handleTogglePositionViewSettings = useCallback(() => {
-        if (!positionViewSettings.isOpen) {
-            closeEditableShareMenu();
-        }
-
-        positionViewSettings.toggle();
-    }, [closeEditableShareMenu, positionViewSettings]);
-
     const handleToggleShareMenu = useCallback(() => {
-        positionViewSettings.close();
         toggleEditableShareMenu();
-    }, [positionViewSettings, toggleEditableShareMenu]);
+    }, [toggleEditableShareMenu]);
 
     const handleChangePositionViewSettings = useCallback(
         (nextPositionView: PositionView) => {
@@ -945,8 +933,11 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                         alignToViewportTop={isOverlayHeader}
                         menuRef={shareMenu.menuRef}
                         blackPlayerName={draft.blackPlayerName}
+                        boardSize={draft.draftKind === "board" ? draft.boardSize : undefined}
                         whitePlayerName={draft.whitePlayerName}
                         komi={draft.komi}
+                        onChangePositionView={draft.draftKind === "board" ? handleChangePositionViewSettings : undefined}
+                        positionView={draft.draftKind === "board" ? draft.positionView ?? null : undefined}
                         sgfReadOnly={draft.draftKind === "variation"}
                         onSaveSgfMetadata={draft.draftKind === "board" ? handleSaveDraftSgfMetadata : undefined}
                         canShareGame={canShareCurrentDraft}
@@ -979,15 +970,11 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                     onPointerMove={actionBar.dragHandlers.onPointerMove}
                     onPointerUp={actionBar.dragHandlers.onPointerUp}
                     onToggleColor={handleToggleColor}
-                    onTogglePositionViewSettings={handleTogglePositionViewSettings}
                     onToggleShareMenu={handleToggleShareMenu}
                     onToggleSourceImage={handleToggleSourceImage}
                     onUndo={handleVariationUndo}
                     showSourceImageToggle={imageSource !== null}
                     sourceImageVisible={sourceImageVisible}
-                    positionViewSettingsTriggerRef={
-                        positionViewSettings.triggerRef
-                    }
                     railRef={actionBar.railRef}
                     selectedColor={selectedColor}
                     shareMenuOpen={shareMenu.isOpen}
@@ -996,15 +983,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                         correction.placementZoomWindow
                     )}
                 />
-                {positionViewSettings.isOpen && draft.draftKind === "board" ? (
-                    <PositionViewSettingsDialog
-                        alignToViewportTop={isOverlayHeader}
-                        boardSize={draft.boardSize}
-                        dialogRef={positionViewSettings.dialogRef}
-                        onChange={handleChangePositionViewSettings}
-                        positionView={draft.positionView ?? null}
-                    />
-                ) : null}
                 <div
                     ref={gobanWrapperRef}
                     className="relative"

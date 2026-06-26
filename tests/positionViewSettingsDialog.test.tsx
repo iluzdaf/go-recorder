@@ -16,18 +16,14 @@ function renderDialog(alignToViewportTop: boolean) {
 }
 
 describe("PositionViewSettingsDialog", () => {
-    it("anchors below the header by default", () => {
-        expect(renderDialog(false)).toContain("top-16");
+    it("uses a side-by-side layout in wide contexts", () => {
+        expect(renderDialog(true)).toContain(
+            "sm:grid-cols-[minmax(0,1fr)_10rem]"
+        );
     });
 
-    it("anchors to the top of the viewport in compact header layouts", () => {
-        const markup = renderDialog(true);
-
-        expect(markup).toContain("absolute");
-        expect(markup).toContain("right-4");
-        expect(markup).toContain("top-4");
-        expect(markup).toContain("42rem");
-        expect(markup).toContain("sm:grid-cols-[minmax(0,1fr)_10rem]");
+    it("uses a stacked layout by default", () => {
+        expect(renderDialog(false)).toContain("flex flex-col gap-2");
     });
 
     it("uses menu-style instant controls instead of close and apply actions", () => {

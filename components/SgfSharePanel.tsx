@@ -14,6 +14,8 @@ import { useState, type RefObject } from "react";
 import { navigateWithinApp } from "../lib/fullscreenNavigation";
 import { t } from "../lib/i18n";
 import type { ShareMenuMode } from "./ShareMenu";
+import type { BoardSize, PositionView } from "./types";
+import PositionViewSettingsDialog from "./PositionViewSettingsDialog";
 
 const KOMI_OPTIONS = [0, 0.5, 5.5, 6.5, 7.5] as const;
 
@@ -24,7 +26,10 @@ type SgfSharePanelProps = {
     menuRef: RefObject<HTMLDivElement | null>;
     // SGF tab
     blackPlayerName: string | null;
+    boardSize?: BoardSize;
     komi?: number | null;
+    onChangePositionView?: (positionView: PositionView) => void;
+    positionView?: PositionView | null;
     sgfReadOnly?: boolean;
     whitePlayerName: string | null;
     onSaveSgfMetadata?: (values: {
@@ -49,7 +54,10 @@ export default function SgfSharePanel({
     alignToViewportTop = false,
     menuRef,
     blackPlayerName,
+    boardSize,
     komi,
+    onChangePositionView,
+    positionView,
     sgfReadOnly = false,
     whitePlayerName,
     onSaveSgfMetadata,
@@ -244,6 +252,20 @@ export default function SgfSharePanel({
                             ))}
                         </select>
                     </label>
+
+                    {onChangePositionView && boardSize ? (
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                {t("positionViewSettings")}
+                            </span>
+                            <PositionViewSettingsDialog
+                                alignToViewportTop={alignToViewportTop}
+                                boardSize={boardSize}
+                                onChange={onChangePositionView}
+                                positionView={positionView ?? null}
+                            />
+                        </div>
+                    ) : null}
 
                     <button
                         type="button"
