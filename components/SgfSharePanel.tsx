@@ -2,6 +2,7 @@
 
 import {
     ArrowLeftRight,
+    ChevronDown,
     Copy,
     Download,
     FileText,
@@ -72,12 +73,18 @@ export default function SgfSharePanel({
     showSharePageLink = true,
     sharePath,
 }: SgfSharePanelProps) {
+    type AccordionSection = "players" | "position" | "other";
+
     const [activeTab, setActiveTab] = useState<Tab>("sgf");
+    const [openSection, setOpenSection] = useState<AccordionSection | null>("players");
     const [localBlack, setLocalBlack] = useState(blackPlayerName ?? "");
     const [localWhite, setLocalWhite] = useState(whitePlayerName ?? "");
     const [localKomi, setLocalKomi] = useState(
         KOMI_OPTIONS.includes(komi as (typeof KOMI_OPTIONS)[number]) ? komi ?? 6.5 : 6.5
     );
+
+    const toggleSection = (section: AccordionSection) =>
+        setOpenSection((prev) => (prev === section ? null : section));
 
     const router = useRouter();
     const createdSharePath = mode === "created" ? sharePath : null;
@@ -191,92 +198,144 @@ export default function SgfSharePanel({
             ) : null}
 
             {activeTab === "sgf" && !sgfReadOnly ? (
-                <div className="flex flex-col gap-3 p-4">
-                    <label className="flex flex-col gap-1">
-                        <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                            {t("blackPlayer")}
-                        </span>
-                        <input
-                            type="text"
-                            value={localBlack}
-                            onChange={(e) => setLocalBlack(e.target.value)}
-                            onBlur={() => save(localBlack, localWhite, localKomi)}
-                            placeholder={t("blackPlayerPlaceholder")}
-                            className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-                        />
-                    </label>
-
-                    <div className="flex justify-center">
+                <div className="flex flex-col">
+                    {/* Players accordion section */}
+                    <div className="border-b border-zinc-100 dark:border-neutral-800">
                         <button
                             type="button"
-                            aria-label={t("swapPlayers")}
-                            title={t("swapPlayers")}
-                            onClick={handleSwap}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-zinc-400 dark:hover:bg-neutral-800 dark:hover:text-zinc-200"
+                            className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-zinc-950 dark:text-white"
+                            onClick={() => toggleSection("players")}
+                            aria-expanded={openSection === "players"}
                         >
-                            <ArrowLeftRight size={13} />
+                            {t("players")}
+                            <ChevronDown
+                                size={15}
+                                className={`transition-transform ${openSection === "players" ? "rotate-180" : ""}`}
+                            />
                         </button>
+                        {openSection === "players" && (
+                            <div className="flex flex-col gap-3 px-4 pb-4">
+                                <label className="flex flex-col gap-1">
+                                    <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                        {t("blackPlayer")}
+                                    </span>
+                                    <input
+                                        type="text"
+                                        value={localBlack}
+                                        onChange={(e) => setLocalBlack(e.target.value)}
+                                        onBlur={() => save(localBlack, localWhite, localKomi)}
+                                        placeholder={t("blackPlayerPlaceholder")}
+                                        className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+                                    />
+                                </label>
+                                <div className="flex justify-center">
+                                    <button
+                                        type="button"
+                                        aria-label={t("swapPlayers")}
+                                        title={t("swapPlayers")}
+                                        onClick={handleSwap}
+                                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-zinc-400 dark:hover:bg-neutral-800 dark:hover:text-zinc-200"
+                                    >
+                                        <ArrowLeftRight size={13} />
+                                    </button>
+                                </div>
+                                <label className="flex flex-col gap-1">
+                                    <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                        {t("whitePlayer")}
+                                    </span>
+                                    <input
+                                        type="text"
+                                        value={localWhite}
+                                        onChange={(e) => setLocalWhite(e.target.value)}
+                                        onBlur={() => save(localBlack, localWhite, localKomi)}
+                                        placeholder={t("whitePlayerPlaceholder")}
+                                        className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+                                    />
+                                </label>
+                            </div>
+                        )}
                     </div>
 
-                    <label className="flex flex-col gap-1">
-                        <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                            {t("whitePlayer")}
-                        </span>
-                        <input
-                            type="text"
-                            value={localWhite}
-                            onChange={(e) => setLocalWhite(e.target.value)}
-                            onBlur={() => save(localBlack, localWhite, localKomi)}
-                            placeholder={t("whitePlayerPlaceholder")}
-                            className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-                        />
-                    </label>
-
-                    <label className="flex flex-col gap-1">
-                        <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                            {t("komi")}
-                        </span>
-                        <select
-                            value={localKomi}
-                            onChange={(e) => {
-                                const newKomi = Number(e.target.value);
-                                setLocalKomi(newKomi);
-                                save(localBlack, localWhite, newKomi);
-                            }}
-                            className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-                        >
-                            {KOMI_OPTIONS.map((value) => (
-                                <option key={value} value={value}>
-                                    {value}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-
+                    {/* Position view accordion section — board drafts only */}
                     {onChangePositionView && boardSize ? (
-                        <div className="flex flex-col gap-1.5">
-                            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                                {t("positionViewSettings")}
-                            </span>
-                            <PositionViewSettingsDialog
-                                alignToViewportTop={alignToViewportTop}
-                                boardSize={boardSize}
-                                onChange={onChangePositionView}
-                                positionView={positionView ?? null}
-                            />
+                        <div className="border-b border-zinc-100 dark:border-neutral-800">
+                            <button
+                                type="button"
+                                className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-zinc-950 dark:text-white"
+                                onClick={() => toggleSection("position")}
+                                aria-expanded={openSection === "position"}
+                            >
+                                {t("positionView")}
+                                <ChevronDown
+                                    size={15}
+                                    className={`transition-transform ${openSection === "position" ? "rotate-180" : ""}`}
+                                />
+                            </button>
+                            {openSection === "position" && (
+                                <div className="px-4 pb-4">
+                                    <PositionViewSettingsDialog
+                                        alignToViewportTop={alignToViewportTop}
+                                        boardSize={boardSize}
+                                        onChange={onChangePositionView}
+                                        positionView={positionView ?? null}
+                                    />
+                                </div>
+                            )}
                         </div>
                     ) : null}
 
-                    <button
-                        type="button"
-                        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                        onClick={onDownloadSgf}
-                        aria-label={t("downloadSgf")}
-                        title={t("downloadSgf")}
-                    >
-                        <Download size={16} />
-                        <span>{t("downloadSgf")}</span>
-                    </button>
+                    {/* Other accordion section */}
+                    <div className="border-b border-zinc-100 dark:border-neutral-800">
+                        <button
+                            type="button"
+                            className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-zinc-950 dark:text-white"
+                            onClick={() => toggleSection("other")}
+                            aria-expanded={openSection === "other"}
+                        >
+                            {t("other")}
+                            <ChevronDown
+                                size={15}
+                                className={`transition-transform ${openSection === "other" ? "rotate-180" : ""}`}
+                            />
+                        </button>
+                        {openSection === "other" && (
+                            <div className="px-4 pb-4">
+                                <label className="flex flex-col gap-1">
+                                    <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                        {t("komi")}
+                                    </span>
+                                    <select
+                                        value={localKomi}
+                                        onChange={(e) => {
+                                            const newKomi = Number(e.target.value);
+                                            setLocalKomi(newKomi);
+                                            save(localBlack, localWhite, newKomi);
+                                        }}
+                                        className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+                                    >
+                                        {KOMI_OPTIONS.map((value) => (
+                                            <option key={value} value={value}>
+                                                {value}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-4">
+                        <button
+                            type="button"
+                            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                            onClick={onDownloadSgf}
+                            aria-label={t("downloadSgf")}
+                            title={t("downloadSgf")}
+                        >
+                            <Download size={16} />
+                            <span>{t("downloadSgf")}</span>
+                        </button>
+                    </div>
                 </div>
             ) : null}
 
