@@ -73,7 +73,7 @@ export default function SgfSharePanel({
     showSharePageLink = true,
     sharePath,
 }: SgfSharePanelProps) {
-    type AccordionSection = "players" | "position" | "other";
+    type AccordionSection = "players" | "position" | "rules";
 
     const [activeTab, setActiveTab] = useState<Tab>("sgf");
     const [openSection, setOpenSection] = useState<AccordionSection | null>("players");
@@ -289,16 +289,16 @@ export default function SgfSharePanel({
                         <button
                             type="button"
                             className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-zinc-950 dark:text-white"
-                            onClick={() => toggleSection("other")}
-                            aria-expanded={openSection === "other"}
+                            onClick={() => toggleSection("rules")}
+                            aria-expanded={openSection === "rules"}
                         >
-                            {t("other")}
+                            {t("rules")}
                             <ChevronDown
                                 size={15}
-                                className={`transition-transform ${openSection === "other" ? "rotate-180" : ""}`}
+                                className={`transition-transform ${openSection === "rules" ? "rotate-180" : ""}`}
                             />
                         </button>
-                        {openSection === "other" && (
+                        {openSection === "rules" && (
                             <div className="px-4 pb-4">
                                 <label className="flex flex-col gap-1">
                                     <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
