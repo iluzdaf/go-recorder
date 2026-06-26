@@ -360,7 +360,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         }
 
         if (!canShareDraft(currentDraft)) {
-            setEditableShareError(t("addMoveBeforeSharing"));
             return;
         }
 
