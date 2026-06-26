@@ -17,14 +17,17 @@ test('header is hidden on a draft board', async ({ page }) => {
   await expect(page.locator('button[aria-label="Show header"]')).toBeVisible()
 })
 
-test('hamburger expands header and X collapses it', async ({ page }) => {
+test('hamburger expands header and tapping outside collapses it', async ({ page }) => {
   await page.goto('/')
 
   await page.click('button[aria-label="Show header"]')
   await expect(page.locator('header')).toBeVisible()
   await expect(page.locator('button[aria-label="Show header"]')).not.toBeVisible()
 
-  await page.click('button[aria-label="Hide header"]')
+  await expect(page.locator('button[aria-label="Hide header"]')).not.toBeVisible()
+
+  // Tap the page content below the header
+  await page.mouse.click(200, 300)
   await expect(page.locator('header')).not.toBeVisible()
   await expect(page.locator('button[aria-label="Show header"]')).toBeVisible()
 })

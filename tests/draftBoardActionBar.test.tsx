@@ -21,7 +21,6 @@ function renderActionBar(mode: "board" | "variation") {
             onPointerMove={noop}
             onPointerUp={noop}
             onToggleColor={noop}
-            onTogglePositionViewSettings={noop}
             onToggleShareMenu={noop}
             onUndo={noop}
             railRef={createRef<HTMLDivElement>()}
@@ -33,13 +32,13 @@ function renderActionBar(mode: "board" | "variation") {
 }
 
 describe("DraftBoardActionBar", () => {
-    it("shows position view settings for board drafts", () => {
-        expect(renderActionBar("board")).toContain(t("positionViewSettings"));
+    it("shows the stone color toggle for board drafts", () => {
+        expect(renderActionBar("board")).toContain(t("toggleDraftStoneColor"));
     });
 
-    it("hides position view settings for variation drafts", () => {
+    it("hides board-only controls for variation drafts", () => {
         expect(renderActionBar("variation")).not.toContain(
-            t("positionViewSettings")
+            t("toggleDraftStoneColor")
         );
     });
 });
