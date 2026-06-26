@@ -18,7 +18,10 @@ export default function ConfirmDialog({
     titleId,
 }: ConfirmDialogProps) {
     return (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center">
+        <div
+            className="fixed inset-0 z-[70] flex items-center justify-center"
+            onPointerDown={(e) => e.stopPropagation()}
+        >
             <div className="absolute inset-0 bg-black/20 dark:bg-black/40" />
             <div
                 role="dialog"

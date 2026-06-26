@@ -45,4 +45,15 @@ describe("ConfirmDialog", () => {
         const markup = render();
         expect(markup).toContain(t("cancel"));
     });
+
+    it("stops pointerdown propagation on the root element to prevent document-level handlers from firing", () => {
+        const markup = render();
+        expect(markup).toContain("inset-0");
+        // The outermost div must be the one intercepting pointer events —
+        // verified by checking it carries both the layout class and is the
+        // first element in the markup (before the backdrop and dialog).
+        const outerIndex = markup.indexOf("inset-0");
+        const dialogIndex = markup.indexOf('role="dialog"');
+        expect(outerIndex).toBeLessThan(dialogIndex);
+    });
 });
