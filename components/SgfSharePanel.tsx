@@ -225,7 +225,7 @@ export default function SgfSharePanel({
                                         onChange={(e) => setLocalBlack(e.target.value)}
                                         onBlur={() => save(localBlack, localWhite, localKomi)}
                                         placeholder={t("blackPlayerPlaceholder")}
-                                        className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+                                        className="rounded border border-zinc-300 bg-white px-2 py-1 text-[16px] dark:border-neutral-700 dark:bg-neutral-800"
                                     />
                                 </label>
                                 <div className="flex justify-center">
@@ -249,7 +249,7 @@ export default function SgfSharePanel({
                                         onChange={(e) => setLocalWhite(e.target.value)}
                                         onBlur={() => save(localBlack, localWhite, localKomi)}
                                         placeholder={t("whitePlayerPlaceholder")}
-                                        className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+                                        className="rounded border border-zinc-300 bg-white px-2 py-1 text-[16px] dark:border-neutral-700 dark:bg-neutral-800"
                                     />
                                 </label>
                             </div>
@@ -311,7 +311,7 @@ export default function SgfSharePanel({
                                             setLocalKomi(newKomi);
                                             save(localBlack, localWhite, newKomi);
                                         }}
-                                        className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+                                        className="rounded border border-zinc-300 bg-white px-2 py-1 text-[16px] dark:border-neutral-700 dark:bg-neutral-800"
                                     >
                                         {KOMI_OPTIONS.map((value) => (
                                             <option key={value} value={value}>

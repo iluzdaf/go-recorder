@@ -147,7 +147,7 @@ export default function PositionViewSettingsDialog({
                 <label className="grid gap-1 text-xs font-medium text-zinc-600 dark:text-zinc-300">
                     {t("rows")}
                     <select
-                        className="h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-950 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                        className="h-10 rounded-md border border-zinc-200 bg-white px-3 text-[16px] text-zinc-950 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
                         value={currentView.rows}
                         onChange={handleSizeChange("rows")}
                     >
@@ -161,7 +161,7 @@ export default function PositionViewSettingsDialog({
                 <label className="grid gap-1 text-xs font-medium text-zinc-600 dark:text-zinc-300">
                     {t("columns")}
                     <select
-                        className="h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-950 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                        className="h-10 rounded-md border border-zinc-200 bg-white px-3 text-[16px] text-zinc-950 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
                         value={currentView.columns}
                         onChange={handleSizeChange("columns")}
                     >
