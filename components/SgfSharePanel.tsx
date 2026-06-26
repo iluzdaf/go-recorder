@@ -381,22 +381,21 @@ export default function SgfSharePanel({
                                 </>
                             ) : (
                                 <>
-                                    {isCreating ? null : (
+                                    {isCreating ? null : canShareGame ? (
                                         <button
                                             type="button"
-                                            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                            disabled={!canShareGame}
+                                            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
                                             onClick={onCreateShare}
                                             aria-label={t("createLink")}
-                                            title={
-                                                canShareGame
-                                                    ? t("createLink")
-                                                    : t("addMoveBeforeSharing")
-                                            }
+                                            title={t("createLink")}
                                         >
                                             <Link2 size={16} />
                                             <span>{t("createLink")}</span>
                                         </button>
+                                    ) : (
+                                        <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-zinc-300">
+                                            {t("addMoveBeforeSharing")}
+                                        </div>
                                     )}
                                 </>
                             )}
