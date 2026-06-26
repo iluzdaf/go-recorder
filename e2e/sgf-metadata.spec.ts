@@ -12,9 +12,13 @@ async function startGameWithPlayers(page: Page, black: string, white: string) {
   await expect(page.locator('.shudan-goban')).toBeVisible()
 }
 
-async function openSgfEditor(page: Page) {
-  await page.click('button[aria-label="Edit SGF metadata"]')
-  await expect(page.locator('text=Edit SGF metadata')).toBeVisible()
+async function openDetailsPanel(page: Page) {
+  await page.click('button[aria-label="Details"]')
+  await expect(page.locator('#share-menu')).toBeVisible()
+}
+
+async function expandRules(page: Page) {
+  await page.locator('#share-menu').getByRole('button', { name: 'Rules' }).click()
 }
 
 async function placeMoveOnBoard(page: Page) {
@@ -23,62 +27,66 @@ async function placeMoveOnBoard(page: Page) {
   await page.mouse.click(box.x + box.width * 0.25, box.y + box.height * 0.25)
 }
 
-test('dialog has no save button and stays open after auto-saving', async ({ page }) => {
+test('panel has no save button and stays open after auto-saving', async ({ page }) => {
   await startGameWithPlayers(page, 'Alice', 'Bob')
-  await openSgfEditor(page)
+  await openDetailsPanel(page)
 
   await expect(page.locator('button:has-text("Save")')).not.toBeVisible()
 
-  // Komi change auto-saves and dialog stays open
-  await page.selectOption('select', '7.5')
-  await expect(page.locator('text=Edit SGF metadata')).toBeVisible()
+  // Komi change auto-saves and panel stays open
+  await expandRules(page)
+  await page.locator('#share-menu select').selectOption('7.5')
+  await expect(page.locator('#share-menu')).toBeVisible()
 
-  // Name blur auto-saves and dialog stays open
-  await page.fill('input[placeholder="Black"]', 'Alice')
-  await page.locator('input[placeholder="Black"]').blur()
-  await expect(page.locator('text=Edit SGF metadata')).toBeVisible()
+  // Name blur auto-saves and panel stays open
+  await page.locator('#share-menu input[placeholder="Black"]').fill('Alice')
+  await page.locator('#share-menu input[placeholder="Black"]').blur()
+  await expect(page.locator('#share-menu')).toBeVisible()
 })
 
-test('SGF editor persists player names and komi; swap leaves komi unchanged', async ({ page }) => {
+test('SGF panel persists player names and komi; swap leaves komi unchanged', async ({ page }) => {
   await startGameWithPlayers(page, 'Hana', 'Taro')
-  await openSgfEditor(page)
+  await openDetailsPanel(page)
 
-  await page.fill('input[placeholder="Black"]', 'Hana')
-  await page.locator('input[placeholder="Black"]').blur()
-  await page.fill('input[placeholder="White"]', 'Taro')
-  await page.locator('input[placeholder="White"]').blur()
-  await page.selectOption('select', '6.5')
+  await page.locator('#share-menu input[placeholder="Black"]').fill('Hana')
+  await page.locator('#share-menu input[placeholder="Black"]').blur()
+  await page.locator('#share-menu input[placeholder="White"]').fill('Taro')
+  await page.locator('#share-menu input[placeholder="White"]').blur()
+  await expandRules(page)
+  await page.locator('#share-menu select').selectOption('6.5')
 
   // Swap should exchange only the names
-  await page.click('button[aria-label="Swap players"]')
-  await expect(page.locator('input[placeholder="Black"]')).toHaveValue('Taro')
-  await expect(page.locator('input[placeholder="White"]')).toHaveValue('Hana')
-  await expect(page.locator('select')).toHaveValue('6.5')
+  await page.locator('#share-menu').getByRole('button', { name: 'Swap players' }).click()
+  await expect(page.locator('#share-menu input[placeholder="Black"]')).toHaveValue('Taro')
+  await expect(page.locator('#share-menu input[placeholder="White"]')).toHaveValue('Hana')
+  await expect(page.locator('#share-menu select')).toHaveValue('6.5')
 
-  // Close by toggling the editor button, then reopen to verify persistence
-  await page.click('button[aria-label="Edit SGF metadata"]')
-  await expect(page.locator('text=Edit SGF metadata')).not.toBeVisible()
+  // Close and reopen to verify persistence
+  await page.click('button[aria-label="Details"]')
+  await expect(page.locator('#share-menu')).not.toBeVisible()
 
-  // Values survive a close/reopen cycle
-  await openSgfEditor(page)
-  await expect(page.locator('input[placeholder="Black"]')).toHaveValue('Taro')
-  await expect(page.locator('input[placeholder="White"]')).toHaveValue('Hana')
-  await expect(page.locator('select')).toHaveValue('6.5')
+  await openDetailsPanel(page)
+  await expect(page.locator('#share-menu input[placeholder="Black"]')).toHaveValue('Taro')
+  await expect(page.locator('#share-menu input[placeholder="White"]')).toHaveValue('Hana')
+  await expandRules(page)
+  await expect(page.locator('#share-menu select')).toHaveValue('6.5')
 })
 
-test('downloaded SGF contains PB, PW, and KM matching editor values', async ({ page }) => {
+test('downloaded SGF contains PB, PW, and KM matching panel values', async ({ page }) => {
   await startGameWithPlayers(page, 'Hana', 'Taro')
 
-  await openSgfEditor(page)
-  await page.selectOption('select', '7.5')
-  await page.click('button[aria-label="Edit SGF metadata"]')
+  await openDetailsPanel(page)
+  await expandRules(page)
+  await page.locator('#share-menu select').selectOption('7.5')
+  await page.click('button[aria-label="Details"]')
+  await expect(page.locator('#share-menu')).not.toBeVisible()
 
   await placeMoveOnBoard(page)
 
   const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sgf-'))
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.click('button[aria-label="Share"]'),
+    page.click('button[aria-label="Details"]'),
     page.waitForSelector('#share-menu').then(() =>
       page.click('button:has-text("Download SGF")')
     ),

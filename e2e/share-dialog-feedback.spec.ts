@@ -8,11 +8,11 @@ async function createShareableDraft(page: Page) {
 
   // Place a stone so the draft meets the shareable threshold
   await page.locator('.shudan-goban').click()
-  await expect(page.locator('button[aria-label="Share"]')).toBeEnabled()
+  await expect(page.locator('button[aria-label="Details"]')).toBeEnabled()
 }
 
 async function openShareAndCreateLink(page: Page) {
-  await page.click('button[aria-label="Share"]')
+  await page.click('button[aria-label="Details"]')
 
   const copyLink = page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
   const createLink = page.locator('#share-menu').getByRole('button', { name: 'Create link' })

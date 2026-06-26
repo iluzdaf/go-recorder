@@ -12,7 +12,7 @@ async function createGameWithShare(page: Page) {
   await page.mouse.click(box.x + box.width * 0.25, box.y + box.height * 0.25)
 
   // Open share menu — the share auto-creates
-  await page.click('button[aria-label="Share"]')
+  await page.click('button[aria-label="Details"]')
   await expect(
     page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
   ).toBeVisible({ timeout: 15000 })
@@ -32,7 +32,7 @@ async function createDraftWithShare(page: Page) {
   await page.locator('.shudan-goban').click()
 
   // Open share menu — the share auto-creates
-  await page.click('button[aria-label="Share"]')
+  await page.click('button[aria-label="Details"]')
   await expect(
     page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
   ).toBeVisible({ timeout: 15000 })
@@ -156,4 +156,38 @@ test('game recording: warning → cancel → warning again → continue → no f
   // Third tap — no warning
   await page.mouse.click(box.x + box.width * 0.4, box.y + box.height * 0.4)
   await expect(warning).not.toBeVisible({ timeout: 1000 })
+})
+
+test('editing player name after share resets link and shows warning on Share tab', async ({ page }) => {
+  await createDraftWithShare(page)
+
+  // Open Details panel and edit the black player name
+  await page.click('button[aria-label="Details"]')
+  await expect(page.locator('#share-menu')).toBeVisible()
+  await page.locator('#share-menu input[placeholder="Black"]').fill('New Name')
+  await page.locator('#share-menu input[placeholder="Black"]').blur()
+
+  // Switch to the Share tab — should show invalidation message, not Copy link
+  await page.locator('#share-menu').getByRole('tab', { name: 'Share' }).click()
+  await expect(
+    page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
+  ).not.toBeVisible()
+  await expect(page.locator('#share-menu').getByText('Share link was reset')).toBeVisible()
+})
+
+test('editing komi after share resets link and shows warning on Share tab', async ({ page }) => {
+  await createDraftWithShare(page)
+
+  // Open Details panel and change komi via the Rules section
+  await page.click('button[aria-label="Details"]')
+  await expect(page.locator('#share-menu')).toBeVisible()
+  await page.locator('#share-menu').getByRole('button', { name: 'Rules' }).click()
+  await page.locator('#share-menu select').selectOption('7.5')
+
+  // Switch to the Share tab — should show invalidation message, not Copy link
+  await page.locator('#share-menu').getByRole('tab', { name: 'Share' }).click()
+  await expect(
+    page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
+  ).not.toBeVisible()
+  await expect(page.locator('#share-menu').getByText('Share link was reset')).toBeVisible()
 })

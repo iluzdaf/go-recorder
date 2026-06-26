@@ -16,7 +16,7 @@ async function placeMoveOnBoard(page: Page) {
 }
 
 async function navigateToSharePage(page: Page) {
-    await page.click('button[aria-label="Share"]')
+    await page.click('button[aria-label="Details"]')
     await expect(page.locator('#share-menu')).toBeVisible()
     const createLink = page.locator('#share-menu button[aria-label="Create link"]')
     const copyLink = page.locator('#share-menu button[aria-label="Copy link"]')
@@ -34,10 +34,12 @@ async function clickSgfButton(page: Page) {
 test('shared board SGF panel shows player names and komi', async ({ page }) => {
     await startGameWithPlayers(page, 'AlphaGo', 'Lee Sedol')
 
-    await page.click('button[aria-label="Edit SGF metadata"]')
-    await expect(page.locator('text=Edit SGF metadata')).toBeVisible()
-    await page.selectOption('select', '7.5')
-    await page.click('button[aria-label="Edit SGF metadata"]')
+    await page.click('button[aria-label="Details"]')
+    await expect(page.locator('#share-menu')).toBeVisible()
+    await page.locator('#share-menu').getByRole('button', { name: 'Rules' }).click()
+    await page.locator('#share-menu select').selectOption('7.5')
+    await page.click('button[aria-label="Details"]')
+    await expect(page.locator('#share-menu')).not.toBeVisible()
 
     await placeMoveOnBoard(page)
     await navigateToSharePage(page)
