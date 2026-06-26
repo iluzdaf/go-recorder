@@ -12,7 +12,7 @@ async function createGameWithShare(page: Page) {
   await page.mouse.click(box.x + box.width * 0.25, box.y + box.height * 0.25)
 
   // Open share menu — the share auto-creates
-  await page.click('button[aria-label="Share"]')
+  await page.click('button[aria-label="Details"]')
   await expect(
     page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
   ).toBeVisible({ timeout: 15000 })
@@ -32,7 +32,7 @@ async function createDraftWithShare(page: Page) {
   await page.locator('.shudan-goban').click()
 
   // Open share menu — the share auto-creates
-  await page.click('button[aria-label="Share"]')
+  await page.click('button[aria-label="Details"]')
   await expect(
     page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
   ).toBeVisible({ timeout: 15000 })
@@ -156,4 +156,45 @@ test('game recording: warning → cancel → warning again → continue → no f
   // Third tap — no warning
   await page.mouse.click(box.x + box.width * 0.4, box.y + box.height * 0.4)
   await expect(warning).not.toBeVisible({ timeout: 1000 })
+})
+
+test('editing player name after share shows confirm dialog', async ({ page }) => {
+  await createDraftWithShare(page)
+
+  // Open Details panel and edit the black player name
+  await page.click('button[aria-label="Details"]')
+  await expect(page.locator('#share-menu')).toBeVisible()
+  await page.locator('#share-menu input[placeholder="Black"]').fill('New Name')
+  await page.locator('#share-menu input[placeholder="Black"]').blur()
+
+  // Confirm dialog should appear
+  const dialog = page.getByRole('dialog', { name: /share was created/i })
+  await expect(dialog).toBeVisible()
+
+  // Confirming resets the share — Share tab should show Create link, not Copy link
+  await dialog.getByRole('button', { name: /continue/i }).click()
+  await expect(dialog).not.toBeVisible()
+  await page.locator('#share-menu').getByRole('tab', { name: 'Share' }).click()
+  await expect(
+    page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
+  ).not.toBeVisible()
+  await expect(
+    page.locator('#share-menu').getByRole('button', { name: 'Create link' })
+  ).toBeVisible()
+})
+
+test('editing komi after share shows confirm dialog', async ({ page }) => {
+  await createDraftWithShare(page)
+
+  // Open Details panel and change komi via the Rules section
+  await page.click('button[aria-label="Details"]')
+  await expect(page.locator('#share-menu')).toBeVisible()
+  await page.locator('#share-menu').getByRole('button', { name: 'Rules' }).click()
+  await page.locator('#share-menu select').selectOption('7.5')
+
+  // Confirm dialog should appear
+  const dialog = page.getByRole('dialog', { name: /share was created/i })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: /cancel/i }).click()
+  await expect(dialog).not.toBeVisible()
 })

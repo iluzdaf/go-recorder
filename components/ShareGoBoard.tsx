@@ -37,6 +37,7 @@ import {
     type CapturedVariationMoveCaptionEntry,
     type MoveNumberMarker,
 } from "../lib/variationDraft";
+import ConfirmDialog from "./ConfirmDialog";
 import ShareBoardActionBar from "./ShareBoardActionBar";
 import SgfSharePanel from "./SgfSharePanel";
 import useActionBarDrag from "./useActionBarDrag";
@@ -427,35 +428,13 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                     />
                 ) : null}
                 {pendingVariationInput ? (
-                    <div
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="variation-draft-title"
-                        className="absolute left-1/2 top-4 z-20 w-[min(calc(100%-2rem),20rem)] -translate-x-1/2 rounded-lg border border-zinc-200 bg-white p-3 text-zinc-950 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
-                    >
-                        <p
-                            id="variation-draft-title"
-                            className="text-sm font-medium"
-                        >
-                            {t("createVariationPrompt")}
-                        </p>
-                        <div className="mt-3 flex justify-end gap-2">
-                            <button
-                                type="button"
-                                className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-sm text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                                onClick={handleCancelVariation}
-                            >
-                                {t("cancel")}
-                            </button>
-                            <button
-                                type="button"
-                                className="inline-flex h-9 items-center justify-center rounded-full bg-zinc-950 px-3 text-sm text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
-                                onClick={handleConfirmVariation}
-                            >
-                                {t("createVariation")}
-                            </button>
-                        </div>
-                    </div>
+                    <ConfirmDialog
+                        titleId="variation-draft-title"
+                        message={t("createVariationPrompt")}
+                        confirmLabel={t("createVariation")}
+                        onCancel={handleCancelVariation}
+                        onConfirm={handleConfirmVariation}
+                    />
                 ) : null}
                 {!pendingVariationInput ? (
                     <CapturedVariationMoveCaption
