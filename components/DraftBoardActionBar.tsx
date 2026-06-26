@@ -160,10 +160,10 @@ export default function DraftBoardActionBar({
                 className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
                 disabled={!canShareDraft}
                 onClick={onToggleShareMenu}
-                aria-label={t("share")}
+                aria-label={t("details")}
                 aria-expanded={shareMenuOpen}
                 aria-controls="share-menu"
-                title={canShareDraft ? t("share") : t("addMoveBeforeSharing")}
+                title={canShareDraft ? t("details") : t("addMoveBeforeSharing")}
             >
                 <SquareArrowUpRight size={18} />
             </button>
