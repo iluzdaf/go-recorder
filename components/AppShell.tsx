@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ChangeEvent } from "react";
 import {
     createContext,
@@ -117,6 +117,12 @@ function normalizeAppPath(pathname: string | null | undefined) {
     return pathname;
 }
 
+function normalizeReturnPath(pathname: string | null | undefined) {
+    if (!pathname?.startsWith("/")) return null;
+
+    return pathname;
+}
+
 function normalizeAppNavigationState(
     value: unknown
 ): AppNavigationState {
@@ -223,14 +229,6 @@ function writeAppNavigationState(state: AppNavigationState) {
     window.sessionStorage.setItem(
         APP_NAVIGATION_STORAGE_KEY,
         JSON.stringify(normalizeAppNavigationState(state))
-    );
-}
-
-function isBoardRoute(pathname: string | null | undefined) {
-    return Boolean(
-        pathname?.startsWith("/games/") ||
-            pathname?.startsWith("/drafts/") ||
-            pathname?.startsWith("/shares/")
     );
 }
 
@@ -487,6 +485,7 @@ export default function AppShell({
 }>) {
     const pathname = usePathname();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [headerActions, setHeaderActions] = useState<React.ReactNode>(null);
     const [headerStatus, setHeaderStatus] = useState<React.ReactNode>(null);
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
@@ -496,8 +495,20 @@ export default function AppShell({
     const [isFullscreen, setIsFullscreen] = useState(() => getIsFullscreen());
     const [appNavigationState, setAppNavigationState] =
         useState<AppNavigationState>(() => ({ entries: [], index: -1 }));
-    const changelog = useFloatingDialog();
-    const settings = useFloatingDialog();
+    const {
+        close: closeChangelog,
+        dialogRef: changelogDialogRef,
+        isOpen: isChangelogOpen,
+        toggle: toggleChangelogDialog,
+        triggerRef: changelogTriggerRef,
+    } = useFloatingDialog();
+    const {
+        close: closeSettings,
+        dialogRef: settingsDialogRef,
+        isOpen: isSettingsOpen,
+        toggle: toggleSettingsDialog,
+        triggerRef: settingsTriggerRef,
+    } = useFloatingDialog();
     const headerRef = useRef<HTMLElement | null>(null);
     const localDataFileInputRef = useRef<HTMLInputElement | null>(null);
     const isFullscreenSupported = useSyncExternalStore(
@@ -690,15 +701,27 @@ export default function AppShell({
     }, []);
 
     const handleNavigateBack = useCallback(() => {
+        const privacyReturnPath =
+            pathname === "/privacy"
+                ? normalizeReturnPath(searchParams.get("returnTo"))
+                : null;
         const currentState = readAppNavigationState();
-        const targetPath = getAppNavigationBackPath(currentState);
+        const targetPath =
+            privacyReturnPath ?? getAppNavigationBackPath(currentState);
 
         if (!targetPath) return;
 
-        const nextState = {
-            entries: currentState.entries,
-            index: currentState.index - 1,
-        };
+        const targetPathIndex = currentState.entries.lastIndexOf(targetPath);
+        const nextState =
+            targetPathIndex >= 0
+                ? {
+                      entries: currentState.entries,
+                      index: targetPathIndex,
+                  }
+                : updateAppNavigationStateForPath({
+                      pathname: targetPath,
+                      state: currentState,
+                  });
 
         writeAppNavigationState(nextState);
         setAppNavigationState(nextState);
@@ -706,17 +729,17 @@ export default function AppShell({
             path: targetPath,
             push: router.push,
         });
-    }, [router.push]);
+    }, [pathname, router.push, searchParams]);
 
     const toggleChangelog = useCallback(() => {
-        settings.close();
-        changelog.toggle();
-    }, [changelog, settings]);
+        closeSettings();
+        toggleChangelogDialog();
+    }, [closeSettings, toggleChangelogDialog]);
 
     const toggleSettings = useCallback(() => {
-        changelog.close();
-        settings.toggle();
-    }, [changelog, settings]);
+        closeChangelog();
+        toggleSettingsDialog();
+    }, [closeChangelog, toggleSettingsDialog]);
 
     const handleExportLocalData = useCallback(async () => {
         try {
@@ -768,9 +791,6 @@ export default function AppShell({
     const usesOverlayHeader = true;
     const isHeaderVisible = isHeaderExpanded;
 
-    const { close: closeChangelog, dialogRef: changelogDialogRef } = changelog;
-    const { close: closeSettings, dialogRef: settingsDialogRef } = settings;
-
     useEffect(() => {
         if (!isHeaderVisible) return;
 
@@ -797,7 +817,12 @@ export default function AppShell({
             isHeaderVisible,
             usesOverlayHeader,
         });
-    const { backPath } = getAppNavigationTargets(appNavigationState);
+    const privacyReturnPath =
+        pathname === "/privacy"
+            ? normalizeReturnPath(searchParams.get("returnTo"))
+            : null;
+    const { backPath: appBackPath } = getAppNavigationTargets(appNavigationState);
+    const backPath = privacyReturnPath ?? appBackPath;
 
     const contextValue = useMemo(
         () => ({
@@ -899,12 +924,12 @@ export default function AppShell({
                                 </span>
                             ) : (
                                 <button
-                                    ref={changelog.triggerRef}
+                                    ref={changelogTriggerRef}
                                     type="button"
                                     className="inline-flex h-11 items-center justify-center rounded-md px-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-neutral-800 dark:hover:text-white"
                                     aria-label={`${t("version")} ${appVersion}`}
                                     aria-controls="changelog-menu"
-                                    aria-expanded={changelog.isOpen}
+                                    aria-expanded={isChangelogOpen}
                                     aria-haspopup="dialog"
                                     title={t("changelog")}
                                     onClick={toggleChangelog}
@@ -914,12 +939,12 @@ export default function AppShell({
                             )}
 
                             <button
-                                ref={settings.triggerRef}
+                                ref={settingsTriggerRef}
                                 type="button"
                                 className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
                                 aria-label={t("settings")}
                                 aria-controls="settings-menu"
-                                aria-expanded={settings.isOpen}
+                                aria-expanded={isSettingsOpen}
                                 aria-haspopup="dialog"
                                 title={t("settings")}
                                 onClick={toggleSettings}
@@ -930,10 +955,10 @@ export default function AppShell({
                         </div>
                     </header>
                 ) : null}
-                {changelog.isOpen ? (
+                {isChangelogOpen ? (
                     <div
                         id="changelog-menu"
-                        ref={changelog.dialogRef}
+                        ref={changelogDialogRef}
                         className={getChangelogDialogClassName({
                             alignToViewportTop:
                                 areHeaderDialogsAnchoredToViewportTop,
@@ -958,16 +983,16 @@ export default function AppShell({
                         <Link
                             href="/changelog"
                             className="ml-auto mt-3 flex w-fit text-sm font-semibold text-zinc-700 underline underline-offset-4 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
-                            onClick={changelog.close}
+                            onClick={closeChangelog}
                         >
                             {t("showMoreChangelog")}
                         </Link>
                     </div>
                 ) : null}
-                {settings.isOpen ? (
+                {isSettingsOpen ? (
                     <div
                         id="settings-menu"
-                        ref={settings.dialogRef}
+                        ref={settingsDialogRef}
                         role="dialog"
                         aria-modal="false"
                         aria-labelledby="settings-menu-title"

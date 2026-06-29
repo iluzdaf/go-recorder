@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 
+import {
+    primaryActionButtonClass,
+    secondaryActionButtonClass,
+} from "../lib/buttonStyles";
 import { t } from "../lib/i18n";
 import { buildSharePrivacyPolicyHref } from "../lib/sharePrivacy";
 
@@ -45,7 +49,7 @@ export default function SharePrivacyDialog({
 
                     <Link
                         href={buildSharePrivacyPolicyHref(returnToPath)}
-                        className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-sm text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                        className="inline-flex text-sm font-medium text-sky-700 underline underline-offset-4 hover:text-sky-600 dark:text-sky-400 dark:hover:text-sky-300"
                         onClick={onReadPolicy}
                     >
                         {t("sharePrivacyReadPolicy")}
@@ -55,14 +59,14 @@ export default function SharePrivacyDialog({
                 <div className="mt-4 flex flex-wrap justify-end gap-2">
                     <button
                         type="button"
-                        className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-sm text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                        className={secondaryActionButtonClass}
                         onClick={onCancel}
                     >
                         {t("cancel")}
                     </button>
                     <button
                         type="button"
-                        className="inline-flex h-9 items-center justify-center rounded-full bg-zinc-950 px-3 text-sm text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                        className={primaryActionButtonClass}
                         onClick={onContinue}
                     >
                         {t("sharePrivacyContinue")}

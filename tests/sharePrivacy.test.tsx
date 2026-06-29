@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import ConfirmDialog from "../components/ConfirmDialog";
 import SharePrivacyDialog from "../components/SharePrivacyDialog";
 import PrivacyPage from "../app/privacy/page";
 import {
@@ -99,10 +100,27 @@ describe("share privacy UI", () => {
         expect(markup).toContain("Before you create a share");
         expect(markup).toContain("Read privacy policy");
         expect(markup).toContain("Continue to share");
+        expect(markup).toContain("underline");
+        expect(markup).toContain("bg-sky-700");
         expect(markup).toContain(
             'href="/privacy?returnTo=%2Fgames%2Fabc"'
         );
         expect(markup).not.toContain('target="_blank"');
+    });
+
+    it("renders shared confirmation dialog calls to action with primary CTA styling", () => {
+        const markup = renderToStaticMarkup(
+            <ConfirmDialog
+                titleId="confirm-title"
+                message="Confirm the action."
+                confirmLabel="Continue"
+                onCancel={vi.fn()}
+                onConfirm={vi.fn()}
+            />
+        );
+
+        expect(markup).toContain("bg-sky-700");
+        expect(markup).toContain("Continue");
     });
 
     it("renders the privacy policy page", () => {
@@ -112,10 +130,14 @@ describe("share privacy UI", () => {
             const markup = renderToStaticMarkup(element);
 
             expect(markup).toContain("Privacy policy");
+            expect(markup).toContain("This app keeps games and drafts");
+            expect(markup).not.toContain("Go Recorder keeps");
             expect(markup).toContain("What we store");
             expect(markup).toContain("Retention");
             expect(markup).toContain('href="/drafts/abc"');
+            expect(markup).toContain('href="#privacy-policy-top"');
             expect(markup).toContain("Back");
+            expect(markup).toContain("Back to top");
         });
     });
 });
