@@ -17,6 +17,10 @@ import { getLocalGame } from "../lib/localGames";
 import { saveLocalEditableRecord } from "../lib/localEditableSave";
 import { createLoadedLocalGame } from "../lib/localGameView";
 import { createShareFromLocalGame } from "../lib/shareClient";
+import {
+    acknowledgeSharePrivacy,
+    hasAcknowledgedSharePrivacy,
+} from "../lib/sharePrivacy";
 import { formatMoveEditError, t } from "../lib/i18n";
 import {
     useBoardDisplaySettings,
@@ -27,6 +31,7 @@ import {
 import BoardStatusMessage from "./BoardStatusMessage";
 import ConfirmDialog from "./ConfirmDialog";
 import RecorderActionBar from "./RecorderActionBar";
+import SharePrivacyDialog from "./SharePrivacyDialog";
 import SgfSharePanel from "./SgfSharePanel";
 import useActionBarDrag from "./useActionBarDrag";
 import useBoardGeometry from "./useBoardGeometry";
@@ -103,6 +108,8 @@ export default function GoBoard({ id }: GoBoardProps) {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
+    const [isSharePrivacyDialogOpen, setIsSharePrivacyDialogOpen] =
+        useState(false);
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
     const shareMenu = useEditableShareMenuController({});
     const {
@@ -265,7 +272,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         markerMap[lastMove.y][lastMove.x] = { type: "circle" };
     }
 
-    const clearCachedShareLink = () => {
+    const clearCachedShareLink = useCallback(() => {
         clearShareLink();
 
         const localGameRecord = localGameRecordRef.current;
@@ -275,15 +282,15 @@ export default function GoBoard({ id }: GoBoardProps) {
             ...localGameRecord,
             lastShareSlug: null,
         };
-    };
+    }, [clearShareLink]);
 
-    const guardEdit = (fn: () => void) => {
+    const guardEdit = useCallback((fn: () => void) => {
         if (hasExistingShareRef.current) {
             setPendingEditFn(() => fn);
         } else {
             fn();
         }
-    };
+    }, []);
 
     const playMove = (x: number, y: number) => {
         guardEdit(() => {
@@ -583,7 +590,7 @@ export default function GoBoard({ id }: GoBoardProps) {
                 }));
             });
         },
-        []
+        [clearCachedShareLink, guardEdit]
     );
 
     const handleDownloadSgf = useCallback(() => {
@@ -611,7 +618,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         closeEditableShareMenu();
     }, [closeEditableShareMenu, handleDownloadSgf]);
 
-    const handleShare = useCallback(async () => {
+    const performShare = useCallback(async () => {
         const currentLocalGame = createCurrentLocalGameRecord();
 
         if (!currentLocalGame) {
@@ -654,13 +661,36 @@ export default function GoBoard({ id }: GoBoardProps) {
         setEditableShareError,
     ]);
 
+    const handleShare = useCallback(async () => {
+        if (!hasAcknowledgedSharePrivacy()) {
+            setIsSharePrivacyDialogOpen(true);
+            return;
+        }
+
+        await performShare();
+    }, [performShare]);
+
+    const handleConfirmSharePrivacy = useCallback(() => {
+        acknowledgeSharePrivacy();
+        setIsSharePrivacyDialogOpen(false);
+        void performShare();
+    }, [performShare]);
+
+    const handleCancelSharePrivacy = useCallback(() => {
+        setIsSharePrivacyDialogOpen(false);
+    }, []);
+
     useEffect(() => {
         if (!canShareGame || !canAutoCreateNow) {
             return;
         }
 
         markAutoCreateAttempted();
-        void handleShare();
+        const timeoutId = window.setTimeout(() => {
+            void handleShare();
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
     }, [canAutoCreateNow, canShareGame, handleShare, markAutoCreateAttempted]);
 
     return (
@@ -684,6 +714,12 @@ export default function GoBoard({ id }: GoBoardProps) {
                     ref={boardAreaRef}
                     className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
                 >
+                    {isSharePrivacyDialogOpen ? (
+                        <SharePrivacyDialog
+                            onCancel={handleCancelSharePrivacy}
+                            onContinue={handleConfirmSharePrivacy}
+                        />
+                    ) : null}
                     {pendingEditFn ? (
                         <ConfirmDialog
                             titleId="edit-after-share-title"
