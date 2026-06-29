@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ChangeEvent } from "react";
 import {
     createContext,
@@ -485,7 +485,6 @@ export default function AppShell({
 }>) {
     const pathname = usePathname();
     const router = useRouter();
-    const searchParams = useSearchParams();
     const [headerActions, setHeaderActions] = useState<React.ReactNode>(null);
     const [headerStatus, setHeaderStatus] = useState<React.ReactNode>(null);
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
@@ -670,6 +669,17 @@ export default function AppShell({
         document.body.classList.toggle("dark", isDarkMode);
     }, [isDarkMode]);
 
+    const privacyReturnPath = useMemo(() => {
+        if (pathname !== "/privacy" || typeof window === "undefined") {
+            return null;
+        }
+
+        const nextReturnPath = new URLSearchParams(
+            window.location.search
+        ).get("returnTo");
+        return normalizeReturnPath(nextReturnPath);
+    }, [pathname]);
+
     useEffect(() => {
         const nextState = updateAppNavigationStateForPath({
             pathname,
@@ -701,10 +711,6 @@ export default function AppShell({
     }, []);
 
     const handleNavigateBack = useCallback(() => {
-        const privacyReturnPath =
-            pathname === "/privacy"
-                ? normalizeReturnPath(searchParams.get("returnTo"))
-                : null;
         const currentState = readAppNavigationState();
         const targetPath =
             privacyReturnPath ?? getAppNavigationBackPath(currentState);
@@ -729,7 +735,7 @@ export default function AppShell({
             path: targetPath,
             push: router.push,
         });
-    }, [pathname, router.push, searchParams]);
+    }, [privacyReturnPath, router.push]);
 
     const toggleChangelog = useCallback(() => {
         closeSettings();
@@ -817,10 +823,6 @@ export default function AppShell({
             isHeaderVisible,
             usesOverlayHeader,
         });
-    const privacyReturnPath =
-        pathname === "/privacy"
-            ? normalizeReturnPath(searchParams.get("returnTo"))
-            : null;
     const { backPath: appBackPath } = getAppNavigationTargets(appNavigationState);
     const backPath = privacyReturnPath ?? appBackPath;
 

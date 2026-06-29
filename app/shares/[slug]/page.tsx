@@ -7,7 +7,7 @@ import {
     getShareTitle,
 } from "../../../lib/sharePresentation";
 import { mapShareRowToShareRecord } from "../../../lib/shareView";
-import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { getSupabaseAdmin } from "../../../lib/supabaseAdmin";
 
 type PageProps = {
     params: Promise<{
@@ -38,7 +38,7 @@ function getSiteUrl() {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { slug } = await params;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
         .from("shares")
         .select("*")
         .eq("slug", slug)
@@ -96,7 +96,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function SharePage({ params }: PageProps) {
     const { slug } = await params;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
         .from("shares")
         .select("*")
         .eq("slug", slug)

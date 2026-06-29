@@ -4,7 +4,7 @@ import { getDisplayPlayerName } from "../../../lib/sharePresentation";
 import { getFinalPositionFromGameState } from "../../../lib/shareFinalPosition";
 import { getShareBoardPositionView } from "../../../lib/shareBoardView";
 import { mapShareRowToShareRecord } from "../../../lib/shareView";
-import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { getSupabaseAdmin } from "../../../lib/supabaseAdmin";
 import { createVariationMoveNumberMarkerMap } from "../../../lib/variationDraft";
 import { getPositionViewRange } from "../../../lib/positionView";
 
@@ -127,7 +127,7 @@ function renderFallbackImage(message: string) {
 export default async function Image({ params }: ImageProps) {
     const { slug } = await params;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
         .from("shares")
         .select("*")
         .eq("slug", slug)
