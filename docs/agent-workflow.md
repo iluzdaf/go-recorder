@@ -23,15 +23,16 @@
   - Triage found open questions that must be answered before implementation.
 - `ready-for-agent`
   - A project collaborator or owner has explicitly approved agent work by changing labels.
-  - The issue has enough detail for an implementation agent to start.
+  - The issue has enough detail for an implementation agent to claim the work and open the PR.
+  - This label does not authorize code edits by itself.
 - `needs-plan`
   - PR label.
-  - The work has been claimed and the next step is to propose a plan in the PR.
+  - The work has been claimed and the next step is to propose a plan in the PR before any implementation starts.
   - Optional transient working label.
   - May not be visible when an agent opens a PR and posts a complete plan in the same session.
 - `needs-plan-approval`
   - PR label.
-  - A plan has been proposed in the PR.
+  - A plan has been proposed in the PR and implementation must not start yet.
   - A project collaborator or owner must approve the plan before implementation.
   - Human-gated label.
   - Agents may add this label when the PR plan is ready for approval.
@@ -66,6 +67,7 @@
 - project collaborator or owner explicitly changes labels
 - `ready-for-agent`
 - draft PR with `needs-plan`
+- posted plan in the PR
 - `needs-plan-approval`
 - project collaborator or owner explicitly changes labels
 - `in-progress`
@@ -92,6 +94,7 @@
 - Issue triage may continue from comments while the issue is in `needs-triage`, `needs-clarification`, or `needs-approval`.
 - Comments must not move work past `needs-approval`, `needs-plan-approval`, or `blocked`.
 - Agents must not infer gate completion from comments, chat, plans, or elapsed time.
+- Agents must verify the current PR has already passed through `needs-plan` and `needs-plan-approval` before editing code.
 - `needs-approval`, `needs-plan-approval`, and `blocked` are human-gated labels.
 - Agents may add human-gated labels when the issue or PR is ready for a decision.
 - Agents must never remove human-gated labels.
@@ -189,6 +192,8 @@
 - When adding `blocked` during planning, explain the blocker in the PR and stop.
 - A project collaborator or owner unblocks planning by answering or deciding and changing labels from `blocked` to `needs-plan`.
 - After unblocking, revise the plan before moving to `needs-plan-approval`.
+- Do not edit code until the plan exists in the PR and the PR is past `needs-plan-approval`.
+- If the plan or approval gate is missing when implementation would start, add `blocked` and stop.
 - Write a plan before editing code for:
   - Non-trivial tasks.
   - Broad tasks.
@@ -198,7 +203,9 @@
 - Wait for a project collaborator or owner to explicitly change labels before implementation.
 - Do not remove `needs-plan-approval`.
 - Do not add `in-progress`; a project collaborator or owner must explicitly add it to move past the plan approval gate.
-- Skip planning only for tiny mechanical changes when the user explicitly allows it.
+- Confirm the PR already passed through `needs-plan` and `needs-plan-approval` before the first code edit.
+- If that history is missing, stop and mark the work blocked instead of continuing.
+- Skip planning only when the user explicitly says to skip planning for that request, including tiny mechanical changes.
 - A good plan includes:
   - Small ordered steps.
   - Likely files.
