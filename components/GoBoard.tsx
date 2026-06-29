@@ -110,17 +110,23 @@ export default function GoBoard({ id }: GoBoardProps) {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
+    const [shouldResumeSharePrivacy] = useState(() =>
+        consumeSharePrivacyResumeContext({
+            kind: "game",
+            id,
+        })
+    );
     const [isSharePrivacyDialogOpen, setIsSharePrivacyDialogOpen] = useState(
-        () => consumeSharePrivacyResumeContext({ kind: "game", id })
+        shouldResumeSharePrivacy
     );
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
-    const shareMenu = useEditableShareMenuController({});
+    const shareMenu = useEditableShareMenuController({
+        initialIsOpen: shouldResumeSharePrivacy,
+    });
     const {
-        canAutoCreateNow,
         clearShareLink,
         close: closeEditableShareMenu,
         finishCreated: finishEditableShareCreated,
-        markAutoCreateAttempted,
         resetToShareSlug,
         setCreating: setEditableShareCreating,
         setError: setEditableShareError,
@@ -687,19 +693,6 @@ export default function GoBoard({ id }: GoBoardProps) {
         setIsSharePrivacyDialogOpen(false);
     }, []);
 
-    useEffect(() => {
-        if (!canShareGame || !canAutoCreateNow) {
-            return;
-        }
-
-        markAutoCreateAttempted();
-        const timeoutId = window.setTimeout(() => {
-            void handleShare();
-        }, 0);
-
-        return () => window.clearTimeout(timeoutId);
-    }, [canAutoCreateNow, canShareGame, handleShare, markAutoCreateAttempted]);
-
     return (
         <div
             className={
@@ -721,14 +714,6 @@ export default function GoBoard({ id }: GoBoardProps) {
                     ref={boardAreaRef}
                     className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
                 >
-                    {isSharePrivacyDialogOpen ? (
-                        <SharePrivacyDialog
-                            returnToPath={`/games/${id}`}
-                            onCancel={handleCancelSharePrivacy}
-                            onReadPolicy={handleReadSharePrivacyPolicy}
-                            onContinue={handleConfirmSharePrivacy}
-                        />
-                    ) : null}
                     {pendingEditFn ? (
                         <ConfirmDialog
                             titleId="edit-after-share-title"
@@ -741,6 +726,9 @@ export default function GoBoard({ id }: GoBoardProps) {
                     {shareMenu.isOpen ? (
                         <SgfSharePanel
                             alignToViewportTop={isOverlayHeader}
+                            initialActiveTab={
+                                shouldResumeSharePrivacy ? "share" : "sgf"
+                            }
                             menuRef={shareMenu.menuRef}
                             blackPlayerName={gameMetadata.blackPlayerName}
                             whitePlayerName={gameMetadata.whitePlayerName}
@@ -759,6 +747,14 @@ export default function GoBoard({ id }: GoBoardProps) {
                             }}
                             qrCodeDataUrl={shareMenu.qrCodeDataUrl}
                             sharePath={shareMenu.sharePath}
+                        />
+                    ) : null}
+                    {isSharePrivacyDialogOpen ? (
+                        <SharePrivacyDialog
+                            returnToPath={`/games/${id}`}
+                            onCancel={handleCancelSharePrivacy}
+                            onReadPolicy={handleReadSharePrivacyPolicy}
+                            onContinue={handleConfirmSharePrivacy}
                         />
                     ) : null}
                     <RecorderActionBar

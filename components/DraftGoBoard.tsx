@@ -152,18 +152,23 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     );
     const [sourceImageVisible, setSourceImageVisible] = useState(false);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
+    const [shouldResumeSharePrivacy] = useState(() =>
+        consumeSharePrivacyResumeContext({
+            kind: "draft",
+            id,
+        })
+    );
     const [isSharePrivacyDialogOpen, setIsSharePrivacyDialogOpen] = useState(
-        () => consumeSharePrivacyResumeContext({ kind: "draft", id })
+        shouldResumeSharePrivacy
     );
     const shareMenu = useEditableShareMenuController({
+        initialIsOpen: shouldResumeSharePrivacy,
         initialShareSlug: draft?.lastShareSlug ?? null,
     });
     const {
-        canAutoCreateNow,
         clearShareLink,
         close: closeEditableShareMenu,
         finishCreated: finishEditableShareCreated,
-        markAutoCreateAttempted,
         setCreating: setEditableShareCreating,
         setError: setEditableShareError,
         toggle: toggleEditableShareMenu,
@@ -437,19 +442,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     const handleCancelSharePrivacy = useCallback(() => {
         setIsSharePrivacyDialogOpen(false);
     }, []);
-
-    useEffect(() => {
-        if (!canAutoCreateNow) {
-            return;
-        }
-
-        markAutoCreateAttempted();
-        const timeoutId = window.setTimeout(() => {
-            void handleShare();
-        }, 0);
-
-        return () => window.clearTimeout(timeoutId);
-    }, [canAutoCreateNow, handleShare, markAutoCreateAttempted]);
 
     // --- Stone correction (shared machine for board + variation drafts) ---
     const isVariationDraft = draft?.draftKind === "variation";
@@ -942,14 +934,6 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                     ref={boardAreaRef}
                     className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
                 >
-                    {isSharePrivacyDialogOpen ? (
-                        <SharePrivacyDialog
-                            returnToPath={`/drafts/${id}`}
-                            onCancel={handleCancelSharePrivacy}
-                            onReadPolicy={handleReadSharePrivacyPolicy}
-                            onContinue={handleConfirmSharePrivacy}
-                        />
-                    ) : null}
                     {pendingEditFn ? (
                         <ConfirmDialog
                             titleId="edit-after-share-title"
@@ -962,6 +946,9 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 {shareMenu.isOpen ? (
                     <SgfSharePanel
                         alignToViewportTop={isOverlayHeader}
+                        initialActiveTab={
+                            shouldResumeSharePrivacy ? "share" : "sgf"
+                        }
                         menuRef={shareMenu.menuRef}
                         blackPlayerName={draft.blackPlayerName}
                         boardSize={draft.draftKind === "board" ? draft.boardSize : undefined}
@@ -980,6 +967,14 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                         onCopyLink={shareMenu.copyShareLink}
                         qrCodeDataUrl={shareMenu.qrCodeDataUrl}
                         sharePath={shareMenu.sharePath}
+                    />
+                ) : null}
+                {isSharePrivacyDialogOpen ? (
+                    <SharePrivacyDialog
+                        returnToPath={`/drafts/${id}`}
+                        onCancel={handleCancelSharePrivacy}
+                        onReadPolicy={handleReadSharePrivacyPolicy}
+                        onContinue={handleConfirmSharePrivacy}
                     />
                 ) : null}
                 <DraftBoardActionBar

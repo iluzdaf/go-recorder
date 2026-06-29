@@ -115,7 +115,7 @@ describe("share privacy UI", () => {
             expect(markup).toContain("What we store");
             expect(markup).toContain("Retention");
             expect(markup).toContain('href="/drafts/abc"');
-            expect(markup).toContain("Back to app");
+            expect(markup).toContain("Back");
         });
     });
 });

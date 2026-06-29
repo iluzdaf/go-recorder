@@ -24,6 +24,7 @@ type Tab = "sgf" | "share";
 
 type SgfSharePanelProps = {
     alignToViewportTop?: boolean;
+    initialActiveTab?: Tab;
     menuRef: RefObject<HTMLDivElement | null>;
     // SGF tab
     blackPlayerName: string | null;
@@ -53,6 +54,7 @@ type SgfSharePanelProps = {
 
 export default function SgfSharePanel({
     alignToViewportTop = false,
+    initialActiveTab = "sgf",
     menuRef,
     blackPlayerName,
     boardSize,
@@ -75,7 +77,7 @@ export default function SgfSharePanel({
 }: SgfSharePanelProps) {
     type AccordionSection = "players" | "position" | "rules";
 
-    const [activeTab, setActiveTab] = useState<Tab>("sgf");
+    const [activeTab, setActiveTab] = useState<Tab>(initialActiveTab);
     const [openSection, setOpenSection] = useState<AccordionSection | null>("players");
     const [localBlack, setLocalBlack] = useState(blackPlayerName ?? "");
     const [localWhite, setLocalWhite] = useState(whitePlayerName ?? "");
@@ -104,6 +106,14 @@ export default function SgfSharePanel({
         setLocalBlack(localWhite);
         setLocalWhite(localBlack);
         save(localWhite, localBlack, localKomi);
+    }
+
+    function handleShareTabClick() {
+        setActiveTab("share");
+
+        if (mode === "chooser" && canShareGame && !isCreating) {
+            onCreateShare();
+        }
     }
 
     const tabClass = (tab: Tab) =>
@@ -138,7 +148,7 @@ export default function SgfSharePanel({
                     type="button"
                     role="tab"
                     aria-selected={activeTab === "share"}
-                    onClick={() => setActiveTab("share")}
+                    onClick={handleShareTabClick}
                     className={tabClass("share")}
                 >
                     <Link2 size={15} />
