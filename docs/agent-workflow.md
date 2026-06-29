@@ -169,6 +169,7 @@
   - Acceptance criteria.
   - Open questions, if any.
 - If the issue remains ambiguous, ask at least three concise clarification questions in the thread before moving past triage.
+- Resolve product, UX, and behavior choices during triage before planning starts; do not defer an unanswered product choice into the planning step.
 - Keep implementation planning, approvals, and execution updates in the PR after handoff.
 
 ## Prioritization
