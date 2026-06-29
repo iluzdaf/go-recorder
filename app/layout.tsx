@@ -4,6 +4,7 @@ import "./globals.css";
 import "@sabaki/shudan/css/goban.css";
 import "./goban-overrides.css";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import AppShell from "@/components/AppShell";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import { defaultLocale, t } from "@/lib/i18n";
@@ -59,6 +60,7 @@ export default function RootLayout({
         <AppShell appVersion={packageJson.version}>{children}</AppShell>
         <ServiceWorkerRegistration />
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
