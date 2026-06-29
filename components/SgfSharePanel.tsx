@@ -108,10 +108,18 @@ export default function SgfSharePanel({
         save(localWhite, localBlack, localKomi);
     }
 
+    function handleSgfTabClick() {
+        if (isCreating) return;
+
+        setActiveTab("sgf");
+    }
+
     function handleShareTabClick() {
+        if (isCreating) return;
+
         setActiveTab("share");
 
-        if (mode === "chooser" && canShareGame && !isCreating) {
+        if (mode === "chooser" && canShareGame) {
             onCreateShare();
         }
     }
@@ -121,7 +129,7 @@ export default function SgfSharePanel({
             activeTab === tab
                 ? "border-zinc-950 text-zinc-950 dark:border-white dark:text-white"
                 : "border-transparent text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-        }`;
+        } disabled:cursor-wait disabled:hover:text-zinc-500 disabled:dark:hover:text-zinc-400`;
 
     return (
         <div
@@ -138,7 +146,8 @@ export default function SgfSharePanel({
                     type="button"
                     role="tab"
                     aria-selected={activeTab === "sgf"}
-                    onClick={() => setActiveTab("sgf")}
+                    disabled={isCreating}
+                    onClick={handleSgfTabClick}
                     className={tabClass("sgf")}
                 >
                     <FileText size={15} />
@@ -148,6 +157,7 @@ export default function SgfSharePanel({
                     type="button"
                     role="tab"
                     aria-selected={activeTab === "share"}
+                    disabled={isCreating}
                     onClick={handleShareTabClick}
                     className={tabClass("share")}
                 >
