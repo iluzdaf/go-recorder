@@ -38,6 +38,10 @@ import { formatMoveEditError, t } from "../lib/i18n";
 import { saveLocalEditableRecord } from "../lib/localEditableSave";
 import { getLocalRecord } from "../lib/localGames";
 import {
+    acknowledgeSharePrivacy,
+    hasAcknowledgedSharePrivacy,
+} from "../lib/sharePrivacy";
+import {
     getDefaultPositionView,
     getPositionViewDisplaySize,
     getPositionViewRange,
@@ -62,6 +66,7 @@ import {
     playVariationDraftMove,
     undoVariationDraftMove,
 } from "../lib/variationDraft";
+import SharePrivacyDialog from "./SharePrivacyDialog";
 import {
     useStoneCorrection,
     type StoneCorrectionAdapter,
@@ -145,6 +150,8 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     );
     const [sourceImageVisible, setSourceImageVisible] = useState(false);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
+    const [isSharePrivacyDialogOpen, setIsSharePrivacyDialogOpen] =
+        useState(false);
     const shareMenu = useEditableShareMenuController({
         initialShareSlug: draft?.lastShareSlug ?? null,
     });
@@ -351,7 +358,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         });
     }, [clearCachedShareLink, guardEdit, updateDraft]);
 
-    const handleShare = useCallback(async () => {
+    const performShare = useCallback(async () => {
         const currentDraft = draftRef.current;
 
         if (!currentDraft) {
@@ -405,13 +412,36 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         setEditableShareError,
     ]);
 
+    const handleShare = useCallback(async () => {
+        if (!hasAcknowledgedSharePrivacy()) {
+            setIsSharePrivacyDialogOpen(true);
+            return;
+        }
+
+        await performShare();
+    }, [performShare]);
+
+    const handleConfirmSharePrivacy = useCallback(() => {
+        acknowledgeSharePrivacy();
+        setIsSharePrivacyDialogOpen(false);
+        void performShare();
+    }, [performShare]);
+
+    const handleCancelSharePrivacy = useCallback(() => {
+        setIsSharePrivacyDialogOpen(false);
+    }, []);
+
     useEffect(() => {
         if (!canAutoCreateNow) {
             return;
         }
 
         markAutoCreateAttempted();
-        void handleShare();
+        const timeoutId = window.setTimeout(() => {
+            void handleShare();
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
     }, [canAutoCreateNow, handleShare, markAutoCreateAttempted]);
 
     // --- Stone correction (shared machine for board + variation drafts) ---
@@ -901,14 +931,20 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                     : "draft-board goban-theme-light relative m-0 flex min-h-0 flex-1 touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
             }
         >
-            <div
-                ref={boardAreaRef}
-                className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
-            >
-                {pendingEditFn ? (
-                    <ConfirmDialog
-                        titleId="edit-after-share-title"
-                        message={t("editAfterShareWarning")}
+                <div
+                    ref={boardAreaRef}
+                    className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
+                >
+                    {isSharePrivacyDialogOpen ? (
+                        <SharePrivacyDialog
+                            onCancel={handleCancelSharePrivacy}
+                            onContinue={handleConfirmSharePrivacy}
+                        />
+                    ) : null}
+                    {pendingEditFn ? (
+                        <ConfirmDialog
+                            titleId="edit-after-share-title"
+                            message={t("editAfterShareWarning")}
                         confirmLabel={t("continueEditing")}
                         onCancel={handleCancelEdit}
                         onConfirm={handleConfirmEdit}
