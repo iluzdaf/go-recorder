@@ -692,6 +692,7 @@ export default function GoBoard({ id }: GoBoardProps) {
     const handleCancelSharePrivacy = useCallback(() => {
         setIsSharePrivacyDialogOpen(false);
     }, []);
+    const isShareInputBlocked = shareMenu.isCreating;
 
     return (
         <div
@@ -755,6 +756,16 @@ export default function GoBoard({ id }: GoBoardProps) {
                             onCancel={handleCancelSharePrivacy}
                             onReadPolicy={handleReadSharePrivacyPolicy}
                             onContinue={handleConfirmSharePrivacy}
+                        />
+                    ) : null}
+                    {isShareInputBlocked ? (
+                        <div
+                            aria-hidden="true"
+                            className="fixed inset-0 z-[45] cursor-wait bg-black/20 dark:bg-black/40"
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onPointerMove={(event) => event.stopPropagation()}
+                            onPointerUp={(event) => event.stopPropagation()}
+                            onPointerCancel={(event) => event.stopPropagation()}
                         />
                     ) : null}
                     <RecorderActionBar
