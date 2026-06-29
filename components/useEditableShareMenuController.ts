@@ -2,17 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { shouldAutoCreateShare } from "../lib/shareMenu";
 import type { ShareMenuMode } from "./ShareMenu";
 import useShareMenu from "./useShareMenu";
 
 type UseEditableShareMenuControllerOptions = {
-    canAutoCreate?: boolean;
+    initialIsOpen?: boolean;
     initialShareSlug?: string | null;
 };
 
 export default function useEditableShareMenuController({
-    canAutoCreate = true,
+    initialIsOpen = false,
     initialShareSlug = null,
 }: UseEditableShareMenuControllerOptions) {
     const [shareSlug, setShareSlug] = useState<string | null>(initialShareSlug);
@@ -22,7 +21,6 @@ export default function useEditableShareMenuController({
     const [message, setMessage] = useState<string | null>(null);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
-    const [hasAutoCreateAttempted, setHasAutoCreateAttempted] = useState(false);
     const sharePath = shareSlug ? `/shares/${shareSlug}` : null;
 
     useEffect(() => {
@@ -32,7 +30,6 @@ export default function useEditableShareMenuController({
     }, [statusMessage]);
 
     const resetTransientState = useCallback(() => {
-        setHasAutoCreateAttempted(false);
         setMessage(null);
         setStatusMessage(null);
         setIsCreating(false);
@@ -48,6 +45,7 @@ export default function useEditableShareMenuController({
         qrCodeDataUrl,
         triggerRef,
     } = useShareMenu({
+        initialIsOpen,
         onClose: resetTransientState,
         onStatus: setStatusMessage,
         sharePath,
@@ -61,17 +59,13 @@ export default function useEditableShareMenuController({
             clearQrCode();
             setMessage(null);
             setIsCreating(false);
-            setHasAutoCreateAttempted(false);
         },
         [clearQrCode]
     );
 
     const clearShareLink = useCallback(() => {
         resetToShareSlug(null);
-        if (isOpen) {
-            setHasAutoCreateAttempted(true);
-        }
-    }, [isOpen, resetToShareSlug]);
+    }, [resetToShareSlug]);
 
     const open = useCallback(() => {
         setMode(shareSlug ? "created" : "chooser");
@@ -110,21 +104,8 @@ export default function useEditableShareMenuController({
         [clearQrCode, openBase]
     );
 
-    const canAutoCreateNow = shouldAutoCreateShare({
-        canAutoCreate,
-        hasAttempted: hasAutoCreateAttempted,
-        isOpen,
-        mode,
-        sharePath,
-    });
-
-    const markAutoCreateAttempted = useCallback(() => {
-        setHasAutoCreateAttempted(true);
-    }, []);
-
     return useMemo(
         () => ({
-            canAutoCreateNow,
             clearQrCode,
             clearShareLink,
             close,
@@ -133,7 +114,6 @@ export default function useEditableShareMenuController({
             finishCreated,
             isCreating,
             isOpen,
-            markAutoCreateAttempted,
             menuRef,
             mode,
             open,
@@ -147,7 +127,6 @@ export default function useEditableShareMenuController({
             triggerRef,
         }),
         [
-            canAutoCreateNow,
             clearQrCode,
             clearShareLink,
             close,
@@ -155,7 +134,6 @@ export default function useEditableShareMenuController({
             finishCreated,
             isCreating,
             isOpen,
-            markAutoCreateAttempted,
             menuRef,
             message,
             mode,

@@ -1,6 +1,10 @@
 "use client";
 
 import { t } from "../lib/i18n";
+import {
+    primaryActionButtonClass,
+    secondaryActionButtonClass,
+} from "../lib/buttonStyles";
 
 type ConfirmDialogProps = {
     confirmLabel: string;
@@ -35,14 +39,14 @@ export default function ConfirmDialog({
                 <div className="mt-3 flex justify-end gap-2">
                     <button
                         type="button"
-                        className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-sm text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                        className={secondaryActionButtonClass}
                         onClick={onCancel}
                     >
                         {t("cancel")}
                     </button>
                     <button
                         type="button"
-                        className="inline-flex h-9 items-center justify-center rounded-full bg-zinc-950 px-3 text-sm text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                        className={primaryActionButtonClass}
                         onClick={onConfirm}
                     >
                         {confirmLabel}

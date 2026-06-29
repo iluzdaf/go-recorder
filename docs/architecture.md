@@ -36,6 +36,8 @@
   - Renders share previews.
 - `/changelog`
   - Displays release notes.
+- `/privacy`
+  - Displays the in-app privacy policy and share-retention notice.
 
 ## Data Model
 

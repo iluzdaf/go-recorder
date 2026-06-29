@@ -24,6 +24,7 @@ type Tab = "sgf" | "share";
 
 type SgfSharePanelProps = {
     alignToViewportTop?: boolean;
+    initialActiveTab?: Tab;
     menuRef: RefObject<HTMLDivElement | null>;
     // SGF tab
     blackPlayerName: string | null;
@@ -53,6 +54,7 @@ type SgfSharePanelProps = {
 
 export default function SgfSharePanel({
     alignToViewportTop = false,
+    initialActiveTab = "sgf",
     menuRef,
     blackPlayerName,
     boardSize,
@@ -75,7 +77,7 @@ export default function SgfSharePanel({
 }: SgfSharePanelProps) {
     type AccordionSection = "players" | "position" | "rules";
 
-    const [activeTab, setActiveTab] = useState<Tab>("sgf");
+    const [activeTab, setActiveTab] = useState<Tab>(initialActiveTab);
     const [openSection, setOpenSection] = useState<AccordionSection | null>("players");
     const [localBlack, setLocalBlack] = useState(blackPlayerName ?? "");
     const [localWhite, setLocalWhite] = useState(whitePlayerName ?? "");
@@ -106,12 +108,28 @@ export default function SgfSharePanel({
         save(localWhite, localBlack, localKomi);
     }
 
+    function handleSgfTabClick() {
+        if (isCreating) return;
+
+        setActiveTab("sgf");
+    }
+
+    function handleShareTabClick() {
+        if (isCreating) return;
+
+        setActiveTab("share");
+
+        if (mode === "chooser" && canShareGame) {
+            onCreateShare();
+        }
+    }
+
     const tabClass = (tab: Tab) =>
         `inline-flex flex-1 items-center justify-center gap-2 h-11 text-sm font-medium border-b-2 transition-colors ${
             activeTab === tab
                 ? "border-zinc-950 text-zinc-950 dark:border-white dark:text-white"
                 : "border-transparent text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-        }`;
+        } disabled:cursor-wait disabled:hover:text-zinc-500 disabled:dark:hover:text-zinc-400`;
 
     return (
         <div
@@ -128,7 +146,8 @@ export default function SgfSharePanel({
                     type="button"
                     role="tab"
                     aria-selected={activeTab === "sgf"}
-                    onClick={() => setActiveTab("sgf")}
+                    disabled={isCreating}
+                    onClick={handleSgfTabClick}
                     className={tabClass("sgf")}
                 >
                     <FileText size={15} />
@@ -138,7 +157,8 @@ export default function SgfSharePanel({
                     type="button"
                     role="tab"
                     aria-selected={activeTab === "share"}
-                    onClick={() => setActiveTab("share")}
+                    disabled={isCreating}
+                    onClick={handleShareTabClick}
                     className={tabClass("share")}
                 >
                     <Link2 size={15} />

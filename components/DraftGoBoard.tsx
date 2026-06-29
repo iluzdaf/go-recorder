@@ -38,6 +38,12 @@ import { formatMoveEditError, t } from "../lib/i18n";
 import { saveLocalEditableRecord } from "../lib/localEditableSave";
 import { getLocalRecord } from "../lib/localGames";
 import {
+    consumeSharePrivacyResumeContext,
+    acknowledgeSharePrivacy,
+    markSharePrivacyResumeContext,
+    hasAcknowledgedSharePrivacy,
+} from "../lib/sharePrivacy";
+import {
     getDefaultPositionView,
     getPositionViewDisplaySize,
     getPositionViewRange,
@@ -62,6 +68,7 @@ import {
     playVariationDraftMove,
     undoVariationDraftMove,
 } from "../lib/variationDraft";
+import SharePrivacyDialog from "./SharePrivacyDialog";
 import {
     useStoneCorrection,
     type StoneCorrectionAdapter,
@@ -145,15 +152,23 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     );
     const [sourceImageVisible, setSourceImageVisible] = useState(false);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
+    const [shouldResumeSharePrivacy] = useState(() =>
+        consumeSharePrivacyResumeContext({
+            kind: "draft",
+            id,
+        })
+    );
+    const [isSharePrivacyDialogOpen, setIsSharePrivacyDialogOpen] = useState(
+        shouldResumeSharePrivacy
+    );
     const shareMenu = useEditableShareMenuController({
+        initialIsOpen: shouldResumeSharePrivacy,
         initialShareSlug: draft?.lastShareSlug ?? null,
     });
     const {
-        canAutoCreateNow,
         clearShareLink,
         close: closeEditableShareMenu,
         finishCreated: finishEditableShareCreated,
-        markAutoCreateAttempted,
         setCreating: setEditableShareCreating,
         setError: setEditableShareError,
         toggle: toggleEditableShareMenu,
@@ -351,7 +366,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         });
     }, [clearCachedShareLink, guardEdit, updateDraft]);
 
-    const handleShare = useCallback(async () => {
+    const performShare = useCallback(async () => {
         const currentDraft = draftRef.current;
 
         if (!currentDraft) {
@@ -405,14 +420,28 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         setEditableShareError,
     ]);
 
-    useEffect(() => {
-        if (!canAutoCreateNow) {
+    const handleShare = useCallback(async () => {
+        if (!hasAcknowledgedSharePrivacy()) {
+            setIsSharePrivacyDialogOpen(true);
             return;
         }
 
-        markAutoCreateAttempted();
-        void handleShare();
-    }, [canAutoCreateNow, handleShare, markAutoCreateAttempted]);
+        await performShare();
+    }, [performShare]);
+
+    const handleConfirmSharePrivacy = useCallback(() => {
+        acknowledgeSharePrivacy();
+        setIsSharePrivacyDialogOpen(false);
+        void performShare();
+    }, [performShare]);
+
+    const handleReadSharePrivacyPolicy = useCallback(() => {
+        markSharePrivacyResumeContext({ kind: "draft", id });
+    }, [id]);
+
+    const handleCancelSharePrivacy = useCallback(() => {
+        setIsSharePrivacyDialogOpen(false);
+    }, []);
 
     // --- Stone correction (shared machine for board + variation drafts) ---
     const isVariationDraft = draft?.draftKind === "variation";
@@ -892,6 +921,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         draft.draftKind === "board"
             ? [...illegalVertices, ...correction.renderSelectedVertices]
             : correction.renderSelectedVertices;
+    const isShareInputBlocked = shareMenu.isCreating;
 
     return (
         <div
@@ -901,14 +931,14 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                     : "draft-board goban-theme-light relative m-0 flex min-h-0 flex-1 touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
             }
         >
-            <div
-                ref={boardAreaRef}
-                className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
-            >
-                {pendingEditFn ? (
-                    <ConfirmDialog
-                        titleId="edit-after-share-title"
-                        message={t("editAfterShareWarning")}
+                <div
+                    ref={boardAreaRef}
+                    className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0"
+                >
+                    {pendingEditFn ? (
+                        <ConfirmDialog
+                            titleId="edit-after-share-title"
+                            message={t("editAfterShareWarning")}
                         confirmLabel={t("continueEditing")}
                         onCancel={handleCancelEdit}
                         onConfirm={handleConfirmEdit}
@@ -917,6 +947,9 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 {shareMenu.isOpen ? (
                     <SgfSharePanel
                         alignToViewportTop={isOverlayHeader}
+                        initialActiveTab={
+                            shouldResumeSharePrivacy ? "share" : "sgf"
+                        }
                         menuRef={shareMenu.menuRef}
                         blackPlayerName={draft.blackPlayerName}
                         boardSize={draft.draftKind === "board" ? draft.boardSize : undefined}
@@ -935,6 +968,24 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                         onCopyLink={shareMenu.copyShareLink}
                         qrCodeDataUrl={shareMenu.qrCodeDataUrl}
                         sharePath={shareMenu.sharePath}
+                    />
+                ) : null}
+                {isSharePrivacyDialogOpen ? (
+                    <SharePrivacyDialog
+                        returnToPath={`/drafts/${id}`}
+                        onCancel={handleCancelSharePrivacy}
+                        onReadPolicy={handleReadSharePrivacyPolicy}
+                        onContinue={handleConfirmSharePrivacy}
+                    />
+                ) : null}
+                {isShareInputBlocked ? (
+                    <div
+                        aria-hidden="true"
+                        className="fixed inset-0 z-[45] cursor-wait bg-black/20 dark:bg-black/40"
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onPointerMove={(event) => event.stopPropagation()}
+                        onPointerUp={(event) => event.stopPropagation()}
+                        onPointerCancel={(event) => event.stopPropagation()}
                     />
                 ) : null}
                 <DraftBoardActionBar

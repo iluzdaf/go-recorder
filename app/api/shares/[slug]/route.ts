@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 
-import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
+import { getSupabaseAdmin } from "../../../../lib/supabaseAdmin";
 
 type RouteContext = {
     params: Promise<{
@@ -16,7 +16,7 @@ export async function GET(
 ) {
     const { slug } = await context.params;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
         .from("shares")
         .select("*")
         .eq("slug", slug)

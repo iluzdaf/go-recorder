@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { closeDetailsPanel, openDetailsPanel, openShareTab, setSgfMetadata, startGame, startGameWithMetadata } from './helpers'
+import { closeDetailsPanel, openSharePanelAndCreateLink, setSgfMetadata, startGame, startGameWithMetadata } from './helpers'
 
 async function placeMoveOnBoard(page: Page) {
     const box = await page.locator('.shudan-goban').boundingBox()
@@ -8,12 +8,7 @@ async function placeMoveOnBoard(page: Page) {
 }
 
 async function navigateToSharePage(page: Page) {
-    await openDetailsPanel(page)
-    await openShareTab(page)
-    const createLink = page.locator('#share-menu button[aria-label="Create link"]')
-    const copyLink = page.locator('#share-menu button[aria-label="Copy link"]')
-    if (await createLink.isVisible()) await createLink.click()
-    await expect(copyLink).toBeVisible({ timeout: 15000 })
+    await openSharePanelAndCreateLink(page)
     await page.click('button[aria-label="Go to share page"]')
     await expect(page).toHaveURL(/\/shares\//)
     await page.locator('button[aria-label="Details"]').waitFor()

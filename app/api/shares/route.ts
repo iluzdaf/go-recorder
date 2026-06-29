@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 
-import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { getSupabaseAdmin } from "../../../lib/supabaseAdmin";
 import { createSlug } from "../../../lib/gameLogic";
 import { validateCreateShareInput } from "../../../lib/shareValidation";
 import { getFinalPositionFromGameState } from "../../../lib/shareFinalPosition";
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
     const slug = createSlug();
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
         .from("shares")
         .insert({
             slug,
