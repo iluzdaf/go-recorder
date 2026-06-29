@@ -161,15 +161,12 @@ test('editing player name after share shows confirm dialog', async ({ page }) =>
   const dialog = page.getByRole('dialog', { name: /share was created/i })
   await expect(dialog).toBeVisible()
 
-  // Confirming resets the share — Share tab should show Create link, not Copy link
+  // Confirming resets the share; opening Share immediately creates a fresh link.
   await dialog.getByRole('button', { name: /continue/i }).click()
   await expect(dialog).not.toBeVisible()
   await openShareTab(page)
   await expect(
     page.locator('#share-menu').getByRole('button', { name: 'Copy link' })
-  ).not.toBeVisible()
-  await expect(
-    page.locator('#share-menu').getByRole('button', { name: 'Create link' })
   ).toBeVisible()
 })
 
