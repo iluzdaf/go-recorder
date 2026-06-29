@@ -106,6 +106,14 @@ describe("share privacy UI", () => {
             'href="/privacy?returnTo=%2Fgames%2Fabc"'
         );
         expect(markup).not.toContain('target="_blank"');
+
+        const summaryStart = markup.indexOf("Creating a share stores");
+        const policyLinkStart = markup.indexOf("Read privacy policy");
+        const paragraphEnd = markup.indexOf("</p>", summaryStart);
+
+        expect(summaryStart).toBeGreaterThan(-1);
+        expect(policyLinkStart).toBeGreaterThan(summaryStart);
+        expect(policyLinkStart).toBeLessThan(paragraphEnd);
     });
 
     it("renders shared confirmation dialog calls to action with primary CTA styling", () => {
