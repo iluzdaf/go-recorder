@@ -35,8 +35,7 @@ export default async function PrivacyPage({ searchParams }: PrivacyPageProps) {
     return (
         <main className="min-h-0 flex-1 overflow-auto bg-zinc-100 px-4 py-6 text-zinc-950 dark:bg-neutral-900 dark:text-white">
             <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col gap-5">
-                <span id="privacy-policy-top" aria-hidden="true" />
-                <header className="flex flex-col gap-2">
+                <header id="privacy-policy-top" className="flex flex-col gap-2">
                     <h1 className="text-right text-2xl font-semibold tracking-normal">
                         {t("privacyPolicyTitle")}
                     </h1>
