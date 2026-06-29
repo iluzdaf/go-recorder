@@ -51,7 +51,7 @@
     "copyLink": "Copy link",
     "goToSharePage": "Go to share page",
     "sharePrivacyTitle": "Before you create a share",
-    "sharePrivacySummary": "Creating a share stores the board state and related metadata on our share service so the link can stay immutable.",
+    "sharePrivacySummary": "Creating a share stores the board state and related metadata on our service to make the board position shareable.",
     "sharePrivacyReadPolicy": "Read privacy policy",
     "sharePrivacyContinue": "Continue to share",
     "privacyPolicyTitle": "Privacy policy",
