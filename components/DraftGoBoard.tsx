@@ -38,7 +38,9 @@ import { formatMoveEditError, t } from "../lib/i18n";
 import { saveLocalEditableRecord } from "../lib/localEditableSave";
 import { getLocalRecord } from "../lib/localGames";
 import {
+    consumeSharePrivacyResumeContext,
     acknowledgeSharePrivacy,
+    markSharePrivacyResumeContext,
     hasAcknowledgedSharePrivacy,
 } from "../lib/sharePrivacy";
 import {
@@ -150,8 +152,9 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     );
     const [sourceImageVisible, setSourceImageVisible] = useState(false);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
-    const [isSharePrivacyDialogOpen, setIsSharePrivacyDialogOpen] =
-        useState(false);
+    const [isSharePrivacyDialogOpen, setIsSharePrivacyDialogOpen] = useState(
+        () => consumeSharePrivacyResumeContext({ kind: "draft", id })
+    );
     const shareMenu = useEditableShareMenuController({
         initialShareSlug: draft?.lastShareSlug ?? null,
     });
@@ -426,6 +429,10 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         setIsSharePrivacyDialogOpen(false);
         void performShare();
     }, [performShare]);
+
+    const handleReadSharePrivacyPolicy = useCallback(() => {
+        markSharePrivacyResumeContext({ kind: "draft", id });
+    }, [id]);
 
     const handleCancelSharePrivacy = useCallback(() => {
         setIsSharePrivacyDialogOpen(false);
@@ -937,7 +944,9 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
                 >
                     {isSharePrivacyDialogOpen ? (
                         <SharePrivacyDialog
+                            returnToPath={`/drafts/${id}`}
                             onCancel={handleCancelSharePrivacy}
+                            onReadPolicy={handleReadSharePrivacyPolicy}
                             onContinue={handleConfirmSharePrivacy}
                         />
                     ) : null}

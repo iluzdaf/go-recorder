@@ -3,14 +3,19 @@
 import Link from "next/link";
 
 import { t } from "../lib/i18n";
+import { buildSharePrivacyPolicyHref } from "../lib/sharePrivacy";
 
 type SharePrivacyDialogProps = {
+    returnToPath: string;
     onCancel: () => void;
+    onReadPolicy: () => void;
     onContinue: () => void;
 };
 
 export default function SharePrivacyDialog({
+    returnToPath,
     onCancel,
+    onReadPolicy,
     onContinue,
 }: SharePrivacyDialogProps) {
     return (
@@ -39,10 +44,9 @@ export default function SharePrivacyDialog({
                     </div>
 
                     <Link
-                        href="/privacy"
-                        target="_blank"
-                        rel="noreferrer"
+                        href={buildSharePrivacyPolicyHref(returnToPath)}
                         className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-sm text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                        onClick={onReadPolicy}
                     >
                         {t("sharePrivacyReadPolicy")}
                     </Link>

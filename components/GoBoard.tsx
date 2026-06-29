@@ -18,7 +18,9 @@ import { saveLocalEditableRecord } from "../lib/localEditableSave";
 import { createLoadedLocalGame } from "../lib/localGameView";
 import { createShareFromLocalGame } from "../lib/shareClient";
 import {
+    consumeSharePrivacyResumeContext,
     acknowledgeSharePrivacy,
+    markSharePrivacyResumeContext,
     hasAcknowledgedSharePrivacy,
 } from "../lib/sharePrivacy";
 import { formatMoveEditError, t } from "../lib/i18n";
@@ -108,8 +110,9 @@ export default function GoBoard({ id }: GoBoardProps) {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [shareStatus, setShareStatus] = useState<string | null>(null);
-    const [isSharePrivacyDialogOpen, setIsSharePrivacyDialogOpen] =
-        useState(false);
+    const [isSharePrivacyDialogOpen, setIsSharePrivacyDialogOpen] = useState(
+        () => consumeSharePrivacyResumeContext({ kind: "game", id })
+    );
     const dismissShareStatus = useCallback(() => setShareStatus(null), []);
     const shareMenu = useEditableShareMenuController({});
     const {
@@ -676,6 +679,10 @@ export default function GoBoard({ id }: GoBoardProps) {
         void performShare();
     }, [performShare]);
 
+    const handleReadSharePrivacyPolicy = useCallback(() => {
+        markSharePrivacyResumeContext({ kind: "game", id });
+    }, [id]);
+
     const handleCancelSharePrivacy = useCallback(() => {
         setIsSharePrivacyDialogOpen(false);
     }, []);
@@ -716,7 +723,9 @@ export default function GoBoard({ id }: GoBoardProps) {
                 >
                     {isSharePrivacyDialogOpen ? (
                         <SharePrivacyDialog
+                            returnToPath={`/games/${id}`}
                             onCancel={handleCancelSharePrivacy}
+                            onReadPolicy={handleReadSharePrivacyPolicy}
                             onContinue={handleConfirmSharePrivacy}
                         />
                     ) : null}

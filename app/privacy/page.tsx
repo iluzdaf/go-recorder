@@ -2,12 +2,36 @@ import Link from "next/link";
 
 import { t } from "../../lib/i18n";
 
+type PrivacySearchParams = {
+    returnTo?: string | string[];
+};
+
+type PrivacyPageProps = {
+    searchParams?: Promise<PrivacySearchParams>;
+};
+
 export const metadata = {
     title: t("privacyPolicyTitle"),
     description: t("privacyPolicyIntro"),
 };
 
-export default function PrivacyPage() {
+function getReturnToPath(searchParams: PrivacySearchParams | undefined) {
+    const rawReturnTo = searchParams?.returnTo;
+    const returnToPath = Array.isArray(rawReturnTo)
+        ? rawReturnTo[0]
+        : rawReturnTo;
+
+    return typeof returnToPath === "string" && returnToPath.startsWith("/")
+        ? returnToPath
+        : "/";
+}
+
+export default async function PrivacyPage({ searchParams }: PrivacyPageProps) {
+    const resolvedSearchParams = (await searchParams) as
+        | PrivacySearchParams
+        | undefined;
+    const returnToPath = getReturnToPath(resolvedSearchParams);
+
     return (
         <main className="min-h-0 flex-1 overflow-auto bg-zinc-100 px-4 py-6 text-zinc-950 dark:bg-neutral-900 dark:text-white">
             <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col gap-5">
@@ -67,7 +91,7 @@ export default function PrivacyPage() {
 
                 <div>
                     <Link
-                        href="/"
+                        href={returnToPath}
                         className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
                     >
                         {t("privacyPolicyBack")}

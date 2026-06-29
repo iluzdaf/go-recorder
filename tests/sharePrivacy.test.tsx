@@ -5,8 +5,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import SharePrivacyDialog from "../components/SharePrivacyDialog";
 import PrivacyPage from "../app/privacy/page";
 import {
+    buildSharePrivacyPolicyHref,
+    consumeSharePrivacyResumeContext,
     acknowledgeSharePrivacy,
     hasAcknowledgedSharePrivacy,
+    markSharePrivacyResumeContext,
 } from "../lib/sharePrivacy";
 
 vi.mock("next/link", () => ({
@@ -54,25 +57,65 @@ describe("share privacy helpers", () => {
         acknowledgeSharePrivacy();
         expect(hasAcknowledgedSharePrivacy()).toBe(true);
     });
+
+    it("tracks share privacy resume state in session storage", () => {
+        vi.stubGlobal("window", {
+            sessionStorage: createStorageMock(),
+        });
+
+        expect(
+            consumeSharePrivacyResumeContext({ kind: "game", id: "game-1" })
+        ).toBe(false);
+
+        markSharePrivacyResumeContext({ kind: "game", id: "game-1" });
+
+        expect(
+            consumeSharePrivacyResumeContext({ kind: "game", id: "game-1" })
+        ).toBe(true);
+
+        expect(
+            consumeSharePrivacyResumeContext({ kind: "game", id: "game-1" })
+        ).toBe(false);
+    });
+
+    it("builds a same-tab privacy policy href with a return path", () => {
+        expect(buildSharePrivacyPolicyHref("/games/abc")).toBe(
+            "/privacy?returnTo=%2Fgames%2Fabc"
+        );
+    });
 });
 
 describe("share privacy UI", () => {
     it("renders the share privacy dialog with a policy link", () => {
         const markup = renderToStaticMarkup(
-            <SharePrivacyDialog onCancel={vi.fn()} onContinue={vi.fn()} />
+            <SharePrivacyDialog
+                returnToPath="/games/abc"
+                onCancel={vi.fn()}
+                onReadPolicy={vi.fn()}
+                onContinue={vi.fn()}
+            />
         );
 
         expect(markup).toContain("Before you create a share");
         expect(markup).toContain("Read privacy policy");
         expect(markup).toContain("Continue to share");
+        expect(markup).toContain(
+            'href="/privacy?returnTo=%2Fgames%2Fabc"'
+        );
+        expect(markup).not.toContain('target="_blank"');
     });
 
     it("renders the privacy policy page", () => {
-        const markup = renderToStaticMarkup(<PrivacyPage />);
+        return PrivacyPage({
+            searchParams: Promise.resolve({ returnTo: "/drafts/abc" }),
+        }).then((element) => {
+            const markup = renderToStaticMarkup(element);
 
-        expect(markup).toContain("Privacy policy");
-        expect(markup).toContain("What we store");
-        expect(markup).toContain("Retention");
-        expect(markup).toContain("Back to app");
+            expect(markup).toContain("Privacy policy");
+            expect(markup).toContain("What we store");
+            expect(markup).toContain("Retention");
+            expect(markup).toContain('href="/drafts/abc"');
+            expect(markup).toContain("Back to app");
+        });
     });
 });
