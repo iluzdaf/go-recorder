@@ -35,27 +35,32 @@ export default async function PrivacyPage({ searchParams }: PrivacyPageProps) {
     return (
         <main
             id="privacy-policy-top"
-            className="min-h-0 flex-1 overflow-auto overflow-x-hidden bg-zinc-100 px-4 pb-6 pt-20 text-zinc-950 dark:bg-neutral-900 dark:text-white"
+            className="min-h-0 flex-1 overflow-auto bg-zinc-100 px-4 py-6 text-zinc-950 dark:bg-neutral-900 dark:text-white"
         >
-            <div className="ml-auto flex min-h-full w-[min(100%,42rem)] flex-col gap-5">
-                <header className="flex flex-col gap-3">
-                    <h1 className="self-end text-right text-2xl font-semibold tracking-normal">
+            <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col gap-5">
+                <header className="flex flex-col gap-2">
+                    <h1 className="text-right text-2xl font-semibold tracking-normal">
                         {t("privacyPolicyTitle")}
                     </h1>
-                    <p className="text-left text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                        {t("privacyPolicyIntro")}
-                    </p>
-                    <div>
-                        <Link
-                            href={returnToPath}
-                            className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
-                        >
-                            {t("privacyPolicyBack")}
-                        </Link>
-                    </div>
                 </header>
 
-                <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
+                <article className="rounded-lg border border-zinc-300 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+                    <div className="flex flex-col gap-3">
+                        <p className="text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+                            {t("privacyPolicyIntro")}
+                        </p>
+                        <div>
+                            <Link
+                                href={returnToPath}
+                                className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-950 hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                            >
+                                {t("privacyPolicyBack")}
+                            </Link>
+                        </div>
+                    </div>
+                </article>
+
+                <section className="space-y-3 rounded-lg border border-zinc-300 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                         What we store
                     </h2>
@@ -64,7 +69,7 @@ export default async function PrivacyPage({ searchParams }: PrivacyPageProps) {
                     </p>
                 </section>
 
-                <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
+                <section className="space-y-3 rounded-lg border border-zinc-300 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                         Why we store it
                     </h2>
@@ -73,7 +78,7 @@ export default async function PrivacyPage({ searchParams }: PrivacyPageProps) {
                     </p>
                 </section>
 
-                <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
+                <section className="space-y-3 rounded-lg border border-zinc-300 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                         Local data
                     </h2>
@@ -82,7 +87,7 @@ export default async function PrivacyPage({ searchParams }: PrivacyPageProps) {
                     </p>
                 </section>
 
-                <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
+                <section className="space-y-3 rounded-lg border border-zinc-300 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                         Retention
                     </h2>
@@ -91,7 +96,7 @@ export default async function PrivacyPage({ searchParams }: PrivacyPageProps) {
                     </p>
                 </section>
 
-                <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
+                <section className="space-y-3 rounded-lg border border-zinc-300 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                         Questions
                     </h2>
