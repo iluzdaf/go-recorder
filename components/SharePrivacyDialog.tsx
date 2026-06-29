@@ -43,17 +43,16 @@ export default function SharePrivacyDialog({
                             {t("sharePrivacyTitle")}
                         </h2>
                         <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
-                            {t("sharePrivacySummary")}
+                            {t("sharePrivacySummary")}{" "}
+                            <Link
+                                href={buildSharePrivacyPolicyHref(returnToPath)}
+                                className="font-medium text-sky-700 underline underline-offset-4 hover:text-sky-600 dark:text-sky-400 dark:hover:text-sky-300"
+                                onClick={onReadPolicy}
+                            >
+                                {t("sharePrivacyReadPolicy")}
+                            </Link>
                         </p>
                     </div>
-
-                    <Link
-                        href={buildSharePrivacyPolicyHref(returnToPath)}
-                        className="inline-flex text-sm font-medium text-sky-700 underline underline-offset-4 hover:text-sky-600 dark:text-sky-400 dark:hover:text-sky-300"
-                        onClick={onReadPolicy}
-                    >
-                        {t("sharePrivacyReadPolicy")}
-                    </Link>
                 </div>
 
                 <div className="mt-4 flex flex-wrap justify-end gap-2">
