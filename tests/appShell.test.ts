@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    getBoardThemeClassName,
+    getBoardSurfaceClassName,
     getAppNavigationTargets,
     getChangelogDialogClassName,
+    getNextThemePreference,
     getSettingsDialogClassName,
+    resolveBoardThemePreference,
     resolveShowBoardCoordinatesPreference,
     resolveTwoStepPlacementPreference,
     shouldAnchorHeaderDialogsToViewportTop,
@@ -60,6 +64,75 @@ describe("resolveTwoStepPlacementPreference", () => {
         expect(resolveTwoStepPlacementPreference("true")).toBe(true);
         expect(resolveTwoStepPlacementPreference("false")).toBe(false);
         expect(resolveTwoStepPlacementPreference("unexpected")).toBe(false);
+    });
+});
+
+describe("appearance preferences", () => {
+    it("cycles through light, dark, and follow-system modes", () => {
+        expect(getNextThemePreference("light")).toBe("dark");
+        expect(getNextThemePreference("dark")).toBe("system");
+        expect(getNextThemePreference("system")).toBe("light");
+    });
+});
+
+describe("board theme preferences", () => {
+    it("defaults to the minimalist board theme", () => {
+        expect(resolveBoardThemePreference(null)).toBe("minimalist");
+        expect(resolveBoardThemePreference("unexpected")).toBe("minimalist");
+    });
+
+    it("accepts persisted minimalist and wood theme values", () => {
+        expect(resolveBoardThemePreference("minimalist")).toBe("minimalist");
+        expect(resolveBoardThemePreference("wood")).toBe("wood");
+    });
+
+    it("resolves active board theme classes by app mode", () => {
+        expect(
+            getBoardThemeClassName({
+                boardTheme: "minimalist",
+                isDarkMode: false,
+            })
+        ).toBe("goban-theme-light");
+        expect(
+            getBoardThemeClassName({
+                boardTheme: "minimalist",
+                isDarkMode: true,
+            })
+        ).toBe("goban-theme-dark");
+        expect(
+            getBoardThemeClassName({
+                boardTheme: "wood",
+                isDarkMode: false,
+            })
+        ).toBe("goban-theme-wood-light");
+        expect(
+            getBoardThemeClassName({
+                boardTheme: "wood",
+                isDarkMode: true,
+            })
+        ).toBe("goban-theme-wood-dark");
+    });
+
+    it("builds shared board surface classes for recorder, draft, and share boards", () => {
+        expect(
+            getBoardSurfaceClassName({
+                activeBoardThemeClassName: "goban-theme-wood-dark",
+                isDarkMode: true,
+            })
+        ).toContain("goban-theme-wood-dark");
+        expect(
+            getBoardSurfaceClassName({
+                activeBoardThemeClassName: "goban-theme-wood-dark",
+                isDarkMode: true,
+            })
+        ).toContain("bg-neutral-900 text-white");
+        expect(
+            getBoardSurfaceClassName({
+                activeBoardThemeClassName: "goban-theme-wood-light",
+                extraClassName: "draft-board",
+                isDarkMode: false,
+            })
+        ).toMatch(/^draft-board goban-theme-wood-light /);
     });
 });
 

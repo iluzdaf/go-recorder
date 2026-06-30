@@ -40,28 +40,13 @@
   - A project collaborator or owner must explicitly change labels to move the PR past this gate.
 - `in-progress`
   - PR label.
-  - An agent is implementing an approved plan.
+  - A project collaborator or owner has approved the plan and authorized implementation.
+  - The implementation agent may implement the approved plan while this label is present.
 - `needs-review`
   - PR label.
   - Implementation is complete.
-  - A separate review pass is needed.
-- `smoke-test-ready`
-  - PR label.
-  - Review is complete.
-  - The PR has a manual smoke-test checklist.
-  - Human merge gate.
-  - Agents and review agents may add this label when the PR is ready for final human review and merge consideration.
-  - Agents must not remove this label or merge the PR.
-  - A project collaborator or owner approves this gate by reviewing and merging the PR.
-- `merge-ready`
-  - PR label.
-  - Human-owned label for PRs that are ready for final merge consideration.
-- `blocked`
-  - Work cannot continue without a decision, credential, external service, or dependency.
-  - Human-gated label.
-  - Agents may add this label when work cannot continue.
-  - Agents must not remove this label or continue blocked work.
-  - A project collaborator or owner must explicitly change labels to move the issue or PR past this gate.
+  - The implementation agent has run required checks, verified agent-checkable smoke tests, and left human-only smoke checks marked for human review.
+  - A separate human review pass is needed before merge.
 
 ## Default Flow
 
@@ -75,20 +60,14 @@
 - project collaborator or owner explicitly changes labels
 - `in-progress`
 - `needs-review`
-- `smoke-test-ready`
-- `merge-ready`
 - project collaborator or owner reviews and merges to `main`
 
-## Blocked Flow
+## Stop Flow
 
-- `blocked` is a side gate, not part of the default happy path.
-- Agents may add `blocked` to an issue or PR when work cannot continue.
-- When adding `blocked`, explain the exact decision, credential, external service, or dependency needed.
-- Agents must stop the blocked work after adding `blocked`.
-- Agents must not remove `blocked`.
-- Agents must not continue blocked work while `blocked` remains unchanged by a project collaborator or owner.
-- The blocked gate is passed only when a project collaborator or owner explicitly changes labels.
-- For a planning-stage block, the unblock label is `needs-plan`.
+- If work cannot continue because of a missing decision, credential, external service, dependency, new scope, or ambiguity, agents must explain the exact stop reason in the issue or PR and stop.
+- Agents must leave workflow labels unchanged when stopping for one of these reasons.
+- A project collaborator or owner restarts work by resolving the stop reason and applying the appropriate existing workflow label.
+- For a planning-stage stop, the restart label is `needs-plan`.
 
 ## Comment And Label Authority
 
@@ -96,16 +75,16 @@
 - Labels control issue and PR workflow authorization before implementation.
 - Human merge controls final release authorization.
 - Issue triage may continue from comments while the issue is in `needs-triage`, `needs-clarification`, or `needs-approval`.
-- Comments must not move work past `needs-approval`, `needs-plan-approval`, or `blocked`.
+- Comments must not move work past `needs-approval` or `needs-plan-approval`.
 - Agents must not infer gate completion from comments, chat, plans, or elapsed time.
 - Agents must verify the current PR has already passed through `needs-plan` and `needs-plan-approval` before editing code.
-- `needs-approval`, `needs-plan-approval`, and `blocked` are human-gated labels.
+- `needs-approval` and `needs-plan-approval` are human-gated labels.
 - Agents may add human-gated labels when the issue or PR is ready for a decision.
 - Agents must never remove human-gated labels.
 - Agents must never replace human-gated labels with the next workflow label.
 - Human-gated labels are passed only when a project collaborator or owner explicitly changes GitHub labels.
 - If a gate decision is stated without the label change, ask a project collaborator or owner to update the labels and stop before the gated work.
-- `smoke-test-ready` is completed by human merge, not by a required pre-merge label change.
+- `needs-review` is the agent handoff to human review and merge consideration.
 
 ## Ready For Agent Automation
 
@@ -210,13 +189,12 @@
 - Plan only from an existing draft PR labeled `needs-plan`.
 - If an active PR already exists for the issue, update that PR instead of creating a duplicate.
 - Before writing the PR plan, read the linked issue body, all issue comments, and the latest triage record.
-- Base the PR plan on the triage record's problem, desired outcome, acceptance criteria, constraints, relevant files, verification expectations, and smoke test draft.
-- If unresolved open questions, planning decisions, or scope changes from the triage record remain, add `blocked` instead of `needs-plan-approval`.
-- When adding `blocked` during planning, explain the blocker in the PR and stop.
-- A project collaborator or owner unblocks planning by answering or deciding and changing labels from `blocked` to `needs-plan`.
-- After unblocking, revise the plan before moving to `needs-plan-approval`.
+- Base the PR plan on the triage record's problem, desired outcome, acceptance criteria, constraints, relevant files, verification expectations, test expectations, E2E expectations, and smoke test draft.
+- If unresolved open questions, planning decisions, or scope changes from the triage record remain, explain the exact stop reason in the PR, leave labels unchanged, and stop instead of adding `needs-plan-approval`.
+- A project collaborator or owner restarts planning by answering or deciding and applying `needs-plan`.
+- After restarting, revise the plan before moving to `needs-plan-approval`.
 - Do not edit code until the plan exists in the PR and the PR is past `needs-plan-approval`.
-- If the plan or approval gate is missing when implementation would start, add `blocked` and stop.
+- If the plan or approval gate is missing when implementation would start, explain the exact stop reason in the PR, leave labels unchanged, and stop.
 - Write a plan before editing code for:
   - Non-trivial tasks.
   - Broad tasks.
@@ -227,30 +205,36 @@
 - Do not remove `needs-plan-approval`.
 - Do not add `in-progress`; a project collaborator or owner must explicitly add it to move past the plan approval gate.
 - Confirm the PR already passed through `needs-plan` and `needs-plan-approval` before the first code edit.
-- If that history is missing, stop and mark the work blocked instead of continuing.
+- If that history is missing, explain the exact stop reason in the PR, leave labels unchanged, and stop instead of continuing.
 - Skip planning only when the user explicitly says to skip planning for that request, including tiny mechanical changes.
 - A good plan includes:
   - Small ordered steps.
   - Likely files.
   - Test targets.
+  - Focused unit or integration tests to add or update as part of the earliest step they can validate.
+  - E2E tests to add or update as part of the earliest user-visible workflow step they can validate, or a reason E2E coverage is not needed.
   - Risks.
   - Tradeoffs.
   - Open user decisions.
 
 ## Implementation Agent
 
-- Implementation is human-owned for now after the plan approval gate.
-- Wait for a project collaborator or owner to explicitly change labels before editing code.
-- Do not remove `needs-plan-approval`.
-- Do not add `in-progress`; a project collaborator or owner must explicitly add it to move past the plan approval gate.
-- Implement the approved plan one step at a time.
-- Stop after completing each approved step and wait for further instructions before starting the next step.
-- Prefer one focused commit per plan step.
-- Run type checks, focused tests, and lint on changed files.
+- Wait for a project collaborator or owner to explicitly change the PR label from `needs-plan-approval` to `in-progress` before editing code.
+- A human-applied `in-progress` label authorizes implementation of the approved PR plan.
+- Do not add `in-progress`; only a project collaborator or owner may move the PR past the plan approval gate.
+- Do not edit code if the PR still has `needs-plan-approval`, lacks `in-progress`, or lacks a plan history through `needs-plan` and `needs-plan-approval`.
+- Implement the approved plan step by step while the PR remains labeled `in-progress`.
+- Add or update each step's focused tests and E2E tests as early as practical in that step.
+- Before each next plan step, read new PR comments and address requested changes that are within the approved scope.
+- If comments or implementation findings introduce new scope, unresolved product decisions, credentials, external dependencies, or ambiguity, explain the exact stop reason in the PR, leave labels unchanged, and stop.
+- Keep implementation scoped to the approved plan and linked issue.
+- Prefer one focused commit per coherent plan step.
+- Run type checks, focused tests, E2E tests, and lint on changed files.
 - Run the app locally and verify as many smoke tests as possible.
-- Include the approved plan in the PR description.
-- Include `Smoke Tests For Reviewer` in the PR description, marking any items the agent already verified.
-- Move the PR to `needs-review` when implementation is ready.
+- Update `Smoke Tests For Reviewer` in the PR description, marking agent-verified items and leaving human-only checks unchecked with notes.
+- Make in-scope changes required to get agent-verifiable smoke tests to pass.
+- Replace `in-progress` with `needs-review` only after implementation and agent-verifiable smoke tests are complete.
+- Do not review, merge, or move the PR past `needs-review`.
 
 ## Verification
 
@@ -274,10 +258,8 @@
 - Agents must run the app locally and verify as many smoke tests as possible before moving to `needs-review`.
 - Mark each locally verified item with `[x]` and note it was agent-verified.
 - Leave as `[ ]` any items that require a real device, a preview deployment, or human judgement.
-- A human is required only for remaining unverified items and the final merge.
-- Review agents must add or refine missing smoke tests before moving a task to `smoke-test-ready`.
-- Review agents may add `smoke-test-ready` when the PR is ready for final human review.
-- Review agents must not remove `smoke-test-ready`.
+- A human is required for remaining unverified items and the final merge.
+- Review agents must add or refine missing smoke tests before human merge consideration.
 - Review agents must not merge the PR.
 
 ## Review Agent
@@ -298,10 +280,10 @@
 - Merge only after all smoke tests are verified or failures are explicitly accepted.
 - Human review is required for any smoke test item the agent could not verify locally.
 - Merge only while the PR remains scoped to the task.
-- `smoke-test-ready` means ready for final human review and merge consideration.
+- `needs-review` means implementation is complete and ready for human review and merge consideration.
 - A project collaborator or owner approves the final gate by reviewing and merging the PR.
 - The PR closing through merge is the normal completion path; no pre-merge label change is required.
-- Agents must not remove `smoke-test-ready` or merge into `main`.
+- Agents must not merge into `main`.
 - After merge, repeat from the next prioritized `ready-for-agent` task.
 
 ## Repo Rules

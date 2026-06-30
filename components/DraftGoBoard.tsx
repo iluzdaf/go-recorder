@@ -19,6 +19,7 @@ import SgfSharePanel from "./SgfSharePanel";
 import { downloadSgf } from "./sgf";
 import {
     useBoardDisplaySettings,
+    getBoardSurfaceClassName,
     useHeaderStatus,
     useHeaderVisibility,
     useTheme,
@@ -136,7 +137,11 @@ function loadLocalBoardDraft(id: string) {
 
 export default function DraftGoBoard({ id }: DraftGoBoardProps) {
     const { isDarkMode } = useTheme();
-    const { showBoardCoordinates, twoStepPlacement } = useBoardDisplaySettings();
+    const {
+        activeBoardThemeClassName,
+        showBoardCoordinates,
+        twoStepPlacement,
+    } = useBoardDisplaySettings();
     const { setHeaderStatus } = useHeaderStatus();
     const { isOverlayHeader } = useHeaderVisibility();
     const [draft, setDraft] = useState<LocalDraftRecord | null>(() =>
@@ -925,11 +930,11 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
 
     return (
         <div
-            className={
-                isDarkMode
-                    ? "draft-board goban-theme-dark relative m-0 flex min-h-0 flex-1 touch-none flex-col overflow-hidden overscroll-none bg-neutral-900 p-0 text-white"
-                    : "draft-board goban-theme-light relative m-0 flex min-h-0 flex-1 touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
-            }
+            className={getBoardSurfaceClassName({
+                activeBoardThemeClassName,
+                extraClassName: "draft-board",
+                isDarkMode,
+            })}
         >
                 <div
                     ref={boardAreaRef}
