@@ -210,7 +210,7 @@
 - Plan only from an existing draft PR labeled `needs-plan`.
 - If an active PR already exists for the issue, update that PR instead of creating a duplicate.
 - Before writing the PR plan, read the linked issue body, all issue comments, and the latest triage record.
-- Base the PR plan on the triage record's problem, desired outcome, acceptance criteria, constraints, relevant files, verification expectations, and smoke test draft.
+- Base the PR plan on the triage record's problem, desired outcome, acceptance criteria, constraints, relevant files, verification expectations, test expectations, E2E expectations, and smoke test draft.
 - If unresolved open questions, planning decisions, or scope changes from the triage record remain, add `blocked` instead of `needs-plan-approval`.
 - When adding `blocked` during planning, explain the blocker in the PR and stop.
 - A project collaborator or owner unblocks planning by answering or deciding and changing labels from `blocked` to `needs-plan`.
@@ -233,6 +233,8 @@
   - Small ordered steps.
   - Likely files.
   - Test targets.
+  - Focused unit or integration tests to add or update as part of the earliest step they can validate.
+  - E2E tests to add or update as part of the earliest user-visible workflow step they can validate, or a reason E2E coverage is not needed.
   - Risks.
   - Tradeoffs.
   - Open user decisions.
