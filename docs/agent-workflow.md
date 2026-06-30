@@ -47,12 +47,6 @@
   - Implementation is complete.
   - The implementation agent has run required checks, verified agent-checkable smoke tests, and left human-only smoke checks marked for human review.
   - A separate human review pass is needed before merge.
-- `blocked`
-  - Work cannot continue without a decision, credential, external service, or dependency.
-  - Human-gated label.
-  - Agents may add this label when work cannot continue.
-  - Agents must not remove this label or continue blocked work.
-  - A project collaborator or owner must explicitly change labels to move the issue or PR past this gate.
 
 ## Default Flow
 
@@ -68,16 +62,12 @@
 - `needs-review`
 - project collaborator or owner reviews and merges to `main`
 
-## Blocked Flow
+## Stop Flow
 
-- `blocked` is a side gate, not part of the default happy path.
-- Agents may add `blocked` to an issue or PR when work cannot continue.
-- When adding `blocked`, explain the exact decision, credential, external service, or dependency needed.
-- Agents must stop the blocked work after adding `blocked`.
-- Agents must not remove `blocked`.
-- Agents must not continue blocked work while `blocked` remains unchanged by a project collaborator or owner.
-- The blocked gate is passed only when a project collaborator or owner explicitly changes labels.
-- For a planning-stage block, the unblock label is `needs-plan`.
+- If work cannot continue because of a missing decision, credential, external service, dependency, new scope, or ambiguity, agents must explain the exact stop reason in the issue or PR and stop.
+- Agents must leave workflow labels unchanged when stopping for one of these reasons.
+- A project collaborator or owner restarts work by resolving the stop reason and applying the appropriate existing workflow label.
+- For a planning-stage stop, the restart label is `needs-plan`.
 
 ## Comment And Label Authority
 
@@ -85,10 +75,10 @@
 - Labels control issue and PR workflow authorization before implementation.
 - Human merge controls final release authorization.
 - Issue triage may continue from comments while the issue is in `needs-triage`, `needs-clarification`, or `needs-approval`.
-- Comments must not move work past `needs-approval`, `needs-plan-approval`, or `blocked`.
+- Comments must not move work past `needs-approval` or `needs-plan-approval`.
 - Agents must not infer gate completion from comments, chat, plans, or elapsed time.
 - Agents must verify the current PR has already passed through `needs-plan` and `needs-plan-approval` before editing code.
-- `needs-approval`, `needs-plan-approval`, and `blocked` are human-gated labels.
+- `needs-approval` and `needs-plan-approval` are human-gated labels.
 - Agents may add human-gated labels when the issue or PR is ready for a decision.
 - Agents must never remove human-gated labels.
 - Agents must never replace human-gated labels with the next workflow label.
@@ -200,12 +190,11 @@
 - If an active PR already exists for the issue, update that PR instead of creating a duplicate.
 - Before writing the PR plan, read the linked issue body, all issue comments, and the latest triage record.
 - Base the PR plan on the triage record's problem, desired outcome, acceptance criteria, constraints, relevant files, verification expectations, test expectations, E2E expectations, and smoke test draft.
-- If unresolved open questions, planning decisions, or scope changes from the triage record remain, add `blocked` instead of `needs-plan-approval`.
-- When adding `blocked` during planning, explain the blocker in the PR and stop.
-- A project collaborator or owner unblocks planning by answering or deciding and changing labels from `blocked` to `needs-plan`.
-- After unblocking, revise the plan before moving to `needs-plan-approval`.
+- If unresolved open questions, planning decisions, or scope changes from the triage record remain, explain the exact stop reason in the PR, leave labels unchanged, and stop instead of adding `needs-plan-approval`.
+- A project collaborator or owner restarts planning by answering or deciding and applying `needs-plan`.
+- After restarting, revise the plan before moving to `needs-plan-approval`.
 - Do not edit code until the plan exists in the PR and the PR is past `needs-plan-approval`.
-- If the plan or approval gate is missing when implementation would start, add `blocked` and stop.
+- If the plan or approval gate is missing when implementation would start, explain the exact stop reason in the PR, leave labels unchanged, and stop.
 - Write a plan before editing code for:
   - Non-trivial tasks.
   - Broad tasks.
@@ -216,7 +205,7 @@
 - Do not remove `needs-plan-approval`.
 - Do not add `in-progress`; a project collaborator or owner must explicitly add it to move past the plan approval gate.
 - Confirm the PR already passed through `needs-plan` and `needs-plan-approval` before the first code edit.
-- If that history is missing, stop and mark the work blocked instead of continuing.
+- If that history is missing, explain the exact stop reason in the PR, leave labels unchanged, and stop instead of continuing.
 - Skip planning only when the user explicitly says to skip planning for that request, including tiny mechanical changes.
 - A good plan includes:
   - Small ordered steps.
@@ -237,7 +226,7 @@
 - Implement the approved plan step by step while the PR remains labeled `in-progress`.
 - Add or update each step's focused tests and E2E tests as early as practical in that step.
 - Before each next plan step, read new PR comments and address requested changes that are within the approved scope.
-- If comments or implementation findings introduce new scope, unresolved product decisions, credentials, external dependencies, or ambiguity, add `blocked` with the exact blocker and stop.
+- If comments or implementation findings introduce new scope, unresolved product decisions, credentials, external dependencies, or ambiguity, explain the exact stop reason in the PR, leave labels unchanged, and stop.
 - Keep implementation scoped to the approved plan and linked issue.
 - Prefer one focused commit per coherent plan step.
 - Run type checks, focused tests, E2E tests, and lint on changed files.
