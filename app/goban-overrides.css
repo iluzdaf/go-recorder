@@ -9,8 +9,12 @@
 
 .goban-theme-dark,
 .goban-theme-light,
+.goban-theme-wood-dark,
+.goban-theme-wood-light,
 .goban-theme-dark *,
-.goban-theme-light * {
+.goban-theme-light *,
+.goban-theme-wood-dark *,
+.goban-theme-wood-light * {
     -webkit-touch-callout: none;
     touch-action: none;
     -webkit-user-select: none;
@@ -19,8 +23,12 @@
 
 .goban-theme-dark .shudan-goban,
 .goban-theme-light .shudan-goban,
+.goban-theme-wood-dark .shudan-goban,
+.goban-theme-wood-light .shudan-goban,
 .goban-theme-dark .shudan-goban *,
-.goban-theme-light .shudan-goban * {
+.goban-theme-light .shudan-goban *,
+.goban-theme-wood-dark .shudan-goban *,
+.goban-theme-wood-light .shudan-goban * {
     -webkit-user-drag: none;
 }
 
@@ -79,7 +87,15 @@
 .goban-theme-light .shudan-goban::before,
 .goban-theme-light .shudan-goban::after,
 .goban-theme-light .shudan-content::before,
-.goban-theme-light .shudan-content::after {
+.goban-theme-light .shudan-content::after,
+.goban-theme-wood-dark .shudan-goban::before,
+.goban-theme-wood-dark .shudan-goban::after,
+.goban-theme-wood-dark .shudan-content::before,
+.goban-theme-wood-dark .shudan-content::after,
+.goban-theme-wood-light .shudan-goban::before,
+.goban-theme-wood-light .shudan-goban::after,
+.goban-theme-wood-light .shudan-content::before,
+.goban-theme-wood-light .shudan-content::after {
     display: none !important;
     background: transparent !important;
 }
@@ -119,21 +135,71 @@
     fill: #3f3f46 !important;
 }
 
+.goban-theme-wood-light .shudan-goban,
+.goban-theme-wood-light .shudan-goban.shudan-goban-image,
+.goban-theme-wood-light .shudan-content {
+    background: #d7a45f !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+.goban-theme-wood-light .shudan-grid {
+    background: #d7a45f !important;
+}
+
+.goban-theme-wood-light .shudan-gridline {
+    fill: #6f4720 !important;
+    stroke: #6f4720 !important;
+}
+
+.goban-theme-wood-light .shudan-hoshi {
+    fill: #3b2818 !important;
+}
+
+.goban-theme-wood-dark .shudan-goban,
+.goban-theme-wood-dark .shudan-goban.shudan-goban-image,
+.goban-theme-wood-dark .shudan-content {
+    background: #7a4f2a !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+.goban-theme-wood-dark .shudan-grid {
+    background: #7a4f2a !important;
+}
+
+.goban-theme-wood-dark .shudan-gridline {
+    fill: #2f2118 !important;
+    stroke: #2f2118 !important;
+}
+
+.goban-theme-wood-dark .shudan-hoshi {
+    fill: #1d1712 !important;
+}
+
 .goban-theme-dark .shudan-stone,
-.goban-theme-light .shudan-stone {
+.goban-theme-light .shudan-stone,
+.goban-theme-wood-dark .shudan-stone,
+.goban-theme-wood-light .shudan-stone {
     filter: none !important;
     box-shadow: none !important;
     background-image: none !important;
 }
 
 .goban-theme-dark .shudan-sign_1 .shudan-stone,
-.goban-theme-light .shudan-sign_1 .shudan-stone {
+.goban-theme-light .shudan-sign_1 .shudan-stone,
+.goban-theme-wood-dark .shudan-sign_1 .shudan-stone,
+.goban-theme-wood-light .shudan-sign_1 .shudan-stone {
     background: #09090b !important;
     border-radius: 9999px !important;
 }
 
 .goban-theme-dark .shudan-sign_-1 .shudan-stone,
-.goban-theme-light .shudan-sign_-1 .shudan-stone {
+.goban-theme-light .shudan-sign_-1 .shudan-stone,
+.goban-theme-wood-dark .shudan-sign_-1 .shudan-stone,
+.goban-theme-wood-light .shudan-sign_-1 .shudan-stone {
     background: #fafafa !important;
     border: 1px solid #18181b !important;
     border-radius: 9999px !important;
@@ -146,40 +212,54 @@
 }
 
 .goban-theme-dark .shudan-goban.shudan-coordinates,
-.goban-theme-light .shudan-goban.shudan-coordinates {
+.goban-theme-light .shudan-goban.shudan-coordinates,
+.goban-theme-wood-dark .shudan-goban.shudan-coordinates,
+.goban-theme-wood-light .shudan-goban.shudan-coordinates {
     grid-template-columns: calc(1em + 2px) 1fr calc(1em + 2px) !important;
     grid-template-rows: calc(1em + 2px) 1fr calc(1em + 2px) !important;
 }
 
 .goban-theme-dark .shudan-goban:not(.shudan-coordinates),
-.goban-theme-light .shudan-goban:not(.shudan-coordinates) {
+.goban-theme-light .shudan-goban:not(.shudan-coordinates),
+.goban-theme-wood-dark .shudan-goban:not(.shudan-coordinates),
+.goban-theme-wood-light .shudan-goban:not(.shudan-coordinates) {
     padding: 2px !important;
 }
 
 .goban-theme-dark .shudan-coordx,
-.goban-theme-light .shudan-coordx {
+.goban-theme-light .shudan-coordx,
+.goban-theme-wood-dark .shudan-coordx,
+.goban-theme-wood-light .shudan-coordx {
     box-sizing: border-box;
     align-items: center;
 }
 
 .goban-theme-dark .shudan-goban > .shudan-coordx:first-child,
-.goban-theme-light .shudan-goban > .shudan-coordx:first-child {
+.goban-theme-light .shudan-goban > .shudan-coordx:first-child,
+.goban-theme-wood-dark .shudan-goban > .shudan-coordx:first-child,
+.goban-theme-wood-light .shudan-goban > .shudan-coordx:first-child {
     padding-top: 2px;
 }
 
 .goban-theme-dark .shudan-goban > .shudan-coordx:last-child,
-.goban-theme-light .shudan-goban > .shudan-coordx:last-child {
+.goban-theme-light .shudan-goban > .shudan-coordx:last-child,
+.goban-theme-wood-dark .shudan-goban > .shudan-coordx:last-child,
+.goban-theme-wood-light .shudan-goban > .shudan-coordx:last-child {
     padding-bottom: 2px;
 }
 
 .goban-theme-dark .shudan-goban > .shudan-coordy:nth-child(2),
-.goban-theme-light .shudan-goban > .shudan-coordy:nth-child(2) {
+.goban-theme-light .shudan-goban > .shudan-coordy:nth-child(2),
+.goban-theme-wood-dark .shudan-goban > .shudan-coordy:nth-child(2),
+.goban-theme-wood-light .shudan-goban > .shudan-coordy:nth-child(2) {
     box-sizing: border-box;
     padding-left: 2px;
 }
 
 .goban-theme-dark .shudan-goban > .shudan-coordy:nth-child(4),
-.goban-theme-light .shudan-goban > .shudan-coordy:nth-child(4) {
+.goban-theme-light .shudan-goban > .shudan-coordy:nth-child(4),
+.goban-theme-wood-dark .shudan-goban > .shudan-coordy:nth-child(4),
+.goban-theme-wood-light .shudan-goban > .shudan-coordy:nth-child(4) {
     box-sizing: border-box;
     padding-right: 2px;
 }
@@ -199,4 +279,14 @@
 .goban-theme-light .shudan-coordx,
 .goban-theme-light .shudan-coordy {
     color: #52525b !important;
+}
+
+.goban-theme-wood-light .shudan-coordx,
+.goban-theme-wood-light .shudan-coordy {
+    color: #5f3d1c !important;
+}
+
+.goban-theme-wood-dark .shudan-coordx,
+.goban-theme-wood-dark .shudan-coordy {
+    color: #f1d6a6 !important;
 }

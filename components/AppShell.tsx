@@ -23,6 +23,7 @@ import {
     Download,
     Upload,
     Settings,
+    Monitor,
     Sun,
 } from "lucide-react";
 import ChangelogReleaseList from "./ChangelogReleaseList";
@@ -37,10 +38,13 @@ import { navigateWithinApp } from "../lib/fullscreenNavigation";
 
 type ThemeContextValue = {
     isDarkMode: boolean;
+    themePreference: ThemePreference;
     setIsDarkMode: (nextIsDarkMode: boolean) => void;
+    setThemePreference: (nextThemePreference: ThemePreference) => void;
 };
 
 type ThemePreference = "system" | "light" | "dark";
+export type BoardTheme = "minimalist" | "wood";
 
 type HeaderActionsContextValue = {
     setHeaderActions: (nextHeaderActions: React.ReactNode) => void;
@@ -61,6 +65,11 @@ type BoardDisplaySettingsContextValue = {
     setShowBoardCoordinates: (nextShowBoardCoordinates: boolean) => void;
     twoStepPlacement: boolean;
     setTwoStepPlacement: (nextTwoStepPlacement: boolean) => void;
+    lightBoardTheme: BoardTheme;
+    setLightBoardTheme: (nextBoardTheme: BoardTheme) => void;
+    darkBoardTheme: BoardTheme;
+    setDarkBoardTheme: (nextBoardTheme: BoardTheme) => void;
+    activeBoardThemeClassName: string;
 };
 
 function GithubMarkIcon({ size = 18 }: { size?: number }) {
@@ -81,6 +90,8 @@ function GithubMarkIcon({ size = 18 }: { size?: number }) {
 const THEME_STORAGE_KEY = "go-recorder:theme";
 const BOARD_COORDINATES_STORAGE_KEY = "go-recorder:show-board-coordinates";
 const BOARD_TWO_STEP_PLACEMENT_STORAGE_KEY = "go-recorder:two-step-placement";
+const LIGHT_BOARD_THEME_STORAGE_KEY = "go-recorder:light-board-theme";
+const DARK_BOARD_THEME_STORAGE_KEY = "go-recorder:dark-board-theme";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 const HeaderActionsContext = createContext<HeaderActionsContextValue | null>(
@@ -343,12 +354,74 @@ function isThemePreference(value: string | null): value is ThemePreference {
     return value === "system" || value === "light" || value === "dark";
 }
 
+export function getNextThemePreference(
+    themePreference: ThemePreference
+): ThemePreference {
+    if (themePreference === "light") return "dark";
+    if (themePreference === "dark") return "system";
+
+    return "light";
+}
+
+function isBoardTheme(value: string | null): value is BoardTheme {
+    return value === "minimalist" || value === "wood";
+}
+
+export function resolveBoardThemePreference(
+    storedPreference: string | null
+): BoardTheme {
+    return isBoardTheme(storedPreference) ? storedPreference : "minimalist";
+}
+
+export function getBoardThemeClassName({
+    boardTheme,
+    isDarkMode,
+}: {
+    boardTheme: BoardTheme;
+    isDarkMode: boolean;
+}) {
+    if (boardTheme === "wood") {
+        return isDarkMode ? "goban-theme-wood-dark" : "goban-theme-wood-light";
+    }
+
+    return isDarkMode ? "goban-theme-dark" : "goban-theme-light";
+}
+
+export function getBoardSurfaceClassName({
+    activeBoardThemeClassName,
+    extraClassName = "",
+    isDarkMode,
+}: {
+    activeBoardThemeClassName: string;
+    extraClassName?: string;
+    isDarkMode: boolean;
+}) {
+    const modeClassName = isDarkMode
+        ? "bg-neutral-900 text-white"
+        : "bg-zinc-100 text-zinc-950";
+    const extra = extraClassName ? `${extraClassName} ` : "";
+
+    return `${extra}${activeBoardThemeClassName} relative m-0 flex min-h-0 flex-1 touch-none flex-col overflow-hidden overscroll-none p-0 ${modeClassName}`;
+}
+
 function getThemePreferenceFromStorage(): ThemePreference {
     const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
 
     if (isThemePreference(storedTheme)) return storedTheme;
 
     return "system";
+}
+
+function getLightBoardThemeFromStorage() {
+    return resolveBoardThemePreference(
+        window.localStorage.getItem(LIGHT_BOARD_THEME_STORAGE_KEY)
+    );
+}
+
+function getDarkBoardThemeFromStorage() {
+    return resolveBoardThemePreference(
+        window.localStorage.getItem(DARK_BOARD_THEME_STORAGE_KEY)
+    );
 }
 
 function resolveThemePreference(themePreference: ThemePreference) {
@@ -422,6 +495,18 @@ function setTwoStepPlacementInStorage(nextTwoStepPlacement: boolean) {
         BOARD_TWO_STEP_PLACEMENT_STORAGE_KEY,
         String(nextTwoStepPlacement)
     );
+    notifyBoardDisplaySettingsListeners();
+    window.dispatchEvent(new Event(BOARD_DISPLAY_SETTINGS_CHANGE_EVENT));
+}
+
+function setLightBoardThemeInStorage(nextBoardTheme: BoardTheme) {
+    window.localStorage.setItem(LIGHT_BOARD_THEME_STORAGE_KEY, nextBoardTheme);
+    notifyBoardDisplaySettingsListeners();
+    window.dispatchEvent(new Event(BOARD_DISPLAY_SETTINGS_CHANGE_EVENT));
+}
+
+function setDarkBoardThemeInStorage(nextBoardTheme: BoardTheme) {
+    window.localStorage.setItem(DARK_BOARD_THEME_STORAGE_KEY, nextBoardTheme);
     notifyBoardDisplaySettingsListeners();
     window.dispatchEvent(new Event(BOARD_DISPLAY_SETTINGS_CHANGE_EVENT));
 }
@@ -559,7 +644,39 @@ export default function AppShell({
 
             return getResolvedThemeFromStorage();
         },
-            () => true
+        () => true
+    );
+    const themePreference = useSyncExternalStore<ThemePreference>(
+        (onStoreChange) => {
+            themeListeners.add(onStoreChange);
+
+            const handleStorage = (event: StorageEvent) => {
+                if (event.key === THEME_STORAGE_KEY) {
+                    onStoreChange();
+                }
+            };
+
+            const handleThemeChange = () => {
+                onStoreChange();
+            };
+
+            window.addEventListener("storage", handleStorage);
+            window.addEventListener(THEME_CHANGE_EVENT, handleThemeChange);
+
+            return () => {
+                themeListeners.delete(onStoreChange);
+                window.removeEventListener("storage", handleStorage);
+                window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange);
+            };
+        },
+        () => {
+            if (typeof window === "undefined") {
+                return "system";
+            }
+
+            return getThemePreferenceFromStorage();
+        },
+        () => "system"
     );
     const showBoardCoordinates = useSyncExternalStore(
         (onStoreChange) => {
@@ -636,6 +753,82 @@ export default function AppShell({
             return getTwoStepPlacementFromStorage();
         },
         () => false
+    );
+    const lightBoardTheme = useSyncExternalStore<BoardTheme>(
+        (onStoreChange) => {
+            boardDisplaySettingsListeners.add(onStoreChange);
+
+            const handleStorage = (event: StorageEvent) => {
+                if (event.key === LIGHT_BOARD_THEME_STORAGE_KEY) {
+                    onStoreChange();
+                }
+            };
+
+            const handleBoardDisplaySettingsChange = () => {
+                onStoreChange();
+            };
+
+            window.addEventListener("storage", handleStorage);
+            window.addEventListener(
+                BOARD_DISPLAY_SETTINGS_CHANGE_EVENT,
+                handleBoardDisplaySettingsChange
+            );
+
+            return () => {
+                boardDisplaySettingsListeners.delete(onStoreChange);
+                window.removeEventListener("storage", handleStorage);
+                window.removeEventListener(
+                    BOARD_DISPLAY_SETTINGS_CHANGE_EVENT,
+                    handleBoardDisplaySettingsChange
+                );
+            };
+        },
+        () => {
+            if (typeof window === "undefined") {
+                return "minimalist";
+            }
+
+            return getLightBoardThemeFromStorage();
+        },
+        () => "minimalist"
+    );
+    const darkBoardTheme = useSyncExternalStore<BoardTheme>(
+        (onStoreChange) => {
+            boardDisplaySettingsListeners.add(onStoreChange);
+
+            const handleStorage = (event: StorageEvent) => {
+                if (event.key === DARK_BOARD_THEME_STORAGE_KEY) {
+                    onStoreChange();
+                }
+            };
+
+            const handleBoardDisplaySettingsChange = () => {
+                onStoreChange();
+            };
+
+            window.addEventListener("storage", handleStorage);
+            window.addEventListener(
+                BOARD_DISPLAY_SETTINGS_CHANGE_EVENT,
+                handleBoardDisplaySettingsChange
+            );
+
+            return () => {
+                boardDisplaySettingsListeners.delete(onStoreChange);
+                window.removeEventListener("storage", handleStorage);
+                window.removeEventListener(
+                    BOARD_DISPLAY_SETTINGS_CHANGE_EVENT,
+                    handleBoardDisplaySettingsChange
+                );
+            };
+        },
+        () => {
+            if (typeof window === "undefined") {
+                return "minimalist";
+            }
+
+            return getDarkBoardThemeFromStorage();
+        },
+        () => "minimalist"
     );
 
     useEffect(() => {
@@ -829,18 +1022,36 @@ export default function AppShell({
     const contextValue = useMemo(
         () => ({
             isDarkMode,
+            themePreference,
             setIsDarkMode: setThemeInStorage,
+            setThemePreference: setThemePreferenceInStorage,
         }),
-        [isDarkMode]
+        [isDarkMode, themePreference]
     );
+    const activeBoardTheme = isDarkMode ? darkBoardTheme : lightBoardTheme;
+    const activeBoardThemeClassName = getBoardThemeClassName({
+        boardTheme: activeBoardTheme,
+        isDarkMode,
+    });
     const boardDisplaySettingsContextValue = useMemo(
         () => ({
             showBoardCoordinates,
             setShowBoardCoordinates: setShowBoardCoordinatesInStorage,
             twoStepPlacement,
             setTwoStepPlacement: setTwoStepPlacementInStorage,
+            lightBoardTheme,
+            setLightBoardTheme: setLightBoardThemeInStorage,
+            darkBoardTheme,
+            setDarkBoardTheme: setDarkBoardThemeInStorage,
+            activeBoardThemeClassName,
         }),
-        [showBoardCoordinates, twoStepPlacement]
+        [
+            activeBoardThemeClassName,
+            darkBoardTheme,
+            lightBoardTheme,
+            showBoardCoordinates,
+            twoStepPlacement,
+        ]
     );
     const headerActionsContextValue = useMemo(
         () => ({ setHeaderActions }),
@@ -1018,6 +1229,46 @@ export default function AppShell({
                                     {t("displaySettings")}
                                 </p>
                                 <div className="mt-3 grid gap-2">
+                                    <label className="grid gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900">
+                                        <span>{t("lightBoardTheme")}</span>
+                                        <select
+                                            className="h-9 rounded-md border border-zinc-300 bg-white px-2 text-sm text-zinc-950 dark:border-neutral-700 dark:bg-neutral-950 dark:text-white"
+                                            value={lightBoardTheme}
+                                            aria-label={t("lightBoardTheme")}
+                                            onChange={(event) => {
+                                                setLightBoardThemeInStorage(
+                                                    event.target.value as BoardTheme
+                                                );
+                                            }}
+                                        >
+                                            <option value="minimalist">
+                                                {t("minimalistBoardTheme")}
+                                            </option>
+                                            <option value="wood">
+                                                {t("woodBoardTheme")}
+                                            </option>
+                                        </select>
+                                    </label>
+                                    <label className="grid gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900">
+                                        <span>{t("darkBoardTheme")}</span>
+                                        <select
+                                            className="h-9 rounded-md border border-zinc-300 bg-white px-2 text-sm text-zinc-950 dark:border-neutral-700 dark:bg-neutral-950 dark:text-white"
+                                            value={darkBoardTheme}
+                                            aria-label={t("darkBoardTheme")}
+                                            onChange={(event) => {
+                                                setDarkBoardThemeInStorage(
+                                                    event.target.value as BoardTheme
+                                                );
+                                            }}
+                                        >
+                                            <option value="minimalist">
+                                                {t("minimalistBoardTheme")}
+                                            </option>
+                                            <option value="wood">
+                                                {t("woodBoardTheme")}
+                                            </option>
+                                        </select>
+                                    </label>
                                     <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900">
                                         <span>{t("boardCoordinates")}</span>
                                         <input
@@ -1057,24 +1308,28 @@ export default function AppShell({
                                     <button
                                         type="button"
                                         className="inline-flex min-h-11 items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-                                        aria-label={
-                                            isDarkMode
-                                                ? t("switchToLightMode")
-                                                : t("switchToDarkMode")
-                                        }
+                                        aria-label={t("cycleAppearanceMode")}
                                         onClick={() => {
-                                            setThemeInStorage(!isDarkMode);
+                                            setThemePreferenceInStorage(
+                                                getNextThemePreference(
+                                                    themePreference
+                                                )
+                                            );
                                         }}
                                     >
                                         <span>
-                                            {isDarkMode
-                                                ? t("lightMode")
-                                                : t("darkMode")}
+                                            {themePreference === "system"
+                                                ? t("followSystemMode")
+                                                : isDarkMode
+                                                  ? t("darkMode")
+                                                  : t("lightMode")}
                                         </span>
-                                        {isDarkMode ? (
-                                            <Sun size={18} />
-                                        ) : (
+                                        {themePreference === "system" ? (
+                                            <Monitor size={18} />
+                                        ) : isDarkMode ? (
                                             <Moon size={18} />
+                                        ) : (
+                                            <Sun size={18} />
                                         )}
                                     </button>
 

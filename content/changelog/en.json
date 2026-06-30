@@ -7,6 +7,10 @@
             {
                 "id": "image-drafts",
                 "text": "Create a draft from a photo."
+            },
+            {
+                "id": "board-theme-settings",
+                "text": "Choose minimalist or wood board themes separately for light and dark mode."
             }
         ]
     },

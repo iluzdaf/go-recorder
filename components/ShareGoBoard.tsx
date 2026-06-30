@@ -11,6 +11,7 @@ import type {
 import type { ShareRecord } from "./types";
 import { downloadSgf } from "./sgf";
 import {
+    getBoardSurfaceClassName,
     useBoardDisplaySettings,
     useHeaderVisibility,
     useTheme,
@@ -132,7 +133,8 @@ export function CapturedVariationMoveCaption({
 export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const router = useRouter();
     const { isDarkMode } = useTheme();
-    const { showBoardCoordinates } = useBoardDisplaySettings();
+    const { activeBoardThemeClassName, showBoardCoordinates } =
+        useBoardDisplaySettings();
     const { isOverlayHeader } = useHeaderVisibility();
     const positionView = getShareBoardPositionView(share);
     const displayBoardSize = getPositionViewDisplaySize({
@@ -397,11 +399,10 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
 
     return (
         <div
-            className={
-                isDarkMode
-                    ? "goban-theme-dark relative m-0 flex min-h-0 flex-1 touch-none flex-col overflow-hidden overscroll-none bg-neutral-900 p-0 text-white"
-                    : "goban-theme-light relative m-0 flex min-h-0 flex-1 touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
-            }
+            className={getBoardSurfaceClassName({
+                activeBoardThemeClassName,
+                isDarkMode,
+            })}
         >
             <div
                 ref={boardAreaRef}

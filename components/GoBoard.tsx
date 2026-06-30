@@ -26,6 +26,7 @@ import {
 import { formatMoveEditError, t } from "../lib/i18n";
 import {
     useBoardDisplaySettings,
+    getBoardSurfaceClassName,
     useHeaderStatus,
     useHeaderVisibility,
     useTheme,
@@ -98,7 +99,11 @@ function getActionBarStorageKey(id: string) {
 export default function GoBoard({ id }: GoBoardProps) {
     const [size, setSize] = useState<BoardSize>(19);
     const { isDarkMode } = useTheme();
-    const { showBoardCoordinates, twoStepPlacement } = useBoardDisplaySettings();
+    const {
+        activeBoardThemeClassName,
+        showBoardCoordinates,
+        twoStepPlacement,
+    } = useBoardDisplaySettings();
     const { setHeaderStatus } = useHeaderStatus();
     const { isOverlayHeader } = useHeaderVisibility();
     const hasLoadedGameRef = useRef(false);
@@ -696,11 +701,10 @@ export default function GoBoard({ id }: GoBoardProps) {
 
     return (
         <div
-            className={
-                isDarkMode
-                    ? "goban-theme-dark relative m-0 flex min-h-0 flex-1 touch-none flex-col overflow-hidden overscroll-none bg-neutral-900 p-0 text-white"
-                    : "goban-theme-light relative m-0 flex min-h-0 flex-1 touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950"
-            }
+            className={getBoardSurfaceClassName({
+                activeBoardThemeClassName,
+                isDarkMode,
+            })}
         >
             {loadError && (
                 <div className="flex h-full items-center justify-center p-6 text-center">
