@@ -23,13 +23,13 @@
   - Triage found open questions that must be answered before implementation.
 - `ready-for-agent`
   - A project collaborator or owner has explicitly approved agent work by changing labels.
-  - The issue has enough detail for an implementation agent to claim the work and open the PR.
+  - The issue has enough detail for product automation to create the draft planning PR.
   - This label does not authorize code edits by itself.
+  - Product automation removes this label only after the draft PR exists and is linked to the issue.
 - `needs-plan`
   - PR label.
-  - The work has been claimed and the next step is to propose a plan in the PR before any implementation starts.
-  - Optional transient working label.
-  - May not be visible when an agent opens a PR and posts a complete plan in the same session.
+  - Product automation has created or found a draft PR and the next step is to propose a plan in the PR.
+  - Planning agents may process PRs with this label.
 - `needs-plan-approval`
   - PR label.
   - A plan has been proposed in the PR and implementation must not start yet.
@@ -53,6 +53,9 @@
   - Agents and review agents may add this label when the PR is ready for final human review and merge consideration.
   - Agents must not remove this label or merge the PR.
   - A project collaborator or owner approves this gate by reviewing and merging the PR.
+- `merge-ready`
+  - PR label.
+  - Human-owned label for PRs that are ready for final merge consideration.
 - `blocked`
   - Work cannot continue without a decision, credential, external service, or dependency.
   - Human-gated label.
@@ -66,13 +69,14 @@
 - `needs-approval`
 - project collaborator or owner explicitly changes labels
 - `ready-for-agent`
-- draft PR with `needs-plan`
-- posted plan in the PR
+- product automation creates or finds a linked draft PR with `needs-plan`
+- planning agent posts a plan in the PR
 - `needs-plan-approval`
 - project collaborator or owner explicitly changes labels
 - `in-progress`
 - `needs-review`
 - `smoke-test-ready`
+- `merge-ready`
 - project collaborator or owner reviews and merges to `main`
 
 ## Blocked Flow
@@ -102,6 +106,25 @@
 - Human-gated labels are passed only when a project collaborator or owner explicitly changes GitHub labels.
 - If a gate decision is stated without the label change, ask a project collaborator or owner to update the labels and stop before the gated work.
 - `smoke-test-ready` is completed by human merge, not by a required pre-merge label change.
+
+## Ready For Agent Automation
+
+- Product repository automation owns the transition from issue `ready-for-agent` to draft PR `needs-plan`.
+- The automation runs when `ready-for-agent` is applied to an issue by a project collaborator or owner.
+- The automation may also be run manually with:
+  - `issue_number`: required.
+  - `branch_name`: optional exceptional override.
+- Default branch name: `codex/issue-<number>-<slug>`.
+- The automation must:
+  - Verify the issue is open and labeled `ready-for-agent`.
+  - Create or reuse the claim branch from current `main`.
+  - Create an empty claim commit only when a new branch is needed.
+  - Create or reuse a draft PR linked to the issue.
+  - Add `needs-plan` to the PR.
+  - Link the PR and issue both ways so the PR is discoverable from the issue and the issue is discoverable from the PR.
+  - Remove `ready-for-agent` from the issue only after the draft PR exists.
+  - Stop before writing a plan or editing code.
+- The PR body should include `Closes #<issue_number>` so merging the PR closes the linked issue.
 
 ## Feedback Intake
 
@@ -184,9 +207,8 @@
 
 ## Planning
 
-- Open a draft PR when claiming a `ready-for-agent` issue.
+- Plan only from an existing draft PR labeled `needs-plan`.
 - If an active PR already exists for the issue, update that PR instead of creating a duplicate.
-- Move only non-gated workflow labels from the issue to the PR once the draft PR exists.
 - Before writing the PR plan, read the linked issue body, all issue comments, and the latest triage record.
 - Base the PR plan on the triage record's problem, desired outcome, acceptance criteria, constraints, relevant files, verification expectations, and smoke test draft.
 - If unresolved open questions, planning decisions, or scope changes from the triage record remain, add `blocked` instead of `needs-plan-approval`.
@@ -217,14 +239,7 @@
 
 ## Implementation Agent
 
-- Switch to `main`.
-- Pull latest remote changes.
-- Create a feature branch with the `codex/` prefix unless instructed otherwise.
-- Open a draft PR linked to the feedback issue before substantial edits.
-- Remove `ready-for-agent` from the issue once the PR is the active work surface.
-- Add `needs-plan` to the PR.
-- Write the implementation plan in the PR following the Planning section.
-- Move the PR from `needs-plan` to `needs-plan-approval`.
+- Implementation is human-owned for now after the plan approval gate.
 - Wait for a project collaborator or owner to explicitly change labels before editing code.
 - Do not remove `needs-plan-approval`.
 - Do not add `in-progress`; a project collaborator or owner must explicitly add it to move past the plan approval gate.
