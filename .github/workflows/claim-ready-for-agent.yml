@@ -1,0 +1,171 @@
+name: Claim ready-for-agent issue
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to claim
+        required: true
+        type: number
+      branch_name:
+        description: Optional branch name override
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  claim:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'ready-for-agent'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create or reuse draft planning PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
+          INPUT_ISSUE_NUMBER: ${{ inputs.issue_number }}
+          INPUT_BRANCH_NAME: ${{ inputs.branch_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            issue_number="$INPUT_ISSUE_NUMBER"
+          else
+            issue_number="$EVENT_ISSUE_NUMBER"
+          fi
+
+          if [ -z "$issue_number" ]; then
+            echo "No issue number provided."
+            exit 1
+          fi
+
+          issue_json="$(gh issue view "$issue_number" --repo "$REPO" --json number,title,state,url)"
+          issue_state="$(printf '%s' "$issue_json" | jq -r '.state')"
+          issue_title="$(printf '%s' "$issue_json" | jq -r '.title')"
+          issue_url="$(printf '%s' "$issue_json" | jq -r '.url')"
+
+          if [ "$issue_state" != "OPEN" ]; then
+            echo "Issue #$issue_number is not open."
+            exit 1
+          fi
+
+          if ! gh issue view "$issue_number" --repo "$REPO" --json labels --jq '.labels[].name' | grep -Fxq 'ready-for-agent'; then
+            echo "Issue #$issue_number is not labeled ready-for-agent."
+            exit 1
+          fi
+
+          existing_pr="$(
+            gh pr list \
+              --repo "$REPO" \
+              --state open \
+              --json number,url,body,headRefName \
+              --jq ".[] | select(((.body // \"\") | contains(\"Closes #$issue_number\")) or ((.body // \"\") | contains(\"$issue_url\"))) | [.number, .url, .headRefName] | @tsv" \
+              | head -n 1
+          )"
+
+          gh label create needs-plan \
+            --repo "$REPO" \
+            --color 5319e7 \
+            --description "Draft PR needs an implementation plan" \
+            >/dev/null 2>&1 || true
+
+          if [ -n "$existing_pr" ]; then
+            pr_number="$(printf '%s' "$existing_pr" | cut -f1)"
+            pr_url="$(printf '%s' "$existing_pr" | cut -f2)"
+            gh pr edit "$pr_number" --repo "$REPO" --add-label needs-plan
+            gh issue edit "$issue_number" --repo "$REPO" --remove-label ready-for-agent
+            echo "Reused existing PR $pr_url for issue #$issue_number."
+            exit 0
+          fi
+
+          if [ -n "$INPUT_BRANCH_NAME" ]; then
+            branch_name="$INPUT_BRANCH_NAME"
+            if ! printf '%s' "$branch_name" | grep -Eq '^[A-Za-z0-9._/-]+$'; then
+              echo "Invalid branch_name: use only letters, numbers, dot, underscore, slash, and dash."
+              exit 1
+            fi
+            if printf '%s' "$branch_name" | grep -Eq '(^/|/$|//|(^|/)\.\.($|/))'; then
+              echo "Invalid branch_name path."
+              exit 1
+            fi
+          else
+            slug="$(
+              printf '%s' "$issue_title" \
+                | tr '[:upper:]' '[:lower:]' \
+                | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g' \
+                | cut -c1-48
+            )"
+            if [ -z "$slug" ]; then
+              slug="issue"
+            fi
+            branch_name="codex/issue-$issue_number-$slug"
+          fi
+
+          git fetch origin main
+
+          if git ls-remote --exit-code --heads origin "$branch_name" >/dev/null 2>&1; then
+            git fetch origin "$branch_name:refs/remotes/origin/$branch_name"
+            git checkout -B "$branch_name" "origin/$branch_name"
+            git pull --ff-only origin "$branch_name"
+          else
+            git checkout -b "$branch_name" origin/main
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "Claim issue #$issue_number for planning"
+            git push --set-upstream origin "$branch_name"
+          fi
+
+          pr_body="$(mktemp)"
+          cat > "$pr_body" <<EOF
+          ## Summary
+
+          - Draft planning PR for #$issue_number.
+          - Planning agent should read the linked issue triage record and write the implementation plan before any code changes.
+
+          ## Plan
+
+          1. TBD by product-pr-triage.
+
+          ## Verification
+
+          - [ ] TBD by implementation.
+
+          ## Review Notes
+
+          - Created automatically from \`ready-for-agent\`.
+
+          ## Smoke Tests For Reviewer
+
+          - [ ] TBD by planning/implementation.
+
+          Closes #$issue_number
+          EOF
+
+          pr_url="$(
+            gh pr create \
+              --repo "$REPO" \
+              --base main \
+              --head "$branch_name" \
+              --title "Plan issue #$issue_number: $issue_title" \
+              --body-file "$pr_body" \
+              --draft
+          )"
+
+          gh pr edit "$pr_url" --repo "$REPO" --add-label needs-plan
+          gh issue comment "$issue_number" --repo "$REPO" --body "Created draft planning PR: $pr_url"
+          gh issue edit "$issue_number" --repo "$REPO" --remove-label ready-for-agent
+
+          echo "Created draft planning PR $pr_url for issue #$issue_number."
