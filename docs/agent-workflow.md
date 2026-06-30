@@ -40,22 +40,13 @@
   - A project collaborator or owner must explicitly change labels to move the PR past this gate.
 - `in-progress`
   - PR label.
-  - An agent is implementing an approved plan.
+  - A project collaborator or owner has approved the plan and authorized implementation.
+  - The implementation agent may implement the approved plan while this label is present.
 - `needs-review`
   - PR label.
   - Implementation is complete.
-  - A separate review pass is needed.
-- `smoke-test-ready`
-  - PR label.
-  - Review is complete.
-  - The PR has a manual smoke-test checklist.
-  - Human merge gate.
-  - Agents and review agents may add this label when the PR is ready for final human review and merge consideration.
-  - Agents must not remove this label or merge the PR.
-  - A project collaborator or owner approves this gate by reviewing and merging the PR.
-- `merge-ready`
-  - PR label.
-  - Human-owned label for PRs that are ready for final merge consideration.
+  - The implementation agent has run required checks, verified agent-checkable smoke tests, and left human-only smoke checks marked for human review.
+  - A separate human review pass is needed before merge.
 - `blocked`
   - Work cannot continue without a decision, credential, external service, or dependency.
   - Human-gated label.
@@ -75,8 +66,6 @@
 - project collaborator or owner explicitly changes labels
 - `in-progress`
 - `needs-review`
-- `smoke-test-ready`
-- `merge-ready`
 - project collaborator or owner reviews and merges to `main`
 
 ## Blocked Flow
@@ -105,7 +94,7 @@
 - Agents must never replace human-gated labels with the next workflow label.
 - Human-gated labels are passed only when a project collaborator or owner explicitly changes GitHub labels.
 - If a gate decision is stated without the label change, ask a project collaborator or owner to update the labels and stop before the gated work.
-- `smoke-test-ready` is completed by human merge, not by a required pre-merge label change.
+- `needs-review` is the agent handoff to human review and merge consideration.
 
 ## Ready For Agent Automation
 
@@ -241,18 +230,22 @@
 
 ## Implementation Agent
 
-- Implementation is human-owned for now after the plan approval gate.
-- Wait for a project collaborator or owner to explicitly change labels before editing code.
-- Do not remove `needs-plan-approval`.
-- Do not add `in-progress`; a project collaborator or owner must explicitly add it to move past the plan approval gate.
-- Implement the approved plan one step at a time.
-- Stop after completing each approved step and wait for further instructions before starting the next step.
-- Prefer one focused commit per plan step.
-- Run type checks, focused tests, and lint on changed files.
+- Wait for a project collaborator or owner to explicitly change the PR label from `needs-plan-approval` to `in-progress` before editing code.
+- A human-applied `in-progress` label authorizes implementation of the approved PR plan.
+- Do not add `in-progress`; only a project collaborator or owner may move the PR past the plan approval gate.
+- Do not edit code if the PR still has `needs-plan-approval`, lacks `in-progress`, or lacks a plan history through `needs-plan` and `needs-plan-approval`.
+- Implement the approved plan step by step while the PR remains labeled `in-progress`.
+- Add or update each step's focused tests and E2E tests as early as practical in that step.
+- Before each next plan step, read new PR comments and address requested changes that are within the approved scope.
+- If comments or implementation findings introduce new scope, unresolved product decisions, credentials, external dependencies, or ambiguity, add `blocked` with the exact blocker and stop.
+- Keep implementation scoped to the approved plan and linked issue.
+- Prefer one focused commit per coherent plan step.
+- Run type checks, focused tests, E2E tests, and lint on changed files.
 - Run the app locally and verify as many smoke tests as possible.
-- Include the approved plan in the PR description.
-- Include `Smoke Tests For Reviewer` in the PR description, marking any items the agent already verified.
-- Move the PR to `needs-review` when implementation is ready.
+- Update `Smoke Tests For Reviewer` in the PR description, marking agent-verified items and leaving human-only checks unchecked with notes.
+- Make in-scope changes required to get agent-verifiable smoke tests to pass.
+- Replace `in-progress` with `needs-review` only after implementation and agent-verifiable smoke tests are complete.
+- Do not review, merge, or move the PR past `needs-review`.
 
 ## Verification
 
@@ -276,10 +269,8 @@
 - Agents must run the app locally and verify as many smoke tests as possible before moving to `needs-review`.
 - Mark each locally verified item with `[x]` and note it was agent-verified.
 - Leave as `[ ]` any items that require a real device, a preview deployment, or human judgement.
-- A human is required only for remaining unverified items and the final merge.
-- Review agents must add or refine missing smoke tests before moving a task to `smoke-test-ready`.
-- Review agents may add `smoke-test-ready` when the PR is ready for final human review.
-- Review agents must not remove `smoke-test-ready`.
+- A human is required for remaining unverified items and the final merge.
+- Review agents must add or refine missing smoke tests before human merge consideration.
 - Review agents must not merge the PR.
 
 ## Review Agent
@@ -300,10 +291,10 @@
 - Merge only after all smoke tests are verified or failures are explicitly accepted.
 - Human review is required for any smoke test item the agent could not verify locally.
 - Merge only while the PR remains scoped to the task.
-- `smoke-test-ready` means ready for final human review and merge consideration.
+- `needs-review` means implementation is complete and ready for human review and merge consideration.
 - A project collaborator or owner approves the final gate by reviewing and merging the PR.
 - The PR closing through merge is the normal completion path; no pre-merge label change is required.
-- Agents must not remove `smoke-test-ready` or merge into `main`.
+- Agents must not merge into `main`.
 - After merge, repeat from the next prioritized `ready-for-agent` task.
 
 ## Repo Rules
