@@ -33,14 +33,20 @@
 - `needs-plan-approval`
   - PR label.
   - A plan has been proposed in the PR and implementation must not start yet.
-  - A project collaborator or owner must approve the plan before implementation.
+  - A project collaborator or owner must approve the plan before implementation dispatch.
   - Human-gated label.
   - Agents may add this label when the PR plan is ready for approval.
-  - Agents must not remove this label or replace it with `in-progress`.
+  - Agents must not remove this label or replace it with `plan-approved` or `in-progress`.
   - A project collaborator or owner must explicitly change labels to move the PR past this gate.
+- `plan-approved`
+  - PR label.
+  - A project collaborator or owner has approved the plan and authorized implementation dispatch.
+  - Human-gated label.
+  - Product implementation dispatch may process PRs with this label.
+  - Dispatch replaces this label with `in-progress` only after claiming the PR for a separate implementation agent.
 - `in-progress`
   - PR label.
-  - A project collaborator or owner has approved the plan and authorized implementation.
+  - Product implementation dispatch has claimed the approved plan for active implementation.
   - The implementation agent may implement the approved plan while this label is present.
 - `needs-review`
   - PR label.
@@ -58,6 +64,8 @@
 - planning agent posts a plan in the PR
 - `needs-plan-approval`
 - project collaborator or owner explicitly changes labels
+- `plan-approved`
+- product implementation dispatch claims the PR for a separate implementation agent
 - `in-progress`
 - `needs-review`
 - project collaborator or owner reviews and merges to `main`
@@ -78,10 +86,10 @@
 - Comments must not move work past `needs-approval` or `needs-plan-approval`.
 - Agents must not infer gate completion from comments, chat, plans, or elapsed time.
 - Agents must verify the current PR has already passed through `needs-plan` and `needs-plan-approval` before editing code.
-- `needs-approval` and `needs-plan-approval` are human-gated labels.
+- `needs-approval`, `needs-plan-approval`, and `plan-approved` are human-gated labels.
 - Agents may add human-gated labels when the issue or PR is ready for a decision.
-- Agents must never remove human-gated labels.
-- Agents must never replace human-gated labels with the next workflow label.
+- Agents must never remove human-gated labels except for the documented product implementation claim from `plan-approved` to `in-progress`.
+- Agents must never replace human-gated labels with the next workflow label except for the documented product implementation claim from `plan-approved` to `in-progress`.
 - Human-gated labels are passed only when a project collaborator or owner explicitly changes GitHub labels.
 - If a gate decision is stated without the label change, ask a project collaborator or owner to update the labels and stop before the gated work.
 - `needs-review` is the agent handoff to human review and merge consideration.
@@ -203,7 +211,7 @@
 - Move the PR from `needs-plan` to `needs-plan-approval` after posting the plan.
 - Wait for a project collaborator or owner to explicitly change labels before implementation.
 - Do not remove `needs-plan-approval`.
-- Do not add `in-progress`; a project collaborator or owner must explicitly add it to move past the plan approval gate.
+- Do not add `plan-approved` or `in-progress`; a project collaborator or owner must explicitly add `plan-approved` to move past the plan approval gate.
 - Confirm the PR already passed through `needs-plan` and `needs-plan-approval` before the first code edit.
 - If that history is missing, explain the exact stop reason in the PR, leave labels unchanged, and stop instead of continuing.
 - Skip planning only when the user explicitly says to skip planning for that request, including tiny mechanical changes.
@@ -219,9 +227,15 @@
 
 ## Implementation Agent
 
-- Wait for a project collaborator or owner to explicitly change the PR label from `needs-plan-approval` to `in-progress` before editing code.
-- A human-applied `in-progress` label authorizes implementation of the approved PR plan.
-- Do not add `in-progress`; only a project collaborator or owner may move the PR past the plan approval gate.
+- Product implementation dispatch scans open PRs labeled `plan-approved`.
+- Before dispatch, verify the PR still has `plan-approved`, remove `plan-approved`, and add `in-progress`.
+- Dispatch exactly one separate implementation agent for each claimed PR.
+- If label claiming fails, write the exact stop reason in the PR or run log, leave labels unchanged, and stop.
+- If dispatch fails after claiming succeeded, keep `in-progress`, record the failed dispatch evidence in the PR or run log, and stop.
+- The dispatching job must not edit product code.
+- A human-applied `plan-approved` label authorizes implementation dispatch of the approved PR plan.
+- An automation-applied `in-progress` label indicates the approved plan has been claimed for active implementation.
+- Planning agents must not add `plan-approved` or `in-progress`.
 - Do not edit code if the PR still has `needs-plan-approval`, lacks `in-progress`, or lacks a plan history through `needs-plan` and `needs-plan-approval`.
 - Implement the approved plan step by step while the PR remains labeled `in-progress`.
 - Add or update each step's focused tests and E2E tests as early as practical in that step.
