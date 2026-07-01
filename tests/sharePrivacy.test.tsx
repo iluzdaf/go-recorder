@@ -81,7 +81,16 @@ describe("share privacy helpers", () => {
 
     it("builds a same-tab privacy policy href with a return path", () => {
         expect(buildSharePrivacyPolicyHref("/games/abc")).toBe(
-            "/privacy?returnTo=%2Fgames%2Fabc"
+            "/privacy?returnTo=%2Fgames%2Fabc&from=share-confirmation"
+        );
+    });
+
+    it("falls back to home for unsafe privacy return paths", () => {
+        expect(buildSharePrivacyPolicyHref("https://example.com")).toBe(
+            "/privacy?returnTo=%2F&from=share-confirmation"
+        );
+        expect(buildSharePrivacyPolicyHref("//example.com")).toBe(
+            "/privacy?returnTo=%2F&from=share-confirmation"
         );
     });
 });
@@ -103,7 +112,7 @@ describe("share privacy UI", () => {
         expect(markup).toContain("underline");
         expect(markup).toContain("bg-sky-700");
         expect(markup).toContain(
-            'href="/privacy?returnTo=%2Fgames%2Fabc"'
+            'href="/privacy?returnTo=%2Fgames%2Fabc&amp;from=share-confirmation"'
         );
         expect(markup).not.toContain('target="_blank"');
 
@@ -131,7 +140,7 @@ describe("share privacy UI", () => {
         expect(markup).toContain("Continue");
     });
 
-    it("renders the privacy policy page", () => {
+    it("renders the direct privacy policy page without share-flow controls", () => {
         return PrivacyPage({
             searchParams: Promise.resolve({ returnTo: "/drafts/abc" }),
         }).then((element) => {
@@ -142,10 +151,46 @@ describe("share privacy UI", () => {
             expect(markup).not.toContain("Go Recorder keeps");
             expect(markup).toContain("What we store");
             expect(markup).toContain("Retention");
-            expect(markup).toContain('href="/drafts/abc"');
+            expect(markup).not.toContain('href="/drafts/abc"');
+            expect(markup).not.toContain('href="#privacy-policy-bottom"');
+            expect(markup).not.toContain('aria-label="Go to bottom"');
             expect(markup).toContain('href="#privacy-policy-top"');
-            expect(markup).toContain("Back");
             expect(markup).toContain("Back to top");
+        });
+    });
+
+    it("renders share-flow privacy controls with a bottom return action", () => {
+        return PrivacyPage({
+            searchParams: Promise.resolve({
+                from: "share-confirmation",
+                returnTo: "/drafts/abc",
+            }),
+        }).then((element) => {
+            const markup = renderToStaticMarkup(element);
+
+            expect(markup).toContain('href="#privacy-policy-bottom"');
+            expect(markup).toContain('aria-label="Go to bottom"');
+            expect(markup).toContain('title="Go to bottom"');
+            expect(markup).toContain('id="privacy-policy-bottom"');
+            expect(markup).toContain('href="/drafts/abc"');
+            expect(markup).toContain("Back");
+            expect(markup).toContain("bg-sky-700");
+            expect(markup).not.toContain('href="#privacy-policy-top"');
+            expect(markup).not.toContain("Back to top");
+        });
+    });
+
+    it("falls back to home for an unsafe share-flow return path", () => {
+        return PrivacyPage({
+            searchParams: Promise.resolve({
+                from: "share-confirmation",
+                returnTo: "//example.com",
+            }),
+        }).then((element) => {
+            const markup = renderToStaticMarkup(element);
+
+            expect(markup).toContain('href="/"');
+            expect(markup).not.toContain('href="//example.com"');
         });
     });
 });
