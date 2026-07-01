@@ -2,14 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import ChangelogPage from "../app/changelog/page";
 import ChangelogReleaseList from "../components/ChangelogReleaseList";
+import SecondaryPageShell from "../components/SecondaryPageShell";
 import { t } from "../lib/i18n";
 import { changelog, getLatestRelease } from "../lib/changelog";
 
 describe("/changelog page", () => {
-    it("renders the changelog page shell", () => {
+    it("renders the changelog page in the shared secondary shell", () => {
         const tree = ChangelogPage();
 
-        expect(tree.type).toBe("main");
+        expect(tree.type).toBe(SecondaryPageShell);
         expect(JSON.stringify(tree)).toContain(t("changelog"));
     });
 

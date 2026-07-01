@@ -6,6 +6,7 @@ import { Pencil, Trash2, X } from "lucide-react";
 import type { LocalGameRecord } from "@/lib/localGames";
 import { getAllLocalGames, deleteLocalRecord } from "@/lib/localGames";
 import { GameBoardThumbnail, getGameTitle } from "@/components/GameListItem";
+import SecondaryPageShell from "@/components/SecondaryPageShell";
 import { navigateWithinApp } from "@/lib/fullscreenNavigation";
 import { t } from "@/lib/i18n";
 import { LOCAL_DATA_MIGRATION_CHANGE_EVENT } from "@/lib/localDataMigration";
@@ -58,9 +59,7 @@ export default function GamesPage() {
     if (!loaded) return null;
 
     return (
-        <main className="flex min-h-0 flex-1 flex-col overflow-auto bg-zinc-100 p-6 text-zinc-950 dark:bg-neutral-900 dark:text-white">
-            <h1 className="mb-4 text-lg font-semibold text-right">{t("games")}</h1>
-
+        <SecondaryPageShell title={t("games")}>
             {games.length === 0 ? (
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
                     {t("noGames")}
@@ -142,6 +141,6 @@ export default function GamesPage() {
                     ))}
                 </ul>
             )}
-        </main>
+        </SecondaryPageShell>
     );
 }
