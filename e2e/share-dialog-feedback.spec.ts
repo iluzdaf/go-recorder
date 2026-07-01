@@ -103,3 +103,40 @@ test('board input and tab switching are blocked while creating a link', async ({
   releaseShareRequest()
   await expect(page.locator('#share-menu').getByRole('button', { name: 'Copy link' })).toBeVisible()
 })
+
+test('share confirmation privacy page returns to the pending share dialog', async ({ page }) => {
+  await createShareableDraft(page)
+  await page.evaluate(() => {
+    window.localStorage.removeItem('go-recorder:share-privacy-acknowledged:v1')
+  })
+
+  await openDetailsPanel(page)
+  await openShareTab(page)
+
+  const dialog = page.getByRole('dialog', { name: 'Before you create a share' })
+  await expect(dialog).toBeVisible()
+
+  await dialog.getByRole('link', { name: 'Read privacy policy' }).click()
+
+  await expect(page).toHaveURL(/\/privacy\?returnTo=%2Fdrafts%2F[^&]+&from=share-confirmation/)
+  await expect(page.getByRole('link', { name: 'Go to bottom' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Back to top' })).not.toBeVisible()
+
+  await page.getByRole('link', { name: 'Go to bottom' }).click()
+  await expect(page).toHaveURL(/#privacy-policy-bottom$/)
+
+  await page.getByRole('link', { name: 'Back', exact: true }).click()
+
+  await expect(page).toHaveURL(/\/drafts\//)
+  await expect(page.getByRole('dialog', { name: 'Before you create a share' })).toBeVisible()
+  await expect(page.locator('#share-menu').getByRole('tab', { name: 'Share' })).toHaveAttribute('aria-selected', 'true')
+})
+
+test('direct privacy page does not show share-flow controls', async ({ page }) => {
+  await page.goto('/privacy')
+
+  await expect(page.getByRole('heading', { name: 'Privacy policy' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Go to bottom' })).not.toBeVisible()
+  await expect(page.getByRole('link', { name: 'Back', exact: true })).not.toBeVisible()
+  await expect(page.getByRole('link', { name: 'Back to top' })).toBeVisible()
+})

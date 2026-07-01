@@ -59,8 +59,12 @@ export function consumeSharePrivacyResumeContext(
     return shouldResume;
 }
 
-export function buildSharePrivacyPolicyHref(returnToPath: string) {
-    const safeReturnToPath = returnToPath.startsWith("/") ? returnToPath : "/";
+export function isSafeAppPath(path: string) {
+    return path.startsWith("/") && !path.startsWith("//");
+}
 
-    return `/privacy?returnTo=${encodeURIComponent(safeReturnToPath)}`;
+export function buildSharePrivacyPolicyHref(returnToPath: string) {
+    const safeReturnToPath = isSafeAppPath(returnToPath) ? returnToPath : "/";
+
+    return `/privacy?returnTo=${encodeURIComponent(safeReturnToPath)}&from=share-confirmation`;
 }

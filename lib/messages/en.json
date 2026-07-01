@@ -68,6 +68,7 @@
     "privacyPolicyRetention": "Shared records stay available while the share service is online.",
     "privacyPolicyContact": "For privacy questions or removal requests, open a GitHub issue.",
     "privacyPolicyBack": "Back",
+    "privacyPolicyGoToBottom": "Go to bottom",
     "privacyPolicyBackToTop": "Back to top",
     "linkCopied": "Link copied",
     "failedToCopyLink": "Failed to copy link",
