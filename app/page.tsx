@@ -18,6 +18,7 @@ import { loadHomeSetup, saveHomeSetup } from "@/lib/homeSetup";
 import { LOCAL_DATA_MIGRATION_CHANGE_EVENT } from "@/lib/localDataMigration";
 
 const RECENT_GAME_LIMIT = 3;
+const HANDICAP_OPTIONS = [0, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 export default function Home() {
   const router = useRouter();
@@ -32,18 +33,19 @@ export default function Home() {
   const setupLoaded = useRef(false);
 
   useEffect(() => {
-    const saved = loadHomeSetup();
-    setBoardSize(saved.boardSize);
-    setHandicap(saved.handicap);
-    setDraftSource(saved.draftSource);
-    setupLoaded.current = true;
-
     const refreshLocalData = () => {
       setRecentGames(getAllLocalGames().slice(0, RECENT_GAME_LIMIT));
       setRecentDrafts(getAllLocalDrafts().slice(0, RECENT_GAME_LIMIT));
     };
 
-    const timeoutId = window.setTimeout(refreshLocalData, 0);
+    const timeoutId = window.setTimeout(() => {
+      const saved = loadHomeSetup();
+      setBoardSize(saved.boardSize);
+      setHandicap(saved.handicap);
+      setDraftSource(saved.draftSource);
+      setupLoaded.current = true;
+      refreshLocalData();
+    }, 0);
     const handleLocalDataChange = () => {
       refreshLocalData();
     };
@@ -133,22 +135,28 @@ export default function Home() {
             </div>
           </div>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">{t("handicap")}</span>
-            <select
-              value={handicap}
-              onChange={(event) => {
-                setHandicap(Number(event.target.value));
-              }}
-              className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-            >
-              {[0, 2, 3, 4, 5, 6, 7, 8, 9].map((value) => (
-                <option key={value} value={value}>
+          <fieldset className="flex flex-col gap-1">
+            <legend className="text-sm font-medium">{t("handicap")}</legend>
+            <div className="grid grid-cols-5 gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-900">
+              {HANDICAP_OPTIONS.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-label={`${t("handicap")} ${value}`}
+                  aria-pressed={handicap === value}
+                  disabled={isCreatingGame || isCreatingDraft}
+                  onClick={() => setHandicap(value)}
+                  className={`flex min-h-10 items-center justify-center rounded-md px-3 py-2 text-sm disabled:opacity-50 ${
+                    handicap === value
+                      ? "bg-white font-medium text-zinc-950 shadow-sm dark:bg-neutral-700 dark:text-white"
+                      : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+                  }`}
+                >
                   {value}
-                </option>
+                </button>
               ))}
-            </select>
-          </label>
+            </div>
+          </fieldset>
 
           <button
             type="submit"

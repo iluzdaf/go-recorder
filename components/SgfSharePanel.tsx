@@ -108,6 +108,11 @@ export default function SgfSharePanel({
         save(localWhite, localBlack, localKomi);
     }
 
+    function handleKomiChange(newKomi: number) {
+        setLocalKomi(newKomi);
+        save(localBlack, localWhite, newKomi);
+    }
+
     function handleSgfTabClick() {
         if (isCreating) return;
 
@@ -320,26 +325,29 @@ export default function SgfSharePanel({
                         </button>
                         {openSection === "rules" && (
                             <div className="px-4 pb-4">
-                                <label className="flex flex-col gap-1">
-                                    <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                <fieldset className="flex flex-col gap-1">
+                                    <legend className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
                                         {t("komi")}
-                                    </span>
-                                    <select
-                                        value={localKomi}
-                                        onChange={(e) => {
-                                            const newKomi = Number(e.target.value);
-                                            setLocalKomi(newKomi);
-                                            save(localBlack, localWhite, newKomi);
-                                        }}
-                                        className="rounded border border-zinc-300 bg-white px-2 py-1 text-[16px] dark:border-neutral-700 dark:bg-neutral-800"
-                                    >
+                                    </legend>
+                                    <div className="grid grid-cols-5 gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-950">
                                         {KOMI_OPTIONS.map((value) => (
-                                            <option key={value} value={value}>
+                                            <button
+                                                key={value}
+                                                type="button"
+                                                aria-label={`${t("komi")} ${value}`}
+                                                aria-pressed={localKomi === value}
+                                                onClick={() => handleKomiChange(value)}
+                                                className={`flex min-h-10 items-center justify-center rounded-md px-2 py-2 text-sm ${
+                                                    localKomi === value
+                                                        ? "bg-white font-medium text-zinc-950 shadow-sm dark:bg-neutral-700 dark:text-white"
+                                                        : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+                                                }`}
+                                            >
                                                 {value}
-                                            </option>
+                                            </button>
                                         ))}
-                                    </select>
-                                </label>
+                                    </div>
+                                </fieldset>
                             </div>
                         )}
                     </div>
