@@ -177,7 +177,7 @@ test('editing komi after share shows confirm dialog', async ({ page }) => {
   await page.click('button[aria-label="Details"]')
   await expect(page.locator('#share-menu')).toBeVisible()
   await page.locator('#share-menu').getByRole('button', { name: 'Rules' }).click()
-  await page.locator('#share-menu select').selectOption('7.5')
+  await page.locator('#share-menu').getByRole('button', { name: 'Komi 7.5' }).click()
 
   // Confirm dialog should appear
   const dialog = page.getByRole('dialog', { name: /share was created/i })

@@ -71,7 +71,7 @@ export async function setSgfMetadata(
 
   if (komi !== undefined) {
     await page.locator('#share-menu').getByRole('button', { name: 'Rules' }).click()
-    await page.locator('#share-menu select').selectOption(komi)
+    await page.locator('#share-menu').getByRole('button', { name: `Komi ${komi}` }).click()
   }
 }
 

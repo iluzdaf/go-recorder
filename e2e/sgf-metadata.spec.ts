@@ -9,6 +9,10 @@ async function expandRules(page: Page) {
   await page.locator('#share-menu').getByRole('button', { name: 'Rules' }).click()
 }
 
+function komiButton(page: Page, value: string) {
+  return page.locator('#share-menu').getByRole('button', { name: `Komi ${value}` })
+}
+
 async function expandPlayers(page: Page) {
   await page.locator('#share-menu').getByRole('button', { name: 'Players' }).click()
 }
@@ -27,7 +31,7 @@ test('panel has no save button and stays open after auto-saving', async ({ page 
 
   // Komi change auto-saves and panel stays open
   await expandRules(page)
-  await page.locator('#share-menu select').selectOption('7.5')
+  await komiButton(page, '7.5').click()
   await expect(page.locator('#share-menu')).toBeVisible()
 
   // Name blur auto-saves and panel stays open
@@ -46,7 +50,7 @@ test('SGF panel persists player names and komi; swap leaves komi unchanged', asy
   await page.locator('#share-menu input[placeholder="White"]').fill('Taro')
   await page.locator('#share-menu input[placeholder="White"]').blur()
   await expandRules(page)
-  await page.locator('#share-menu select').selectOption('6.5')
+  await komiButton(page, '6.5').click()
 
   // Swap should exchange only the names
   await expandPlayers(page)
@@ -54,7 +58,7 @@ test('SGF panel persists player names and komi; swap leaves komi unchanged', asy
   await expect(page.locator('#share-menu input[placeholder="Black"]')).toHaveValue('Taro')
   await expect(page.locator('#share-menu input[placeholder="White"]')).toHaveValue('Hana')
   await expandRules(page)
-  await expect(page.locator('#share-menu select')).toHaveValue('6.5')
+  await expect(komiButton(page, '6.5')).toHaveAttribute('aria-pressed', 'true')
 
   // Close and reopen to verify persistence
   await page.click('button[aria-label="Details"]')
@@ -64,7 +68,7 @@ test('SGF panel persists player names and komi; swap leaves komi unchanged', asy
   await expect(page.locator('#share-menu input[placeholder="Black"]')).toHaveValue('Taro')
   await expect(page.locator('#share-menu input[placeholder="White"]')).toHaveValue('Hana')
   await expandRules(page)
-  await expect(page.locator('#share-menu select')).toHaveValue('6.5')
+  await expect(komiButton(page, '6.5')).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('downloaded SGF contains PB, PW, and KM matching panel values', async ({ page }) => {
@@ -72,7 +76,7 @@ test('downloaded SGF contains PB, PW, and KM matching panel values', async ({ pa
 
   await openDetailsPanel(page)
   await expandRules(page)
-  await page.locator('#share-menu select').selectOption('7.5')
+  await komiButton(page, '7.5').click()
   await page.click('button[aria-label="Details"]')
   await expect(page.locator('#share-menu')).not.toBeVisible()
 
@@ -94,4 +98,18 @@ test('downloaded SGF contains PB, PW, and KM matching panel values', async ({ pa
   expect(content).toContain('PB[Hana]')
   expect(content).toContain('PW[Taro]')
   expect(content).toContain('KM[7.5]')
+})
+
+test('SGF metadata panel stays top-right anchored in portrait', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await startGameWithMetadata(page, 'Hana', 'Taro')
+
+  await openDetailsPanel(page)
+  const menuBox = await page.locator('#share-menu').boundingBox()
+  if (!menuBox) throw new Error('SGF menu not found')
+
+  expect(menuBox.x).toBeGreaterThanOrEqual(15)
+  expect(menuBox.y).toBeGreaterThanOrEqual(15)
+  expect(menuBox.y).toBeLessThanOrEqual(20)
+  expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(375)
 })
