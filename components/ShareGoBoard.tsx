@@ -176,7 +176,23 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const [visibleMoveCount, setVisibleMoveCount] = useState(
         share.gameState.moves.length
     );
+    const [boardReady, setBoardReady] = useState(false);
     const captionCommittedMoveIndexRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        performance.mark("share-board-hydrated");
+        const id = window.requestAnimationFrame(() => {
+            setBoardReady(true);
+            performance.mark("share-board-ready");
+            performance.measure(
+                "share-board-hydration-to-ready",
+                "share-board-hydrated",
+                "share-board-ready"
+            );
+        });
+
+        return () => window.cancelAnimationFrame(id);
+    }, [share.slug]);
 
     const visibleMoves = share.gameState.moves.slice(0, visibleMoveCount);
     const board = buildBoardFromGameState(
@@ -463,6 +479,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
                     panelOpen={shareMenuOpen}
                     railRef={actionBar.railRef}
                     shareTriggerRef={shareTriggerRef}
+                    boardReady={boardReady}
                     totalMoveCount={share.gameState.moves.length}
                     visibleMoveCount={visibleMoveCount}
                 />

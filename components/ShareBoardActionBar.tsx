@@ -31,6 +31,7 @@ type ShareBoardActionBarProps = {
     panelOpen: boolean;
     railRef: RefObject<HTMLDivElement | null>;
     shareTriggerRef: RefObject<HTMLButtonElement | null>;
+    boardReady?: boolean;
     totalMoveCount: number;
     visibleMoveCount: number;
 };
@@ -51,11 +52,14 @@ export default function ShareBoardActionBar({
     panelOpen,
     railRef,
     shareTriggerRef,
+    boardReady = true,
     totalMoveCount,
     visibleMoveCount,
 }: ShareBoardActionBarProps) {
     const isAtStart = visibleMoveCount === 0;
     const isAtEnd = visibleMoveCount === totalMoveCount;
+    const disableStartControls = !boardReady || isAtStart;
+    const disableEndControls = !boardReady || isAtEnd;
 
     return (
         <FloatingBoardActionBar
@@ -69,7 +73,7 @@ export default function ShareBoardActionBar({
                 onClick={onJumpToStart}
                 aria-label="Go to start"
                 title="Go to start"
-                disabled={isAtStart}
+                disabled={disableStartControls}
             >
                 <SkipBack size={18} />
             </button>
@@ -79,7 +83,7 @@ export default function ShareBoardActionBar({
                 onClick={onPreviousMove}
                 aria-label="Previous move"
                 title="Previous move"
-                disabled={isAtStart}
+                disabled={disableStartControls}
             >
                 <ChevronLeft size={18} />
             </button>
@@ -89,7 +93,7 @@ export default function ShareBoardActionBar({
                 onClick={onNextMove}
                 aria-label="Next move"
                 title="Next move"
-                disabled={isAtEnd}
+                disabled={disableEndControls}
             >
                 <ChevronRight size={18} />
             </button>
@@ -99,7 +103,7 @@ export default function ShareBoardActionBar({
                 onClick={onJumpToEnd}
                 aria-label="Go to end"
                 title="Go to end"
-                disabled={isAtEnd}
+                disabled={disableEndControls}
             >
                 <SkipForward size={18} />
             </button>

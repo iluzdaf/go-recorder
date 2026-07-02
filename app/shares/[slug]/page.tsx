@@ -6,8 +6,7 @@ import {
     getShareDescription,
     getShareTitle,
 } from "../../../lib/sharePresentation";
-import { mapShareRowToShareRecord } from "../../../lib/shareView";
-import { getSupabaseAdmin } from "../../../lib/supabaseAdmin";
+import { getShareBySlug } from "../../../lib/shareLookup";
 
 type PageProps = {
     params: Promise<{
@@ -38,21 +37,15 @@ function getSiteUrl() {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { slug } = await params;
 
-    const { data, error } = await getSupabaseAdmin()
-        .from("shares")
-        .select("*")
-        .eq("slug", slug)
-        .maybeSingle();
-
-    if (error) {
-        throw new Error(error.message);
-    }
-
-    if (!data) {
+    const result = await getShareBySlug(slug);
+    if (!result.ok) {
+        if (result.error) {
+            throw result.error;
+        }
         notFound();
     }
 
-    const share = mapShareRowToShareRecord(data);
+    const share = result.share;
     const title = getShareTitle({
         blackPlayerName: share.blackPlayerName,
         draftKind: share.draftKind,
@@ -96,23 +89,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function SharePage({ params }: PageProps) {
     const { slug } = await params;
 
-    const { data, error } = await getSupabaseAdmin()
-        .from("shares")
-        .select("*")
-        .eq("slug", slug)
-        .maybeSingle();
-
-    if (error) {
-        throw new Error(error.message);
-    }
-
-    if (!data) {
+    const result = await getShareBySlug(slug);
+    if (!result.ok) {
+        if (result.error) {
+            throw result.error;
+        }
         notFound();
     }
 
     return (
         <main className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden p-0">
-            <ShareBoardLoader share={mapShareRowToShareRecord(data)} />
+            <ShareBoardLoader share={result.share} />
         </main>
     );
 }
