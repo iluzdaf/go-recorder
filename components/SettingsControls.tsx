@@ -227,7 +227,7 @@ export default function SettingsControls({
     onThemePreferenceChange,
     onToggleFullscreen,
     onTwoStepPlacementChange,
-    defaultOpenSection = "board",
+    defaultOpenSection = "app",
     defaultOpenSections,
     openMultipleSections = false,
     showBoardCoordinates,
