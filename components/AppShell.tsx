@@ -122,6 +122,12 @@ function normalizeReturnPath(pathname: string | null | undefined) {
     return pathname;
 }
 
+export function shouldOpenSettingsDialogFromPath(
+    pathname: string | null | undefined
+) {
+    return normalizeAppPath(pathname) !== "/settings";
+}
+
 function normalizeAppNavigationState(
     value: unknown
 ): AppNavigationState {
@@ -921,8 +927,12 @@ export default function AppShell({
 
     const toggleSettings = useCallback(() => {
         closeChangelog();
+        if (!shouldOpenSettingsDialogFromPath(pathname)) {
+            closeSettings();
+            return;
+        }
         toggleSettingsDialog();
-    }, [closeChangelog, toggleSettingsDialog]);
+    }, [closeChangelog, closeSettings, pathname, toggleSettingsDialog]);
 
     const handleShowMoreSettings = useCallback(() => {
         closeSettings();

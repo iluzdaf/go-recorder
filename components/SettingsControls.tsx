@@ -48,6 +48,7 @@ type SettingsControlsProps = Readonly<{
     onThemePreferenceChange: (nextThemePreference: ThemePreference) => void;
     onToggleFullscreen: () => void;
     onTwoStepPlacementChange: (nextTwoStepPlacement: boolean) => void;
+    defaultOpenSection?: SettingsSectionId;
     showBoardCoordinates: boolean;
     showBoardThemes: boolean;
     showLocalData: boolean;
@@ -114,7 +115,7 @@ function SegmentControl<T extends string>({
 }>) {
     return (
         <div
-            className="grid grid-cols-[repeat(var(--segment-count),minmax(0,1fr))] gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-950"
+            className="grid w-full grid-cols-[repeat(var(--segment-count),minmax(0,1fr))] gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-950"
             role="group"
             aria-label={ariaLabel}
             style={
@@ -127,7 +128,7 @@ function SegmentControl<T extends string>({
                 <button
                     key={option.value}
                     type="button"
-                    className={`flex min-h-10 items-center justify-center rounded-md px-2 py-2 text-sm ${segmentedButtonClassName(value === option.value)}`}
+                    className={`flex min-h-10 min-w-0 items-center justify-center rounded-md px-2 py-2 text-sm ${segmentedButtonClassName(value === option.value)}`}
                     aria-label={`${ariaLabel}: ${t(option.labelKey)}`}
                     aria-pressed={value === option.value}
                     onClick={() => {
@@ -224,29 +225,26 @@ export default function SettingsControls({
     onThemePreferenceChange,
     onToggleFullscreen,
     onTwoStepPlacementChange,
+    defaultOpenSection = "board",
     showBoardCoordinates,
     showBoardThemes,
     showLocalData,
     themePreference,
     twoStepPlacement,
 }: SettingsControlsProps) {
-    const [openSections, setOpenSections] = useState<Record<SettingsSectionId, boolean>>({
-        app: true,
-        board: true,
-    });
+    const [openSection, setOpenSection] = useState<SettingsSectionId | null>(
+        defaultOpenSection
+    );
 
     const toggleSection = (sectionId: SettingsSectionId) => {
-        setOpenSections((previous) => ({
-            ...previous,
-            [sectionId]: !previous[sectionId],
-        }));
+        setOpenSection((previous) => (previous === sectionId ? null : sectionId));
     };
 
     return (
         <div className="flex flex-col">
             <SettingsSection
                 title={t("displaySettings")}
-                isOpen={openSections.board}
+                isOpen={openSection === "board"}
                 onToggle={() => toggleSection("board")}
             >
                     {showBoardThemes ? (
@@ -277,7 +275,7 @@ export default function SettingsControls({
 
             <SettingsSection
                 title={t("appSettings")}
-                isOpen={openSections.app}
+                isOpen={openSection === "app"}
                 onToggle={() => toggleSection("app")}
             >
                     <div className="grid gap-2 px-4 py-3 text-sm">
@@ -290,14 +288,14 @@ export default function SettingsControls({
                                 themePreference={themePreference}
                             />
                         </span>
-                        <span className="flex items-center gap-2">
+                        <div className="w-full">
                             <SegmentControl
                                 ariaLabel={t("appearance")}
                                 value={themePreference}
                                 options={THEME_PREFERENCE_OPTIONS}
                                 onChange={onThemePreferenceChange}
                             />
-                        </span>
+                        </div>
                     </div>
 
                     {isFullscreenSupported ? (

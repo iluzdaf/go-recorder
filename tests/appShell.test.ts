@@ -12,6 +12,7 @@ import {
     resolveBoardThemePreference,
     resolveShowBoardCoordinatesPreference,
     resolveTwoStepPlacementPreference,
+    shouldOpenSettingsDialogFromPath,
     shouldAnchorHeaderDialogsToViewportTop,
     updateAppNavigationStateForPath,
 } from "../components/AppShell";
@@ -91,6 +92,7 @@ describe("appearance preferences", () => {
                 onThemePreferenceChange: () => undefined,
                 onToggleFullscreen: () => undefined,
                 onTwoStepPlacementChange: () => undefined,
+                defaultOpenSection: "app",
                 showBoardCoordinates: true,
                 showBoardThemes: false,
                 showLocalData: false,
@@ -105,7 +107,7 @@ describe("appearance preferences", () => {
         expect(markup).toContain("Dark");
         expect(markup).toContain('aria-label="Appearance: Auto"');
         expect(markup).toContain('aria-pressed="true"');
-        expect(markup).toContain("grid-cols-[repeat(var(--segment-count),minmax(0,1fr))]");
+        expect(markup).toContain("grid w-full grid-cols-[repeat(var(--segment-count),minmax(0,1fr))]");
         expect(markup).not.toContain("<select");
         expect(markup).not.toContain("Follow system");
         expect(markup).not.toContain("Light mode");
@@ -138,14 +140,14 @@ describe("compact settings controls", () => {
 
         expect(markup).toContain("Show board coordinates");
         expect(markup).toContain("Two-step placement");
-        expect(markup).toContain("Appearance");
+        expect(markup).toContain("App");
         expect(markup).not.toContain("Light board theme");
         expect(markup).not.toContain("Dark board theme");
         expect(markup).not.toContain("Export local data");
         expect(markup).not.toContain("Import local data");
     });
 
-    it("renders settings groups open by default with accordion controls", () => {
+    it("renders only one settings group open by default with accordion controls", () => {
         const markup = renderToStaticMarkup(
             createElement(SettingsControls, {
                 darkBoardTheme: "wood",
@@ -167,10 +169,19 @@ describe("compact settings controls", () => {
             })
         );
 
-        expect(markup.match(/aria-expanded="true"/g)?.length).toBe(2);
+        expect(markup.match(/aria-expanded="true"/g)?.length).toBe(1);
+        expect(markup).toContain('aria-expanded="false"');
         expect(markup).toContain("Light board theme");
         expect(markup).toContain("Dark board theme");
-        expect(markup).toContain("Export local data");
+        expect(markup).not.toContain("Export local data");
+    });
+});
+
+describe("settings route dialog behavior", () => {
+    it("does not open the header settings dialog from the settings page", () => {
+        expect(shouldOpenSettingsDialogFromPath("/settings")).toBe(false);
+        expect(shouldOpenSettingsDialogFromPath("/games/game123")).toBe(true);
+        expect(shouldOpenSettingsDialogFromPath(null)).toBe(true);
     });
 });
 
