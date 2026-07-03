@@ -11,6 +11,8 @@
 - Default branch name: `codex/issue-<number>-<slug>`.
 - The PR body should include `Closes #<issue_number>` so merging the PR closes the linked issue.
 - Remove `ready-for-agent` from the issue only after the linked draft PR exists and has `needs-plan`.
+- After the linked draft PR exists, comment that work continues on the PR and lock the issue conversation.
+- If issue locking fails, keep the linked PR and `needs-plan`, record the lock failure, and stop automation for that issue.
 - Stop before writing a plan or editing code.
 
 ## Comment Policy
