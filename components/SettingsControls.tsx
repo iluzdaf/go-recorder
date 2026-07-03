@@ -114,7 +114,7 @@ function SegmentControl<T extends string>({
 }>) {
     return (
         <div
-            className="grid grid-cols-2 gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-950 sm:grid-cols-[repeat(var(--segment-count),minmax(0,1fr))]"
+            className="grid grid-cols-[repeat(var(--segment-count),minmax(0,1fr))] gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-950"
             role="group"
             aria-label={ariaLabel}
             style={

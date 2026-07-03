@@ -105,6 +105,7 @@ describe("appearance preferences", () => {
         expect(markup).toContain("Dark");
         expect(markup).toContain('aria-label="Appearance: Auto"');
         expect(markup).toContain('aria-pressed="true"');
+        expect(markup).toContain("grid-cols-[repeat(var(--segment-count),minmax(0,1fr))]");
         expect(markup).not.toContain("<select");
         expect(markup).not.toContain("Follow system");
         expect(markup).not.toContain("Light mode");
