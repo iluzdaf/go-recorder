@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 import {
     getBoardThemeClassName,
@@ -10,9 +12,11 @@ import {
     resolveBoardThemePreference,
     resolveShowBoardCoordinatesPreference,
     resolveTwoStepPlacementPreference,
+    shouldOpenSettingsDialogFromPath,
     shouldAnchorHeaderDialogsToViewportTop,
     updateAppNavigationStateForPath,
 } from "../components/AppShell";
+import SettingsControls from "../components/SettingsControls";
 
 describe("app navigation targets", () => {
     it("allows a back target to home from a non-home route", () => {
@@ -72,6 +76,145 @@ describe("appearance preferences", () => {
         expect(getNextThemePreference("light")).toBe("dark");
         expect(getNextThemePreference("dark")).toBe("system");
         expect(getNextThemePreference("system")).toBe("light");
+    });
+
+    it("renders stable Appearance copy with Auto, Light, and Dark choices", () => {
+        const markup = renderToStaticMarkup(
+            createElement(SettingsControls, {
+                darkBoardTheme: "minimalist",
+                isDarkMode: false,
+                isFullscreen: false,
+                isFullscreenSupported: false,
+                lightBoardTheme: "minimalist",
+                onDarkBoardThemeChange: () => undefined,
+                onLightBoardThemeChange: () => undefined,
+                onShowBoardCoordinatesChange: () => undefined,
+                onThemePreferenceChange: () => undefined,
+                onToggleFullscreen: () => undefined,
+                onTwoStepPlacementChange: () => undefined,
+                defaultOpenSection: "app",
+                showBoardCoordinates: true,
+                showBoardThemes: false,
+                showLocalData: false,
+                themePreference: "system",
+                twoStepPlacement: false,
+            })
+        );
+
+        expect(markup).toContain("Appearance");
+        expect(markup).toContain("Auto");
+        expect(markup).toContain("Light");
+        expect(markup).toContain("Dark");
+        expect(markup).toContain('aria-label="Appearance: Auto"');
+        expect(markup).toContain('aria-pressed="true"');
+        expect(markup).toContain("grid w-full grid-cols-[repeat(var(--segment-count),minmax(0,1fr))]");
+        expect(markup).not.toContain("<select");
+        expect(markup).not.toContain("Follow system");
+        expect(markup).not.toContain("Light mode");
+        expect(markup).not.toContain("Dark mode");
+    });
+});
+
+describe("compact settings controls", () => {
+    it("omits board themes and local data when rendering the compact surface", () => {
+        const markup = renderToStaticMarkup(
+            createElement(SettingsControls, {
+                darkBoardTheme: "wood",
+                isDarkMode: false,
+                isFullscreen: false,
+                isFullscreenSupported: false,
+                lightBoardTheme: "wood",
+                onDarkBoardThemeChange: () => undefined,
+                onLightBoardThemeChange: () => undefined,
+                onShowBoardCoordinatesChange: () => undefined,
+                onThemePreferenceChange: () => undefined,
+                onToggleFullscreen: () => undefined,
+                onTwoStepPlacementChange: () => undefined,
+                defaultOpenSection: "board",
+                showBoardCoordinates: true,
+                showBoardThemes: false,
+                showLocalData: false,
+                themePreference: "light",
+                twoStepPlacement: true,
+            })
+        );
+
+        expect(markup).toContain("Show board coordinates");
+        expect(markup).toContain("Two-step placement");
+        expect(markup).toContain("App");
+        expect(markup).not.toContain("Light board theme");
+        expect(markup).not.toContain("Dark board theme");
+        expect(markup).not.toContain("Export local data");
+        expect(markup).not.toContain("Import local data");
+    });
+
+    it("renders App above Board while keeping only App open by default", () => {
+        const markup = renderToStaticMarkup(
+            createElement(SettingsControls, {
+                darkBoardTheme: "wood",
+                isDarkMode: false,
+                isFullscreen: false,
+                isFullscreenSupported: false,
+                lightBoardTheme: "minimalist",
+                onDarkBoardThemeChange: () => undefined,
+                onLightBoardThemeChange: () => undefined,
+                onShowBoardCoordinatesChange: () => undefined,
+                onThemePreferenceChange: () => undefined,
+                onToggleFullscreen: () => undefined,
+                onTwoStepPlacementChange: () => undefined,
+                showBoardCoordinates: true,
+                showBoardThemes: true,
+                showLocalData: true,
+                themePreference: "system",
+                twoStepPlacement: false,
+            })
+        );
+
+        expect(markup.match(/aria-expanded="true"/g)?.length).toBe(1);
+        expect(markup).toContain('aria-expanded="false"');
+        expect(markup.indexOf("App")).toBeLessThan(markup.indexOf("Board"));
+        expect(markup).not.toContain("Light board theme");
+        expect(markup).not.toContain("Dark board theme");
+        expect(markup).toContain("Appearance");
+        expect(markup).toContain("Export local data");
+    });
+
+    it("can render the full settings page with all sections open by default", () => {
+        const markup = renderToStaticMarkup(
+            createElement(SettingsControls, {
+                darkBoardTheme: "wood",
+                isDarkMode: false,
+                isFullscreen: false,
+                isFullscreenSupported: false,
+                lightBoardTheme: "minimalist",
+                onDarkBoardThemeChange: () => undefined,
+                onLightBoardThemeChange: () => undefined,
+                onShowBoardCoordinatesChange: () => undefined,
+                onThemePreferenceChange: () => undefined,
+                onToggleFullscreen: () => undefined,
+                onTwoStepPlacementChange: () => undefined,
+                defaultOpenSections: ["app", "board"],
+                openMultipleSections: true,
+                showBoardCoordinates: true,
+                showBoardThemes: true,
+                showLocalData: true,
+                themePreference: "system",
+                twoStepPlacement: false,
+            })
+        );
+
+        expect(markup.match(/aria-expanded="true"/g)?.length).toBe(2);
+        expect(markup.indexOf("App")).toBeLessThan(markup.indexOf("Board"));
+        expect(markup).toContain("Export local data");
+        expect(markup).toContain("Light board theme");
+    });
+});
+
+describe("settings route dialog behavior", () => {
+    it("does not open the header settings dialog from the settings page", () => {
+        expect(shouldOpenSettingsDialogFromPath("/settings")).toBe(false);
+        expect(shouldOpenSettingsDialogFromPath("/games/game123")).toBe(true);
+        expect(shouldOpenSettingsDialogFromPath(null)).toBe(true);
     });
 });
 

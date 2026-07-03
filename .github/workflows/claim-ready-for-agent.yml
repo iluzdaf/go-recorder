@@ -67,6 +67,35 @@ jobs:
             exit 1
           fi
 
+          lock_issue() {
+            locked="$(gh issue view "$issue_number" --repo "$REPO" --json locked --jq '.locked')"
+            if [ "$locked" = "true" ]; then
+              echo "Issue #$issue_number is already locked."
+              return 0
+            fi
+
+            gh api \
+              --method PUT \
+              "repos/$REPO/issues/$issue_number/lock" \
+              -f lock_reason=resolved \
+              >/dev/null
+          }
+
+          lock_pr() {
+            pr_number="$1"
+            locked="$(gh api "repos/$REPO/issues/$pr_number" --jq '.locked')"
+            if [ "$locked" = "true" ]; then
+              echo "PR #$pr_number is already locked."
+              return 0
+            fi
+
+            gh api \
+              --method PUT \
+              "repos/$REPO/issues/$pr_number/lock" \
+              -f lock_reason=resolved \
+              >/dev/null
+          }
+
           existing_pr="$(
             gh pr list \
               --repo "$REPO" \
@@ -86,7 +115,16 @@ jobs:
             pr_number="$(printf '%s' "$existing_pr" | cut -f1)"
             pr_url="$(printf '%s' "$existing_pr" | cut -f2)"
             gh pr edit "$pr_number" --repo "$REPO" --add-label needs-plan
+            if ! lock_pr "$pr_number"; then
+              echo "Failed to lock PR #$pr_number after applying needs-plan. The PR remains labeled needs-plan."
+              exit 1
+            fi
             gh issue edit "$issue_number" --repo "$REPO" --remove-label ready-for-agent
+            gh issue comment "$issue_number" --repo "$REPO" --body "Continuing work in draft planning PR: $pr_url"
+            if ! lock_issue; then
+              echo "Failed to lock issue #$issue_number after linking PR $pr_url. The PR remains labeled needs-plan."
+              exit 1
+            fi
             echo "Reused existing PR $pr_url for issue #$issue_number."
             exit 0
           fi
@@ -165,7 +203,16 @@ jobs:
           )"
 
           gh pr edit "$pr_url" --repo "$REPO" --add-label needs-plan
+          pr_number="$(gh pr view "$pr_url" --repo "$REPO" --json number --jq '.number')"
+          if ! lock_pr "$pr_number"; then
+            echo "Failed to lock PR #$pr_number after applying needs-plan. The PR remains labeled needs-plan."
+            exit 1
+          fi
           gh issue comment "$issue_number" --repo "$REPO" --body "Created draft planning PR: $pr_url"
           gh issue edit "$issue_number" --repo "$REPO" --remove-label ready-for-agent
+          if ! lock_issue; then
+            echo "Failed to lock issue #$issue_number after creating PR $pr_url. The PR remains labeled needs-plan."
+            exit 1
+          fi
 
           echo "Created draft planning PR $pr_url for issue #$issue_number."

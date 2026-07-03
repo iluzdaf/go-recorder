@@ -5,11 +5,22 @@ const MINIMAL_PNG_DATA_URL =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI6QAAAABJRU5ErkJggg=='
 
 async function openSettings(page: Page) {
-    await page.click('button[aria-label="Show header"]')
+    const showHeaderButton = page.locator('button[aria-label="Show header"]')
+    if (await showHeaderButton.isVisible().catch(() => false)) {
+        await showHeaderButton.click()
+    }
     await page.click('button[aria-label="Settings"]')
+    await expect(page.locator('#settings-menu')).toBeVisible()
+    await page.getByRole('button', { name: 'Show more' }).click()
+    await expect(page).toHaveURL(/\/settings$/)
 }
 
 async function closeSettings(page: Page) {
+    if (new URL(page.url()).pathname === '/settings') {
+        await page.goto('/')
+        return
+    }
+
     await page.keyboard.press('Escape')
     await expect(page.locator('#settings-menu')).not.toBeVisible()
 }

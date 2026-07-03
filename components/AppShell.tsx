@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { ChangeEvent } from "react";
 import {
     createContext,
     useContext,
@@ -15,25 +14,14 @@ import {
 } from "react";
 import {
     ChevronLeft,
-    Expand,
     Home,
     Menu,
-    Minimize2,
-    Moon,
-    Download,
-    Upload,
     Settings,
-    Monitor,
-    Sun,
 } from "lucide-react";
 import ChangelogReleaseList from "./ChangelogReleaseList";
+import SettingsControls from "./SettingsControls";
 import useFloatingDialog from "./useFloatingDialog";
 import { t } from "../lib/i18n";
-import {
-    downloadLocalDataExport,
-    importLocalDataFromFile,
-    LOCAL_DATA_MIGRATION_CHANGE_EVENT,
-} from "../lib/localDataMigration";
 import { navigateWithinApp } from "../lib/fullscreenNavigation";
 
 type ThemeContextValue = {
@@ -43,7 +31,7 @@ type ThemeContextValue = {
     setThemePreference: (nextThemePreference: ThemePreference) => void;
 };
 
-type ThemePreference = "system" | "light" | "dark";
+export type ThemePreference = "system" | "light" | "dark";
 export type BoardTheme = "minimalist" | "wood";
 
 type HeaderActionsContextValue = {
@@ -132,6 +120,12 @@ function normalizeReturnPath(pathname: string | null | undefined) {
     if (!pathname?.startsWith("/")) return null;
 
     return pathname;
+}
+
+export function shouldOpenSettingsDialogFromPath(
+    pathname: string | null | undefined
+) {
+    return normalizeAppPath(pathname) !== "/settings";
 }
 
 function normalizeAppNavigationState(
@@ -273,7 +267,7 @@ export function shouldAnchorHeaderDialogsToViewportTop({
     return usesOverlayHeader && !isHeaderVisible;
 }
 
-function getIsFullscreenSupported() {
+export function getIsFullscreenSupported() {
     if (typeof document === "undefined") return false;
 
     const documentElement = document.documentElement as HTMLElement & {
@@ -290,7 +284,7 @@ function getIsFullscreenSupported() {
         Boolean(document.exitFullscreen || fullscreenDocument.webkitExitFullscreen);
 }
 
-function getIsFullscreen() {
+export function getIsFullscreen() {
     if (typeof document === "undefined") return false;
 
     return Boolean(
@@ -306,15 +300,15 @@ function getIsFullscreen() {
     );
 }
 
-function getFullscreenChangeEvents() {
+export function getFullscreenChangeEvents() {
     return ["fullscreenchange", "webkitfullscreenchange"];
 }
 
-function getFullscreenErrorEvents() {
+export function getFullscreenErrorEvents() {
     return ["fullscreenerror", "webkitfullscreenerror"];
 }
 
-async function requestFullscreen(element: HTMLElement) {
+export async function requestFullscreen(element: HTMLElement) {
     const webkitElement = element as HTMLElement & {
         webkitRequestFullscreen?: () => Promise<void> | void;
     };
@@ -332,7 +326,7 @@ async function requestFullscreen(element: HTMLElement) {
     throw new Error("Fullscreen is not supported on this device");
 }
 
-async function exitFullscreen() {
+export async function exitFullscreen() {
     const webkitDocument = document as Document & {
         webkitExitFullscreen?: () => Promise<void> | void;
     };
@@ -573,9 +567,6 @@ export default function AppShell({
     const [headerActions, setHeaderActions] = useState<React.ReactNode>(null);
     const [headerStatus, setHeaderStatus] = useState<React.ReactNode>(null);
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
-    const [localDataStatus, setLocalDataStatus] = useState<string | null>(
-        null
-    );
     const [isFullscreen, setIsFullscreen] = useState(() => getIsFullscreen());
     const [appNavigationState, setAppNavigationState] =
         useState<AppNavigationState>(() => ({ entries: [], index: -1 }));
@@ -594,7 +585,6 @@ export default function AppShell({
         triggerRef: settingsTriggerRef,
     } = useFloatingDialog();
     const headerRef = useRef<HTMLElement | null>(null);
-    const localDataFileInputRef = useRef<HTMLInputElement | null>(null);
     const isFullscreenSupported = useSyncExternalStore(
         () => () => {},
         getIsFullscreenSupported,
@@ -937,55 +927,20 @@ export default function AppShell({
 
     const toggleSettings = useCallback(() => {
         closeChangelog();
-        toggleSettingsDialog();
-    }, [closeChangelog, toggleSettingsDialog]);
-
-    const handleExportLocalData = useCallback(async () => {
-        try {
-            const payload = await downloadLocalDataExport();
-            const totalRecords = payload.games.length + payload.drafts.length;
-            const imageSourceSummary = payload.imageSources.length
-                ? ` and ${payload.imageSources.length} image sources`
-                : "";
-
-            setLocalDataStatus(
-                `${t("localDataExported")}: ${totalRecords} local records${imageSourceSummary}.`
-            );
-        } catch {
-            setLocalDataStatus(t("localDataExportFailed"));
+        if (!shouldOpenSettingsDialogFromPath(pathname)) {
+            closeSettings();
+            return;
         }
-    }, []);
+        toggleSettingsDialog();
+    }, [closeChangelog, closeSettings, pathname, toggleSettingsDialog]);
 
-    const handleImportLocalDataClick = useCallback(() => {
-        localDataFileInputRef.current?.click();
-    }, []);
-
-    const handleImportLocalDataChange = useCallback(
-        async (event: ChangeEvent<HTMLInputElement>) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
-
-            if (!file) return;
-
-            try {
-                const result = await importLocalDataFromFile(file);
-                const imageSourceSummary = result.imageSourcesImported
-                    ? ` and ${result.imageSourcesImported} image sources`
-                    : "";
-
-                setLocalDataStatus(
-                    `${t("localDataImported")}: ${result.gamesImported} games, ${result.draftsImported} drafts${imageSourceSummary}.`
-                );
-                window.dispatchEvent(
-                    new Event(LOCAL_DATA_MIGRATION_CHANGE_EVENT)
-                );
-            } catch {
-                setLocalDataStatus(t("localDataImportFailed"));
-            }
-        },
-        []
-    );
-
+    const handleShowMoreSettings = useCallback(() => {
+        closeSettings();
+        navigateWithinApp({
+            path: "/settings",
+            push: router.push,
+        });
+    }, [closeSettings, router.push]);
 
     const usesOverlayHeader = true;
     const isHeaderVisible = isHeaderExpanded;
@@ -1223,175 +1178,37 @@ export default function AppShell({
                             </p>
                         </div>
 
-                        <div className="grid gap-3">
-                            <div className="rounded-md border border-zinc-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-950">
-                                <p className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
-                                    {t("displaySettings")}
-                                </p>
-                                <div className="mt-3 grid gap-2">
-                                    <label className="grid gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900">
-                                        <span>{t("lightBoardTheme")}</span>
-                                        <select
-                                            className="h-9 rounded-md border border-zinc-300 bg-white px-2 text-sm text-zinc-950 dark:border-neutral-700 dark:bg-neutral-950 dark:text-white"
-                                            value={lightBoardTheme}
-                                            aria-label={t("lightBoardTheme")}
-                                            onChange={(event) => {
-                                                setLightBoardThemeInStorage(
-                                                    event.target.value as BoardTheme
-                                                );
-                                            }}
-                                        >
-                                            <option value="minimalist">
-                                                {t("minimalistBoardTheme")}
-                                            </option>
-                                            <option value="wood">
-                                                {t("woodBoardTheme")}
-                                            </option>
-                                        </select>
-                                    </label>
-                                    <label className="grid gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900">
-                                        <span>{t("darkBoardTheme")}</span>
-                                        <select
-                                            className="h-9 rounded-md border border-zinc-300 bg-white px-2 text-sm text-zinc-950 dark:border-neutral-700 dark:bg-neutral-950 dark:text-white"
-                                            value={darkBoardTheme}
-                                            aria-label={t("darkBoardTheme")}
-                                            onChange={(event) => {
-                                                setDarkBoardThemeInStorage(
-                                                    event.target.value as BoardTheme
-                                                );
-                                            }}
-                                        >
-                                            <option value="minimalist">
-                                                {t("minimalistBoardTheme")}
-                                            </option>
-                                            <option value="wood">
-                                                {t("woodBoardTheme")}
-                                            </option>
-                                        </select>
-                                    </label>
-                                    <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900">
-                                        <span>{t("boardCoordinates")}</span>
-                                        <input
-                                            type="checkbox"
-                                            className="h-5 w-5 accent-zinc-950 dark:accent-white"
-                                            checked={showBoardCoordinates}
-                                            aria-label={t("showBoardCoordinates")}
-                                            onChange={(event) => {
-                                                setShowBoardCoordinatesInStorage(
-                                                    event.target.checked
-                                                );
-                                            }}
-                                        />
-                                    </label>
-                                    <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900">
-                                        <span>{t("twoStepPlacement")}</span>
-                                        <input
-                                            type="checkbox"
-                                            className="h-5 w-5 accent-zinc-950 dark:accent-white"
-                                            checked={twoStepPlacement}
-                                            aria-label={t("twoStepPlacement")}
-                                            onChange={(event) => {
-                                                setTwoStepPlacementInStorage(
-                                                    event.target.checked
-                                                );
-                                            }}
-                                        />
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div className="rounded-md border border-zinc-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-950">
-                                <p className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
-                                    {t("appSettings")}
-                                </p>
-                                <div className="mt-3 grid gap-2">
-                                    <button
-                                        type="button"
-                                        className="inline-flex min-h-11 items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-                                        aria-label={t("cycleAppearanceMode")}
-                                        onClick={() => {
-                                            setThemePreferenceInStorage(
-                                                getNextThemePreference(
-                                                    themePreference
-                                                )
-                                            );
-                                        }}
-                                    >
-                                        <span>
-                                            {themePreference === "system"
-                                                ? t("followSystemMode")
-                                                : isDarkMode
-                                                  ? t("darkMode")
-                                                  : t("lightMode")}
-                                        </span>
-                                        {themePreference === "system" ? (
-                                            <Monitor size={18} />
-                                        ) : isDarkMode ? (
-                                            <Moon size={18} />
-                                        ) : (
-                                            <Sun size={18} />
-                                        )}
-                                    </button>
-
-                                    {isFullscreenSupported ? (
-                                        <button
-                                            type="button"
-                                            className="inline-flex min-h-11 items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-                                            aria-label={
-                                                isFullscreen
-                                                    ? t("exitFullscreen")
-                                                    : t("enterFullscreen")
-                                            }
-                                            onClick={() => {
-                                                void toggleFullscreen();
-                                            }}
-                                        >
-                                            <span>
-                                                {isFullscreen
-                                                    ? t("exitFullscreen")
-                                                    : t("enterFullscreen")}
-                                            </span>
-                                            {isFullscreen ? (
-                                                <Minimize2 size={18} />
-                                            ) : (
-                                                <Expand size={18} />
-                                            )}
-                                        </button>
-                                    ) : null}
-
-                                    <button
-                                        type="button"
-                                        className="inline-flex min-h-11 items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-                                        onClick={() => {
-                                            void handleExportLocalData();
-                                        }}
-                                    >
-                                        <span>{t("exportLocalData")}</span>
-                                        <Download size={18} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="inline-flex min-h-11 items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-                                        onClick={handleImportLocalDataClick}
-                                    >
-                                        <span>{t("importLocalData")}</span>
-                                        <Upload size={18} />
-                                    </button>
-                                    <input
-                                        ref={localDataFileInputRef}
-                                        type="file"
-                                        accept="application/json,.json"
-                                        className="hidden"
-                                        onChange={handleImportLocalDataChange}
-                                    />
-                                    {localDataStatus ? (
-                                        <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-zinc-300">
-                                            {localDataStatus}
-                                        </p>
-                                    ) : null}
-                                </div>
-                            </div>
-                        </div>
+                        <SettingsControls
+                            darkBoardTheme={darkBoardTheme}
+                            isDarkMode={isDarkMode}
+                            isFullscreen={isFullscreen}
+                            isFullscreenSupported={isFullscreenSupported}
+                            lightBoardTheme={lightBoardTheme}
+                            onDarkBoardThemeChange={setDarkBoardThemeInStorage}
+                            onLightBoardThemeChange={setLightBoardThemeInStorage}
+                            onShowBoardCoordinatesChange={
+                                setShowBoardCoordinatesInStorage
+                            }
+                            onThemePreferenceChange={setThemePreferenceInStorage}
+                            onToggleFullscreen={() => {
+                                void toggleFullscreen();
+                            }}
+                            onTwoStepPlacementChange={
+                                setTwoStepPlacementInStorage
+                            }
+                            showBoardCoordinates={showBoardCoordinates}
+                            showBoardThemes={false}
+                            showLocalData={false}
+                            themePreference={themePreference}
+                            twoStepPlacement={twoStepPlacement}
+                        />
+                        <button
+                            type="button"
+                            className="ml-auto mt-3 flex w-fit text-sm font-semibold text-zinc-700 underline underline-offset-4 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
+                            onClick={handleShowMoreSettings}
+                        >
+                            {t("showMoreSettings")}
+                        </button>
                     </div>
                 ) : null}
                 {headerStatus ? (
