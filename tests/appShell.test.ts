@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
@@ -78,7 +79,7 @@ describe("appearance preferences", () => {
 
     it("renders stable Appearance copy with Auto, Light, and Dark choices", () => {
         const markup = renderToStaticMarkup(
-            SettingsControls({
+            createElement(SettingsControls, {
                 darkBoardTheme: "minimalist",
                 isDarkMode: false,
                 isFullscreen: false,
@@ -102,6 +103,9 @@ describe("appearance preferences", () => {
         expect(markup).toContain("Auto");
         expect(markup).toContain("Light");
         expect(markup).toContain("Dark");
+        expect(markup).toContain('aria-label="Appearance: Auto"');
+        expect(markup).toContain('aria-pressed="true"');
+        expect(markup).not.toContain("<select");
         expect(markup).not.toContain("Follow system");
         expect(markup).not.toContain("Light mode");
         expect(markup).not.toContain("Dark mode");
@@ -111,7 +115,7 @@ describe("appearance preferences", () => {
 describe("compact settings controls", () => {
     it("omits board themes and local data when rendering the compact surface", () => {
         const markup = renderToStaticMarkup(
-            SettingsControls({
+            createElement(SettingsControls, {
                 darkBoardTheme: "wood",
                 isDarkMode: false,
                 isFullscreen: false,
@@ -131,13 +135,41 @@ describe("compact settings controls", () => {
             })
         );
 
-        expect(markup).toContain("Coordinates");
+        expect(markup).toContain("Show board coordinates");
         expect(markup).toContain("Two-step placement");
         expect(markup).toContain("Appearance");
         expect(markup).not.toContain("Light board theme");
         expect(markup).not.toContain("Dark board theme");
         expect(markup).not.toContain("Export local data");
         expect(markup).not.toContain("Import local data");
+    });
+
+    it("renders settings groups open by default with accordion controls", () => {
+        const markup = renderToStaticMarkup(
+            createElement(SettingsControls, {
+                darkBoardTheme: "wood",
+                isDarkMode: false,
+                isFullscreen: false,
+                isFullscreenSupported: false,
+                lightBoardTheme: "minimalist",
+                onDarkBoardThemeChange: () => undefined,
+                onLightBoardThemeChange: () => undefined,
+                onShowBoardCoordinatesChange: () => undefined,
+                onThemePreferenceChange: () => undefined,
+                onToggleFullscreen: () => undefined,
+                onTwoStepPlacementChange: () => undefined,
+                showBoardCoordinates: true,
+                showBoardThemes: true,
+                showLocalData: true,
+                themePreference: "system",
+                twoStepPlacement: false,
+            })
+        );
+
+        expect(markup.match(/aria-expanded="true"/g)?.length).toBe(2);
+        expect(markup).toContain("Light board theme");
+        expect(markup).toContain("Dark board theme");
+        expect(markup).toContain("Export local data");
     });
 });
 

@@ -13,11 +13,21 @@ async function openSettings(page: Page) {
 
 async function openFullSettingsFromDialog(page: Page) {
   await openSettings(page)
-  await expect(page.getByLabel('Light board theme')).toHaveCount(0)
+  await expect(page.getByRole('group', { name: 'Light board theme' })).toHaveCount(0)
   await expect(page.getByText('Export local data')).toHaveCount(0)
   await page.getByRole('button', { name: 'Show more' }).click()
   await expect(page).toHaveURL(/\/settings$/)
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+}
+
+async function chooseSegment(page: Page, groupName: string, optionName: string) {
+  const group = page.getByRole('group', { name: groupName })
+  await group.getByRole('button', { name: `${groupName}: ${optionName}` }).click()
+}
+
+async function expectSegmentSelected(page: Page, groupName: string, optionName: string) {
+  const group = page.getByRole('group', { name: groupName })
+  await expect(group.getByRole('button', { name: `${groupName}: ${optionName}` })).toHaveAttribute('aria-pressed', 'true')
 }
 
 async function boardThemeClass(page: Page) {
@@ -44,7 +54,10 @@ test('board theme settings persist across recorder, draft, and share boards', as
   await startGameWithMetadata(page, 'Black', 'White')
   const gameUrl = page.url()
   await openFullSettingsFromDialog(page)
-  await page.getByLabel('Light board theme').selectOption('wood')
+  await expect(page.getByRole('button', { name: 'Board' })).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByRole('button', { name: 'App' })).toHaveAttribute('aria-expanded', 'true')
+  await chooseSegment(page, 'Light board theme', 'Wood')
+  await expectSegmentSelected(page, 'Light board theme', 'Wood')
   await page.goto(gameUrl)
   await expect(page.locator('.shudan-goban')).toBeVisible()
   await expect.poll(() => boardThemeClass(page)).toContain('goban-theme-wood-light')
@@ -55,9 +68,11 @@ test('board theme settings persist across recorder, draft, and share boards', as
   await expect.poll(() => boardThemeClass(page)).toContain('goban-theme-wood-light')
 
   await openFullSettingsFromDialog(page)
-  await page.getByLabel('Appearance').selectOption('dark')
+  await chooseSegment(page, 'Appearance', 'Dark')
+  await expectSegmentSelected(page, 'Appearance', 'Dark')
   await expect(page.locator('html')).toHaveClass(/dark/)
-  await page.getByLabel('Dark board theme').selectOption('wood')
+  await chooseSegment(page, 'Dark board theme', 'Wood')
+  await expectSegmentSelected(page, 'Dark board theme', 'Wood')
   await page.goto(gameUrl)
   await expect(page.locator('.shudan-goban')).toBeVisible()
   await expect.poll(() => boardThemeClass(page)).toContain('goban-theme-wood-dark')
@@ -77,6 +92,7 @@ test('board theme settings persist across recorder, draft, and share boards', as
 })
 
 test('compact settings primary controls persist and Show more opens settings page', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
   await page.evaluate(() => {
     localStorage.removeItem('go-recorder:show-board-coordinates')
@@ -87,12 +103,14 @@ test('compact settings primary controls persist and Show more opens settings pag
   await startGameWithMetadata(page, 'Black', 'White')
   const gameUrl = page.url()
   await openSettings(page)
-  await expect(page.getByLabel('Light board theme')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Board' })).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByRole('button', { name: 'App' })).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByRole('group', { name: 'Light board theme' })).toHaveCount(0)
   await expect(page.getByText('Export local data')).toHaveCount(0)
 
   await page.getByLabel('Show board coordinates').uncheck()
   await page.getByLabel('Two-step placement').check()
-  await page.getByLabel('Appearance').selectOption('dark')
+  await chooseSegment(page, 'Appearance', 'Dark')
   await expect(page.locator('html')).toHaveClass(/dark/)
 
   await page.reload()
@@ -100,10 +118,11 @@ test('compact settings primary controls persist and Show more opens settings pag
   await openSettings(page)
   await expect(page.getByLabel('Show board coordinates')).not.toBeChecked()
   await expect(page.getByLabel('Two-step placement')).toBeChecked()
-  await expect(page.getByLabel('Appearance')).toHaveValue('dark')
+  await expectSegmentSelected(page, 'Appearance', 'Dark')
 
   await page.getByRole('button', { name: 'Show more' }).click()
   await expect(page).toHaveURL(/\/settings$/)
-  await expect(page.getByLabel('Light board theme')).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Light board theme' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Dark board theme' })).toBeVisible()
   await expect(page.getByText('Export local data')).toBeVisible()
 })
