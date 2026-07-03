@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import ChangelogPage from "../app/changelog/page";
 import PrivacyPage from "../app/privacy/page";
+import SettingsPage from "../app/settings/page";
 import SecondaryPageShell from "../components/SecondaryPageShell";
 import { t } from "../lib/i18n";
 
@@ -43,6 +44,13 @@ describe("SecondaryPageShell", () => {
 
         expect(tree.type).toBe(SecondaryPageShell);
         expect(tree.props.title).toBe(t("changelog"));
+    });
+
+    it("uses the shared shell on the settings page", () => {
+        const tree = SettingsPage();
+
+        expect(tree.type).toBe(SecondaryPageShell);
+        expect(tree.props.title).toBe(t("settings"));
     });
 
     it("keeps privacy document text readable inside the full-width shell", async () => {

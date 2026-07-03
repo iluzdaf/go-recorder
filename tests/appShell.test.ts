@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
 
 import {
     getBoardThemeClassName,
@@ -13,6 +14,7 @@ import {
     shouldAnchorHeaderDialogsToViewportTop,
     updateAppNavigationStateForPath,
 } from "../components/AppShell";
+import SettingsControls from "../components/SettingsControls";
 
 describe("app navigation targets", () => {
     it("allows a back target to home from a non-home route", () => {
@@ -72,6 +74,70 @@ describe("appearance preferences", () => {
         expect(getNextThemePreference("light")).toBe("dark");
         expect(getNextThemePreference("dark")).toBe("system");
         expect(getNextThemePreference("system")).toBe("light");
+    });
+
+    it("renders stable Appearance copy with Auto, Light, and Dark choices", () => {
+        const markup = renderToStaticMarkup(
+            SettingsControls({
+                darkBoardTheme: "minimalist",
+                isDarkMode: false,
+                isFullscreen: false,
+                isFullscreenSupported: false,
+                lightBoardTheme: "minimalist",
+                onDarkBoardThemeChange: () => undefined,
+                onLightBoardThemeChange: () => undefined,
+                onShowBoardCoordinatesChange: () => undefined,
+                onThemePreferenceChange: () => undefined,
+                onToggleFullscreen: () => undefined,
+                onTwoStepPlacementChange: () => undefined,
+                showBoardCoordinates: true,
+                showBoardThemes: false,
+                showLocalData: false,
+                themePreference: "system",
+                twoStepPlacement: false,
+            })
+        );
+
+        expect(markup).toContain("Appearance");
+        expect(markup).toContain("Auto");
+        expect(markup).toContain("Light");
+        expect(markup).toContain("Dark");
+        expect(markup).not.toContain("Follow system");
+        expect(markup).not.toContain("Light mode");
+        expect(markup).not.toContain("Dark mode");
+    });
+});
+
+describe("compact settings controls", () => {
+    it("omits board themes and local data when rendering the compact surface", () => {
+        const markup = renderToStaticMarkup(
+            SettingsControls({
+                darkBoardTheme: "wood",
+                isDarkMode: false,
+                isFullscreen: false,
+                isFullscreenSupported: false,
+                lightBoardTheme: "wood",
+                onDarkBoardThemeChange: () => undefined,
+                onLightBoardThemeChange: () => undefined,
+                onShowBoardCoordinatesChange: () => undefined,
+                onThemePreferenceChange: () => undefined,
+                onToggleFullscreen: () => undefined,
+                onTwoStepPlacementChange: () => undefined,
+                showBoardCoordinates: true,
+                showBoardThemes: false,
+                showLocalData: false,
+                themePreference: "light",
+                twoStepPlacement: true,
+            })
+        );
+
+        expect(markup).toContain("Coordinates");
+        expect(markup).toContain("Two-step placement");
+        expect(markup).toContain("Appearance");
+        expect(markup).not.toContain("Light board theme");
+        expect(markup).not.toContain("Dark board theme");
+        expect(markup).not.toContain("Export local data");
+        expect(markup).not.toContain("Import local data");
     });
 });
 
