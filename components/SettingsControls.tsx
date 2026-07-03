@@ -49,6 +49,8 @@ type SettingsControlsProps = Readonly<{
     onToggleFullscreen: () => void;
     onTwoStepPlacementChange: (nextTwoStepPlacement: boolean) => void;
     defaultOpenSection?: SettingsSectionId;
+    defaultOpenSections?: readonly SettingsSectionId[];
+    openMultipleSections?: boolean;
     showBoardCoordinates: boolean;
     showBoardThemes: boolean;
     showLocalData: boolean;
@@ -226,134 +228,147 @@ export default function SettingsControls({
     onToggleFullscreen,
     onTwoStepPlacementChange,
     defaultOpenSection = "board",
+    defaultOpenSections,
+    openMultipleSections = false,
     showBoardCoordinates,
     showBoardThemes,
     showLocalData,
     themePreference,
     twoStepPlacement,
 }: SettingsControlsProps) {
-    const [openSection, setOpenSection] = useState<SettingsSectionId | null>(
-        defaultOpenSection
+    const initialOpenSections = defaultOpenSections ?? [defaultOpenSection];
+    const [openSections, setOpenSections] = useState<SettingsSectionId[]>(
+        [...initialOpenSections]
     );
 
     const toggleSection = (sectionId: SettingsSectionId) => {
-        setOpenSection((previous) => (previous === sectionId ? null : sectionId));
+        setOpenSections((previous) => {
+            if (!openMultipleSections) {
+                return previous.includes(sectionId) ? [] : [sectionId];
+            }
+
+            if (previous.includes(sectionId)) {
+                return previous.filter((openSection) => openSection !== sectionId);
+            }
+
+            return [...previous, sectionId];
+        });
     };
 
     return (
         <div className="flex flex-col">
             <SettingsSection
-                title={t("displaySettings")}
-                isOpen={openSection === "board"}
-                onToggle={() => toggleSection("board")}
-            >
-                    {showBoardThemes ? (
-                        <>
-                            <BoardThemeSegment
-                                label={t("lightBoardTheme")}
-                                value={lightBoardTheme}
-                                onChange={onLightBoardThemeChange}
-                            />
-                            <BoardThemeSegment
-                                label={t("darkBoardTheme")}
-                                value={darkBoardTheme}
-                                onChange={onDarkBoardThemeChange}
-                            />
-                        </>
-                    ) : null}
-                    <SwitchControl
-                        label={t("showBoardCoordinates")}
-                        checked={showBoardCoordinates}
-                        onChange={onShowBoardCoordinatesChange}
-                    />
-                    <SwitchControl
-                        label={t("twoStepPlacement")}
-                        checked={twoStepPlacement}
-                        onChange={onTwoStepPlacementChange}
-                    />
-            </SettingsSection>
-
-            <SettingsSection
                 title={t("appSettings")}
-                isOpen={openSection === "app"}
+                isOpen={openSections.includes("app")}
                 onToggle={() => toggleSection("app")}
             >
-                    <div className="grid gap-2 px-4 py-3 text-sm">
-                        <span className="flex items-center justify-between gap-3">
-                            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                                {t("appearance")}
-                            </span>
-                            <AppearanceIcon
-                                isDarkMode={isDarkMode}
-                                themePreference={themePreference}
-                            />
+                <div className="grid gap-2 px-4 py-3 text-sm">
+                    <span className="flex items-center justify-between gap-3">
+                        <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                            {t("appearance")}
                         </span>
-                        <div className="w-full">
-                            <SegmentControl
-                                ariaLabel={t("appearance")}
-                                value={themePreference}
-                                options={THEME_PREFERENCE_OPTIONS}
-                                onChange={onThemePreferenceChange}
-                            />
-                        </div>
+                        <AppearanceIcon
+                            isDarkMode={isDarkMode}
+                            themePreference={themePreference}
+                        />
+                    </span>
+                    <div className="w-full">
+                        <SegmentControl
+                            ariaLabel={t("appearance")}
+                            value={themePreference}
+                            options={THEME_PREFERENCE_OPTIONS}
+                            onChange={onThemePreferenceChange}
+                        />
                     </div>
+                </div>
 
-                    {isFullscreenSupported ? (
+                {isFullscreenSupported ? (
+                    <button
+                        type="button"
+                        className={buttonRowClassName()}
+                        aria-label={
+                            isFullscreen
+                                ? t("exitFullscreen")
+                                : t("enterFullscreen")
+                        }
+                        onClick={onToggleFullscreen}
+                    >
+                        <span>
+                            {isFullscreen
+                                ? t("exitFullscreen")
+                                : t("enterFullscreen")}
+                        </span>
+                        {isFullscreen ? (
+                            <Minimize2 size={18} />
+                        ) : (
+                            <Expand size={18} />
+                        )}
+                    </button>
+                ) : null}
+
+                {showLocalData ? (
+                    <>
                         <button
                             type="button"
                             className={buttonRowClassName()}
-                            aria-label={
-                                isFullscreen
-                                    ? t("exitFullscreen")
-                                    : t("enterFullscreen")
-                            }
-                            onClick={onToggleFullscreen}
+                            onClick={onExportLocalData}
                         >
-                            <span>
-                                {isFullscreen
-                                    ? t("exitFullscreen")
-                                    : t("enterFullscreen")}
-                            </span>
-                            {isFullscreen ? (
-                                <Minimize2 size={18} />
-                            ) : (
-                                <Expand size={18} />
-                            )}
+                            <span>{t("exportLocalData")}</span>
+                            <Download size={18} />
                         </button>
-                    ) : null}
+                        <button
+                            type="button"
+                            className={buttonRowClassName()}
+                            onClick={onImportLocalDataClick}
+                        >
+                            <span>{t("importLocalData")}</span>
+                            <Upload size={18} />
+                        </button>
+                        <input
+                            ref={localDataFileInputRef}
+                            type="file"
+                            accept="application/json,.json"
+                            className="hidden"
+                            onChange={onImportLocalDataChange}
+                        />
+                        {localDataStatus ? (
+                            <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-zinc-300">
+                                {localDataStatus}
+                            </p>
+                        ) : null}
+                    </>
+                ) : null}
+            </SettingsSection>
 
-                    {showLocalData ? (
-                        <>
-                            <button
-                                type="button"
-                                className={buttonRowClassName()}
-                                onClick={onExportLocalData}
-                            >
-                                <span>{t("exportLocalData")}</span>
-                                <Download size={18} />
-                            </button>
-                            <button
-                                type="button"
-                                className={buttonRowClassName()}
-                                onClick={onImportLocalDataClick}
-                            >
-                                <span>{t("importLocalData")}</span>
-                                <Upload size={18} />
-                            </button>
-                            <input
-                                ref={localDataFileInputRef}
-                                type="file"
-                                accept="application/json,.json"
-                                className="hidden"
-                                onChange={onImportLocalDataChange}
-                            />
-                            {localDataStatus ? (
-                                <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-zinc-300">
-                                    {localDataStatus}
-                                </p>
-                            ) : null}
-                        </>
-                    ) : null}
+            <SettingsSection
+                title={t("displaySettings")}
+                isOpen={openSections.includes("board")}
+                onToggle={() => toggleSection("board")}
+            >
+                {showBoardThemes ? (
+                    <>
+                        <BoardThemeSegment
+                            label={t("lightBoardTheme")}
+                            value={lightBoardTheme}
+                            onChange={onLightBoardThemeChange}
+                        />
+                        <BoardThemeSegment
+                            label={t("darkBoardTheme")}
+                            value={darkBoardTheme}
+                            onChange={onDarkBoardThemeChange}
+                        />
+                    </>
+                ) : null}
+                <SwitchControl
+                    label={t("showBoardCoordinates")}
+                    checked={showBoardCoordinates}
+                    onChange={onShowBoardCoordinatesChange}
+                />
+                <SwitchControl
+                    label={t("twoStepPlacement")}
+                    checked={twoStepPlacement}
+                    onChange={onTwoStepPlacementChange}
+                />
             </SettingsSection>
         </div>
     );

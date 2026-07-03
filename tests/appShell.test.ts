@@ -147,7 +147,7 @@ describe("compact settings controls", () => {
         expect(markup).not.toContain("Import local data");
     });
 
-    it("renders only one settings group open by default with accordion controls", () => {
+    it("renders App above Board while keeping only Board open by default", () => {
         const markup = renderToStaticMarkup(
             createElement(SettingsControls, {
                 darkBoardTheme: "wood",
@@ -171,9 +171,40 @@ describe("compact settings controls", () => {
 
         expect(markup.match(/aria-expanded="true"/g)?.length).toBe(1);
         expect(markup).toContain('aria-expanded="false"');
+        expect(markup.indexOf("App")).toBeLessThan(markup.indexOf("Board"));
         expect(markup).toContain("Light board theme");
         expect(markup).toContain("Dark board theme");
         expect(markup).not.toContain("Export local data");
+    });
+
+    it("can render the full settings page with all sections open by default", () => {
+        const markup = renderToStaticMarkup(
+            createElement(SettingsControls, {
+                darkBoardTheme: "wood",
+                isDarkMode: false,
+                isFullscreen: false,
+                isFullscreenSupported: false,
+                lightBoardTheme: "minimalist",
+                onDarkBoardThemeChange: () => undefined,
+                onLightBoardThemeChange: () => undefined,
+                onShowBoardCoordinatesChange: () => undefined,
+                onThemePreferenceChange: () => undefined,
+                onToggleFullscreen: () => undefined,
+                onTwoStepPlacementChange: () => undefined,
+                defaultOpenSections: ["app", "board"],
+                openMultipleSections: true,
+                showBoardCoordinates: true,
+                showBoardThemes: true,
+                showLocalData: true,
+                themePreference: "system",
+                twoStepPlacement: false,
+            })
+        );
+
+        expect(markup.match(/aria-expanded="true"/g)?.length).toBe(2);
+        expect(markup.indexOf("App")).toBeLessThan(markup.indexOf("Board"));
+        expect(markup).toContain("Export local data");
+        expect(markup).toContain("Light board theme");
     });
 });
 

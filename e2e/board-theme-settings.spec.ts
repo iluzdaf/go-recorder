@@ -30,6 +30,17 @@ async function expectSegmentSelected(page: Page, groupName: string, optionName: 
   await expect(group.getByRole('button', { name: `${groupName}: ${optionName}` })).toHaveAttribute('aria-pressed', 'true')
 }
 
+async function expectAppSectionAboveBoard(page: Page) {
+  const appBox = await page.getByRole('button', { name: 'App' }).boundingBox()
+  const boardBox = await page.getByRole('button', { name: 'Board' }).boundingBox()
+
+  if (!appBox || !boardBox) {
+    throw new Error('settings section headers were not visible')
+  }
+
+  expect(appBox.y).toBeLessThan(boardBox.y)
+}
+
 async function openSettingsGroup(page: Page, groupName: 'Board' | 'App') {
   const groupButton = page.getByRole('button', { name: groupName })
   if ((await groupButton.getAttribute('aria-expanded')) !== 'true') {
@@ -62,8 +73,10 @@ test('board theme settings persist across recorder, draft, and share boards', as
   await startGameWithMetadata(page, 'Black', 'White')
   const gameUrl = page.url()
   await openFullSettingsFromDialog(page)
+  await expect(page.getByRole('button', { name: 'App' })).toHaveAttribute('aria-expanded', 'true')
   await expect(page.getByRole('button', { name: 'Board' })).toHaveAttribute('aria-expanded', 'true')
-  await expect(page.getByRole('button', { name: 'App' })).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('button', { name: 'App' })).toBeVisible()
+  await expectAppSectionAboveBoard(page)
   await chooseSegment(page, 'Light board theme', 'Wood')
   await expectSegmentSelected(page, 'Light board theme', 'Wood')
   await page.goto(gameUrl)
@@ -77,12 +90,12 @@ test('board theme settings persist across recorder, draft, and share boards', as
 
   await openFullSettingsFromDialog(page)
   await openSettingsGroup(page, 'App')
-  await expect(page.getByRole('button', { name: 'Board' })).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('button', { name: 'Board' })).toHaveAttribute('aria-expanded', 'true')
   await chooseSegment(page, 'Appearance', 'Dark')
   await expectSegmentSelected(page, 'Appearance', 'Dark')
   await expect(page.locator('html')).toHaveClass(/dark/)
   await openSettingsGroup(page, 'Board')
-  await expect(page.getByRole('button', { name: 'App' })).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('button', { name: 'App' })).toHaveAttribute('aria-expanded', 'true')
   await chooseSegment(page, 'Dark board theme', 'Wood')
   await expectSegmentSelected(page, 'Dark board theme', 'Wood')
   await page.goto(gameUrl)
@@ -138,6 +151,9 @@ test('compact settings primary controls persist and Show more opens settings pag
   await expect(page).toHaveURL(/\/settings$/)
   await page.getByRole('button', { name: 'Settings' }).click()
   await expect(page.getByRole('dialog', { name: 'Settings' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'App' })).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByRole('button', { name: 'Board' })).toHaveAttribute('aria-expanded', 'true')
+  await expectAppSectionAboveBoard(page)
   await openSettingsGroup(page, 'Board')
   await expect(page.getByRole('group', { name: 'Light board theme' })).toBeVisible()
   await expect(page.getByRole('group', { name: 'Dark board theme' })).toBeVisible()

@@ -161,6 +161,8 @@ export default function SettingsPageContent() {
                 void toggleFullscreen();
             }}
             onTwoStepPlacementChange={setTwoStepPlacement}
+            defaultOpenSections={["app", "board"]}
+            openMultipleSections={true}
             showBoardCoordinates={showBoardCoordinates}
             showBoardThemes={true}
             showLocalData={true}
