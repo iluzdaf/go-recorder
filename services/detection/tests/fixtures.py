@@ -45,6 +45,19 @@ PALE_THEME = Theme(board=225, line=170, black_fill=80, white_fill=225, white_out
 CURVE_MILD = 4.0
 CURVE_MEDIUM = 8.0
 
+# Bow shapes for curve_page (cycles across the image width).
+CYCLES_ARCH = 0.5  # single arch, the default book-page bow
+CYCLES_S = 1.0  # S-shaped wave
+CYCLES_GUTTER = 0.25  # one-sided curl toward the spine
+
+# Measured detector limits per shape: the largest amplitude (at 720px, cell
+# ~35px) where 19x19 detection still passes; one more pixel breaks it. The
+# S-curve fails far earlier because its two displacement extremes split each
+# grid line into two gradient peaks.
+CURVE_MAX_ARCH = 12.0
+CURVE_MAX_S = 4.0
+CURVE_MAX_GUTTER = 12.0
+
 # Column letters as printed on boards and diagrams ("I" is skipped).
 COLUMN_LABELS = "ABCDEFGHJKLMNOPQRST"
 
@@ -163,12 +176,13 @@ def render_board(
     return buffer.tobytes()
 
 
-def curve_page(png_bytes: bytes, amplitude_px: float) -> bytes:
+def curve_page(png_bytes: bytes, amplitude_px: float, cycles: float = 0.5) -> bytes:
     """Bow the image vertically like a photographed book page.
 
-    Applies a half-period sinusoidal vertical displacement across the width,
-    bending horizontal grid lines while vertical lines stay straight. Corners
-    remain the full-image corners.
+    Applies a sinusoidal vertical displacement across the width, bending
+    horizontal grid lines while vertical lines stay straight. Corners remain
+    the full-image corners. ``cycles`` picks the bow shape: 0.5 is a single
+    arch (default), 1.0 an S-curve, 0.25 a one-sided gutter curl.
     """
 
     image = cv2.imdecode(np.frombuffer(png_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
@@ -176,7 +190,9 @@ def curve_page(png_bytes: bytes, amplitude_px: float) -> bytes:
     map_x, map_y = np.meshgrid(
         np.arange(width, dtype=np.float32), np.arange(height, dtype=np.float32)
     )
-    map_y -= (amplitude_px * np.sin(np.pi * map_x / (width - 1))).astype(np.float32)
+    map_y -= (
+        amplitude_px * np.sin(2.0 * np.pi * cycles * map_x / (width - 1))
+    ).astype(np.float32)
     curved = cv2.remap(
         image, map_x, map_y, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE
     )
