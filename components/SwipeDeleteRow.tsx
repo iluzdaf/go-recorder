@@ -72,7 +72,7 @@ export default function SwipeDeleteRow({
             </button>
             <div
                 className={`flex shrink-0 items-stretch overflow-hidden bg-red-600 text-white transition-[width] dark:bg-red-700 ${
-                    isRevealed ? "w-28" : "w-0"
+                    isRevealed ? "w-12" : "w-0"
                 }`}
                 aria-hidden={!isRevealed}
             >
@@ -85,7 +85,6 @@ export default function SwipeDeleteRow({
                     className="flex h-full w-full items-center justify-center gap-1 px-3 text-sm font-medium hover:bg-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white dark:hover:bg-red-600"
                 >
                     <Trash2 size={16} />
-                    {isRevealed && <span>{deleteLabel}</span>}
                 </button>
             </div>
         </div>

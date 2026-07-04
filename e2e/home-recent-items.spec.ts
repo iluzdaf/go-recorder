@@ -154,8 +154,9 @@ test('home recent delete removes games and drafts from all list surfaces', async
   await page.mouse.move(gameRowBox.x + gameRowBox.width - 80, gameRowBox.y + gameRowBox.height / 2)
   await page.mouse.up()
 
-  await expect(page.getByText('Delete game')).toBeVisible()
-  await page.getByRole('button', { name: 'Delete game' }).click()
+  const deleteGameButton = page.getByRole('button', { name: 'Delete game' })
+  await expect(deleteGameButton).toBeVisible()
+  await deleteGameButton.click()
   await expect(page.getByRole('button', { name: 'Home Black vs Home White' })).not.toBeVisible()
 
   await page.goto('/games')
@@ -174,8 +175,9 @@ test('home recent delete removes games and drafts from all list surfaces', async
   await page.mouse.move(draftRowBox.x + draftRowBox.width - 80, draftRowBox.y + draftRowBox.height / 2)
   await page.mouse.up()
 
-  await expect(page.getByText('Delete draft')).toBeVisible()
-  await page.getByRole('button', { name: 'Delete draft' }).click()
+  const deleteDraftButton = page.getByRole('button', { name: 'Delete draft' })
+  await expect(deleteDraftButton).toBeVisible()
+  await deleteDraftButton.click()
   await expect(page.getByRole('button', { name: 'Draft Black vs Draft White' })).not.toBeVisible()
 
   await page.goto('/drafts')
