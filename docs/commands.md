@@ -65,6 +65,9 @@
 
 - `pnpm typecheck`
   - Runs `tsc --noEmit`.
+- `pnpm typecheck:clean`
+  - Removes `.next`, runs `pnpm build`, then runs `pnpm typecheck`.
+  - Use when stale generated `.next` type files are suspected.
 - `pnpm test`
   - Runs Vitest.
 - `pnpm test -- <test-file>`

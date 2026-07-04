@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createLocalDraft, createLocalGame, getAllLocalDrafts, deleteLocalRecord } from "../lib/localGames";
 import type { CreateLocalDraftInput } from "../lib/localGames";
+import { LOCAL_DATA_MIGRATION_CHANGE_EVENT } from "../lib/localDataMigration";
+import { deleteLocalEditableRecord } from "../lib/localRecordDeletion";
 
 function createStorageMock() {
     const items = new Map<string, string>();
@@ -27,7 +29,10 @@ const BASE_DRAFT: CreateLocalDraftInput = {
 };
 
 beforeEach(() => {
-    vi.stubGlobal("window", { localStorage: createStorageMock() });
+    vi.stubGlobal("window", {
+        dispatchEvent: vi.fn(),
+        localStorage: createStorageMock(),
+    });
 });
 
 describe("getAllLocalDrafts", () => {
@@ -99,5 +104,18 @@ describe("deleteLocalRecord (drafts)", () => {
         deleteLocalRecord("does-not-exist");
 
         expect(getAllLocalDrafts()).toHaveLength(1);
+    });
+
+    it("removes the draft immediately and notifies recent-list surfaces", () => {
+        const draft = createLocalDraft(BASE_DRAFT);
+
+        deleteLocalEditableRecord(draft.id);
+
+        expect(getAllLocalDrafts()).toEqual([]);
+        expect(window.dispatchEvent).toHaveBeenCalledWith(
+            expect.objectContaining({
+                type: LOCAL_DATA_MIGRATION_CHANGE_EVENT,
+            })
+        );
     });
 });

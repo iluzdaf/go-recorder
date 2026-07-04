@@ -34,6 +34,7 @@
 ## Verification
 
 - Prefer `pnpm typecheck` for TypeScript changes.
+- If `pnpm typecheck` fails because of stale generated `.next` duplicate type files, run `pnpm typecheck:clean` and report both results.
 - Prefer focused Vitest targets for changed logic.
 - Prefer focused ESLint targets for changed files.
 - Run `git diff --check` before handoff.

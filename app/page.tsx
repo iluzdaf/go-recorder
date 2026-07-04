@@ -3,19 +3,28 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo, useRef } from "react";
 import type { BoardSize } from "@/components/types";
-import { createLocalDraft, createLocalGame } from "@/lib/localGames";
+import {
+    createLocalDraft,
+    createLocalGame,
+} from "@/lib/localGames";
 import type { LocalDraftRecord, LocalGameRecord } from "@/lib/localGames";
 import {
     createDefaultLocalBoardDraftInput,
     createLocalGameInputFromForm,
 } from "@/lib/localGameSetup";
 import { Grid3x3, Image as ImageIcon } from "lucide-react";
-import { GameBoardThumbnail, getDraftTitle, getGameTitle } from "@/components/GameListItem";
+import {
+    GameBoardThumbnail,
+    getDraftTitle,
+    getGameTitle,
+} from "@/components/GameListItem";
 import ImageDraftCreator from "@/components/ImageDraftCreator";
+import SwipeDeleteRow from "@/components/SwipeDeleteRow";
 import { navigateWithinApp } from "@/lib/fullscreenNavigation";
 import { t } from "@/lib/i18n";
 import { loadHomeSetup, saveHomeSetup } from "@/lib/homeSetup";
 import { LOCAL_DATA_MIGRATION_CHANGE_EVENT } from "@/lib/localDataMigration";
+import { deleteLocalEditableRecord } from "@/lib/localRecordDeletion";
 import {
     createHomeRecentPreviews,
     createLoadingHomeRecentState,
@@ -36,6 +45,7 @@ export default function Home() {
   const [isImportingImage, setIsImportingImage] = useState(false);
   const [draftSource, setDraftSource] = useState<"blank" | "image">("blank");
   const [recentState, setRecentState] = useState(createLoadingHomeRecentState);
+  const [revealedDeleteId, setRevealedDeleteId] = useState<string | null>(null);
   const setupLoaded = useRef(false);
 
   useEffect(() => {
@@ -115,6 +125,12 @@ export default function Home() {
         path: `/drafts/${draft.id}`,
         push: router.push,
     });
+  }
+
+  function handleDeleteRecentRecord(recordId: string) {
+    deleteLocalEditableRecord(recordId);
+    setRevealedDeleteId(null);
+    setRecentState(loadHomeRecentState());
   }
 
   return (
@@ -197,6 +213,9 @@ export default function Home() {
                   push: router.push,
                 });
               }}
+              onDeleteGame={handleDeleteRecentRecord}
+              onRevealDelete={setRevealedDeleteId}
+              revealedDeleteId={revealedDeleteId}
             />
           )}
         </form>
@@ -261,6 +280,9 @@ export default function Home() {
                   push: router.push,
                 });
               }}
+              onDeleteDraft={handleDeleteRecentRecord}
+              onRevealDelete={setRevealedDeleteId}
+              revealedDeleteId={revealedDeleteId}
             />
           )}
         </section>
@@ -276,13 +298,19 @@ export default function Home() {
 function RecentGamesSection({
   games,
   isLoading,
+  onDeleteGame,
   onOpenGame,
+  onRevealDelete,
   onShowAll,
+  revealedDeleteId,
 }: {
   games: HomeRecentPreview<LocalGameRecord>[];
   isLoading: boolean;
+  onDeleteGame: (gameId: string) => void;
   onOpenGame: (gameId: string) => void;
+  onRevealDelete: (gameId: string) => void;
   onShowAll: () => void;
+  revealedDeleteId: string | null;
 }) {
   return (
     <RecentSectionFrame
@@ -294,16 +322,19 @@ function RecentGamesSection({
     >
       <ul className="flex flex-col">
         {games.map(({ previewKey, record: game, title }) => (
-          <li key={previewKey}>
-            <button
-              type="button"
-              aria-label={title}
-              className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-zinc-50 dark:hover:bg-neutral-750"
-              onClick={() => onOpenGame(game.id)}
+          <li key={previewKey} className="py-1">
+            <SwipeDeleteRow
+              deleteLabel={t("deleteGame")}
+              isRevealed={revealedDeleteId === game.id}
+              onReveal={() => onRevealDelete(game.id)}
+              onDelete={() => onDeleteGame(game.id)}
+              onActivate={() => onOpenGame(game.id)}
             >
-              <GameBoardThumbnail game={game} />
+              <GameBoardThumbnail game={game} size={56} />
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="truncate text-sm font-medium">{title}</span>
+                <span className="truncate text-sm font-semibold text-zinc-950 dark:text-white">
+                  {title}
+                </span>
                 <span className="text-xs text-zinc-500 dark:text-zinc-400">
                   {game.boardSize}×{game.boardSize}
                   {" · "}
@@ -312,7 +343,7 @@ function RecentGamesSection({
                   {new Date(game.updatedAt).toLocaleDateString()}
                 </span>
               </div>
-            </button>
+            </SwipeDeleteRow>
           </li>
         ))}
       </ul>
@@ -323,13 +354,19 @@ function RecentGamesSection({
 function RecentDraftsSection({
   drafts,
   isLoading,
+  onDeleteDraft,
   onOpenDraft,
+  onRevealDelete,
   onShowAll,
+  revealedDeleteId,
 }: {
   drafts: HomeRecentPreview<LocalDraftRecord>[];
   isLoading: boolean;
+  onDeleteDraft: (draftId: string) => void;
   onOpenDraft: (draftId: string) => void;
+  onRevealDelete: (draftId: string) => void;
   onShowAll: () => void;
+  revealedDeleteId: string | null;
 }) {
   return (
     <RecentSectionFrame
@@ -341,21 +378,24 @@ function RecentDraftsSection({
     >
       <ul className="flex flex-col">
         {drafts.map(({ previewKey, record: draft, title }) => (
-          <li key={previewKey}>
-            <button
-              type="button"
-              aria-label={title}
-              className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-zinc-50 dark:hover:bg-neutral-750"
-              onClick={() => onOpenDraft(draft.id)}
+          <li key={previewKey} className="py-1">
+            <SwipeDeleteRow
+              deleteLabel={t("deleteDraft")}
+              isRevealed={revealedDeleteId === draft.id}
+              onReveal={() => onRevealDelete(draft.id)}
+              onDelete={() => onDeleteDraft(draft.id)}
+              onActivate={() => onOpenDraft(draft.id)}
             >
-              <GameBoardThumbnail game={draft} />
+              <GameBoardThumbnail game={draft} size={56} />
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="truncate text-sm font-medium">{title}</span>
+                <span className="truncate text-sm font-semibold text-zinc-950 dark:text-white">
+                  {title}
+                </span>
                 <span className="text-xs text-zinc-500 dark:text-zinc-400">
                   {new Date(draft.updatedAt).toLocaleDateString()}
                 </span>
               </div>
-            </button>
+            </SwipeDeleteRow>
           </li>
         ))}
       </ul>
@@ -406,8 +446,8 @@ function RecentLoadingRows() {
     <ul className="flex flex-col" aria-hidden>
       {Array.from({ length: HOME_RECENT_PLACEHOLDER_COUNT }, (_, index) => (
         <li key={index}>
-          <div className="flex w-full items-center gap-3 rounded-lg px-2 py-2">
-            <div className="h-40 w-40 shrink-0 rounded bg-zinc-200 dark:bg-neutral-700" />
+          <div className="flex w-full items-center gap-3 rounded-lg px-3 py-3">
+            <div className="h-16 w-16 shrink-0 rounded bg-zinc-200 dark:bg-neutral-700" />
             <div className="flex min-w-0 flex-1 flex-col gap-2">
               <div className="h-4 w-28 rounded bg-zinc-200 dark:bg-neutral-700" />
               <div className="h-3 w-36 rounded bg-zinc-100 dark:bg-neutral-750" />
