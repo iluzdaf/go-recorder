@@ -32,6 +32,8 @@ RING_DARK_DELTA = 30.0
 RING_COVERAGE_THRESHOLD = 0.42
 RING_SAMPLES = 36
 RING_BAND_FRACS = (0.30, 0.34, 0.38, 0.42, 0.46)
+ANNULUS_RADIUS_FRAC = 0.28
+ANNULUS_SAMPLES = 24
 
 Corner = tuple[float, float]
 
@@ -202,6 +204,25 @@ def _ring_coverage(
     return dark / RING_SAMPLES
 
 
+def _annulus_median(
+    gray: np.ndarray, cx: int, cy: int, cell: float
+) -> float | None:
+    """Median brightness on a circle inside the stone body. The radius sits
+    outside printed labels (move numbers on kifu stones) but inside a white
+    stone's outline ring, so central text cannot drag the estimate dark."""
+
+    height, width = gray.shape
+    radius = cell * ANNULUS_RADIUS_FRAC
+    samples: list[float] = []
+    for k in range(ANNULUS_SAMPLES):
+        angle = 2.0 * np.pi * k / ANNULUS_SAMPLES
+        px = int(round(cx + radius * np.cos(angle)))
+        py = int(round(cy + radius * np.sin(angle)))
+        if 0 <= px < width and 0 <= py < height:
+            samples.append(float(gray[py, px]))
+    return float(np.median(samples)) if samples else None
+
+
 def _detect_stones(
     gray: np.ndarray,
     xs: list[int],
@@ -225,15 +246,24 @@ def _detect_stones(
                 background = fallback_background
 
             diff = interior - background
-            if diff < -FILL_DARK_DELTA:
+            annulus = _annulus_median(gray, x, y, cell)
+            annulus_diff = annulus - background if annulus is not None else diff
+            if diff < -FILL_DARK_DELTA and annulus_diff < -FILL_DARK_DELTA:
                 # A solid dark fill: a black stone (any board), or a white stone
-                # on a dark board is handled by the bright branch below.
+                # on a dark board is handled by the bright branch below. The
+                # annulus check keeps dark printed labels on a white stone from
+                # reading as black; a vetoed dark centre falls through to the
+                # branches below.
                 stones.append(SetupStone(x=start_x + i, y=start_y + j, color="B"))
                 confidences.append(min(1.0, -diff / (2.0 * FILL_DARK_DELTA)))
-            elif diff > FILL_LIGHT_DELTA:
+            elif diff > FILL_LIGHT_DELTA or annulus_diff > FILL_LIGHT_DELTA:
                 # A solid bright fill: a white stone on a wood or dark board.
+                # The annulus recovers white stones whose centre median was
+                # dragged to board level by printed labels.
                 stones.append(SetupStone(x=start_x + i, y=start_y + j, color="W"))
-                confidences.append(min(1.0, diff / (2.0 * FILL_LIGHT_DELTA)))
+                confidences.append(
+                    min(1.0, max(diff, annulus_diff) / (2.0 * FILL_LIGHT_DELTA))
+                )
             else:
                 # Fill matches the board (e.g. an outlined white stone on a
                 # light board): look for the stone's dark outline ring.
