@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import type { BoardSize } from "@/components/types";
-import { createLocalDraft, createLocalGame, getAllLocalDrafts, getAllLocalGames } from "@/lib/localGames";
+import { createLocalDraft, createLocalGame } from "@/lib/localGames";
 import type { LocalDraftRecord, LocalGameRecord } from "@/lib/localGames";
 import {
     createDefaultLocalBoardDraftInput,
@@ -16,9 +16,16 @@ import { navigateWithinApp } from "@/lib/fullscreenNavigation";
 import { t } from "@/lib/i18n";
 import { loadHomeSetup, saveHomeSetup } from "@/lib/homeSetup";
 import { LOCAL_DATA_MIGRATION_CHANGE_EVENT } from "@/lib/localDataMigration";
+import {
+    createHomeRecentPreviews,
+    createLoadingHomeRecentState,
+    loadHomeRecentState,
+    shouldRenderHomeRecentSection,
+    type HomeRecentPreview,
+} from "@/lib/homeRecent";
 
-const RECENT_GAME_LIMIT = 3;
 const HANDICAP_OPTIONS = [0, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+const HOME_RECENT_PLACEHOLDER_COUNT = 1;
 
 export default function Home() {
   const router = useRouter();
@@ -28,14 +35,12 @@ export default function Home() {
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
   const [isImportingImage, setIsImportingImage] = useState(false);
   const [draftSource, setDraftSource] = useState<"blank" | "image">("blank");
-  const [recentGames, setRecentGames] = useState<LocalGameRecord[]>([]);
-  const [recentDrafts, setRecentDrafts] = useState<LocalDraftRecord[]>([]);
+  const [recentState, setRecentState] = useState(createLoadingHomeRecentState);
   const setupLoaded = useRef(false);
 
   useEffect(() => {
     const refreshLocalData = () => {
-      setRecentGames(getAllLocalGames().slice(0, RECENT_GAME_LIMIT));
-      setRecentDrafts(getAllLocalDrafts().slice(0, RECENT_GAME_LIMIT));
+      setRecentState(loadHomeRecentState());
     };
 
     const timeoutId = window.setTimeout(() => {
@@ -63,6 +68,15 @@ export default function Home() {
       );
     };
   }, []);
+
+  const recentGamePreviews = useMemo(
+    () => createHomeRecentPreviews(recentState.games, getGameTitle),
+    [recentState.games]
+  );
+  const recentDraftPreviews = useMemo(
+    () => createHomeRecentPreviews(recentState.drafts, getDraftTitle),
+    [recentState.drafts]
+  );
 
   useEffect(() => {
     if (!setupLoaded.current) return;
@@ -108,6 +122,7 @@ export default function Home() {
       <div className="grid w-full max-w-3xl gap-4 mt-16 sm:grid-cols-2 sm:items-start">
         <form
           onSubmit={handleRecordGame}
+          data-testid="record-game-card"
           className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
         >
           <div className="flex flex-col gap-1">
@@ -166,61 +181,30 @@ export default function Home() {
             {isCreatingGame ? t("recording") : t("recordGame")}
           </button>
 
-          {recentGames.length > 0 && (
-            <div className="flex flex-col gap-2 border-t border-zinc-200 pt-4 dark:border-neutral-700">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                  {t("recentGames")}
-                </span>
-                <button
-                  type="button"
-                  className="text-sm text-sky-700 hover:underline dark:text-sky-400"
-                  onClick={() => {
-                    navigateWithinApp({
-                      path: "/games",
-                      push: router.push,
-                    });
-                  }}
-                >
-                  {t("showMoreGames")}
-                </button>
-              </div>
-              <ul className="flex flex-col">
-                {recentGames.map((game) => (
-                  <li key={game.id}>
-                    <button
-                      type="button"
-                      aria-label={getGameTitle(game)}
-                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-zinc-50 dark:hover:bg-neutral-750"
-                      onClick={() => {
-                        navigateWithinApp({
-                          path: `/games/${game.id}`,
-                          push: router.push,
-                        });
-                      }}
-                    >
-                      <GameBoardThumbnail game={game} />
-                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="truncate text-sm font-medium">
-                          {getGameTitle(game)}
-                        </span>
-                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                          {game.boardSize}×{game.boardSize}
-                          {" · "}
-                          {game.gameState.moves.length} {t("moves")}
-                          {" · "}
-                          {new Date(game.updatedAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {shouldRenderHomeRecentSection(recentState, recentState.games) && (
+            <RecentGamesSection
+              isLoading={recentState.status === "loading"}
+              games={recentGamePreviews}
+              onShowAll={() => {
+                navigateWithinApp({
+                  path: "/games",
+                  push: router.push,
+                });
+              }}
+              onOpenGame={(gameId) => {
+                navigateWithinApp({
+                  path: `/games/${gameId}`,
+                  push: router.push,
+                });
+              }}
+            />
           )}
         </form>
 
-        <section className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
+        <section
+          data-testid="create-draft-card"
+          className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
+        >
           <div className="flex gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-900">
             {(["blank", "image"] as const).map((source) => {
               const label =
@@ -261,53 +245,23 @@ export default function Home() {
             {isCreatingDraft ? t("creatingDraft") : t("createDraft")}
           </button>
 
-          {recentDrafts.length > 0 && (
-            <div className="flex flex-col gap-2 border-t border-zinc-200 pt-4 dark:border-neutral-700">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                  {t("recentDrafts")}
-                </span>
-                <button
-                  type="button"
-                  className="text-sm text-sky-700 hover:underline dark:text-sky-400"
-                  onClick={() => {
-                    navigateWithinApp({
-                      path: "/drafts",
-                      push: router.push,
-                    });
-                  }}
-                >
-                  {t("showMoreDrafts")}
-                </button>
-              </div>
-              <ul className="flex flex-col">
-                {recentDrafts.map((draft) => (
-                  <li key={draft.id}>
-                    <button
-                      type="button"
-                      aria-label={getDraftTitle(draft)}
-                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-zinc-50 dark:hover:bg-neutral-750"
-                      onClick={() => {
-                        navigateWithinApp({
-                          path: `/drafts/${draft.id}`,
-                          push: router.push,
-                        });
-                      }}
-                    >
-                      <GameBoardThumbnail game={draft} />
-                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="truncate text-sm font-medium">
-                          {getDraftTitle(draft)}
-                        </span>
-                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                          {new Date(draft.updatedAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {shouldRenderHomeRecentSection(recentState, recentState.drafts) && (
+            <RecentDraftsSection
+              isLoading={recentState.status === "loading"}
+              drafts={recentDraftPreviews}
+              onShowAll={() => {
+                navigateWithinApp({
+                  path: "/drafts",
+                  push: router.push,
+                });
+              }}
+              onOpenDraft={(draftId) => {
+                navigateWithinApp({
+                  path: `/drafts/${draftId}`,
+                  push: router.push,
+                });
+              }}
+            />
           )}
         </section>
       </div>
@@ -316,5 +270,151 @@ export default function Home() {
         <ImageDraftCreator onClose={() => setIsImportingImage(false)} />
       )}
     </main>
+  );
+}
+
+function RecentGamesSection({
+  games,
+  isLoading,
+  onOpenGame,
+  onShowAll,
+}: {
+  games: HomeRecentPreview<LocalGameRecord>[];
+  isLoading: boolean;
+  onOpenGame: (gameId: string) => void;
+  onShowAll: () => void;
+}) {
+  return (
+    <RecentSectionFrame
+      title={t("recentGames")}
+      showAllLabel={t("showMoreGames")}
+      isLoading={isLoading}
+      testId="recent-games-section"
+      onShowAll={onShowAll}
+    >
+      <ul className="flex flex-col">
+        {games.map(({ previewKey, record: game, title }) => (
+          <li key={previewKey}>
+            <button
+              type="button"
+              aria-label={title}
+              className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-zinc-50 dark:hover:bg-neutral-750"
+              onClick={() => onOpenGame(game.id)}
+            >
+              <GameBoardThumbnail game={game} />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="truncate text-sm font-medium">{title}</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {game.boardSize}×{game.boardSize}
+                  {" · "}
+                  {game.gameState.moves.length} {t("moves")}
+                  {" · "}
+                  {new Date(game.updatedAt).toLocaleDateString()}
+                </span>
+              </div>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </RecentSectionFrame>
+  );
+}
+
+function RecentDraftsSection({
+  drafts,
+  isLoading,
+  onOpenDraft,
+  onShowAll,
+}: {
+  drafts: HomeRecentPreview<LocalDraftRecord>[];
+  isLoading: boolean;
+  onOpenDraft: (draftId: string) => void;
+  onShowAll: () => void;
+}) {
+  return (
+    <RecentSectionFrame
+      title={t("recentDrafts")}
+      showAllLabel={t("showMoreDrafts")}
+      isLoading={isLoading}
+      testId="recent-drafts-section"
+      onShowAll={onShowAll}
+    >
+      <ul className="flex flex-col">
+        {drafts.map(({ previewKey, record: draft, title }) => (
+          <li key={previewKey}>
+            <button
+              type="button"
+              aria-label={title}
+              className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-zinc-50 dark:hover:bg-neutral-750"
+              onClick={() => onOpenDraft(draft.id)}
+            >
+              <GameBoardThumbnail game={draft} />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="truncate text-sm font-medium">{title}</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {new Date(draft.updatedAt).toLocaleDateString()}
+                </span>
+              </div>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </RecentSectionFrame>
+  );
+}
+
+function RecentSectionFrame({
+  children,
+  isLoading,
+  onShowAll,
+  showAllLabel,
+  testId,
+  title,
+}: {
+  children: React.ReactNode;
+  isLoading: boolean;
+  onShowAll: () => void;
+  showAllLabel: string;
+  testId: string;
+  title: string;
+}) {
+  return (
+    <div
+      className="flex flex-col gap-2 border-t border-zinc-200 pt-4 dark:border-neutral-700"
+      aria-busy={isLoading}
+      data-testid={testId}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+          {title}
+        </span>
+        <button
+          type="button"
+          className="text-sm text-sky-700 hover:underline dark:text-sky-400"
+          onClick={onShowAll}
+        >
+          {showAllLabel}
+        </button>
+      </div>
+      {isLoading ? <RecentLoadingRows /> : children}
+    </div>
+  );
+}
+
+function RecentLoadingRows() {
+  return (
+    <ul className="flex flex-col" aria-hidden>
+      {Array.from({ length: HOME_RECENT_PLACEHOLDER_COUNT }, (_, index) => (
+        <li key={index}>
+          <div className="flex w-full items-center gap-3 rounded-lg px-2 py-2">
+            <div className="h-40 w-40 shrink-0 rounded bg-zinc-200 dark:bg-neutral-700" />
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <div className="h-4 w-28 rounded bg-zinc-200 dark:bg-neutral-700" />
+              <div className="h-3 w-36 rounded bg-zinc-100 dark:bg-neutral-750" />
+            </div>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }

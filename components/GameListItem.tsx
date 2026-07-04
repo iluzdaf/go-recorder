@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { LocalDraftRecord, LocalGameRecord } from "@/lib/localGames";
 import { getFinalPositionFromGameState } from "@/lib/shareFinalPosition";
 import { getPositionViewRange } from "@/lib/positionView";
@@ -56,7 +57,11 @@ export function getGameTitle(game: LocalGameRecord) {
     return t("unnamedGame");
 }
 
-export function GameBoardThumbnail({ game }: { game: BoardPreviewRecord }) {
+export const GameBoardThumbnail = memo(function GameBoardThumbnail({
+    game,
+}: {
+    game: BoardPreviewRecord;
+}) {
     const n = game.boardSize;
     const gridSize = THUMB_SIZE - THUMB_PAD * 2;
 
@@ -188,4 +193,4 @@ export function GameBoardThumbnail({ game }: { game: BoardPreviewRecord }) {
             )}
         </svg>
     );
-}
+});
