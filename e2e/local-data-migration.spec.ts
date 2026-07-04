@@ -5,14 +5,21 @@ const MINIMAL_PNG_DATA_URL =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI6QAAAABJRU5ErkJggg=='
 
 async function openSettings(page: Page) {
-    const showHeaderButton = page.locator('button[aria-label="Show header"]')
+    if (new URL(page.url()).pathname === '/settings') {
+        await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+        return
+    }
+
+    const showHeaderButton = page.getByRole('button', { name: 'Show header' })
     if (await showHeaderButton.isVisible().catch(() => false)) {
         await showHeaderButton.click()
     }
-    await page.click('button[aria-label="Settings"]')
-    await expect(page.locator('#settings-menu')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Settings' }).click()
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible()
     await page.getByRole('button', { name: 'Show more' }).click()
     await expect(page).toHaveURL(/\/settings$/)
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
 }
 
 async function closeSettings(page: Page) {
@@ -22,7 +29,7 @@ async function closeSettings(page: Page) {
     }
 
     await page.keyboard.press('Escape')
-    await expect(page.locator('#settings-menu')).not.toBeVisible()
+    await expect(page.getByRole('dialog', { name: 'Settings' })).not.toBeVisible()
 }
 
 async function clearLocalGameRecords(page: Page) {
