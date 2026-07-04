@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
 import type { LocalDraftRecord } from "@/lib/localGames";
 import { getAllLocalDrafts } from "@/lib/localGames";
 import { GameBoardThumbnail, getDraftTitle } from "@/components/GameListItem";
@@ -85,10 +84,6 @@ export default function DraftsPage() {
                                         ).toLocaleDateString()}
                                     </span>
                                 </div>
-                                <Pencil
-                                    size={15}
-                                    className="shrink-0 text-zinc-400 dark:text-zinc-500"
-                                />
                             </SwipeDeleteRow>
                         </li>
                     ))}
