@@ -45,6 +45,9 @@ PALE_THEME = Theme(board=225, line=170, black_fill=80, white_fill=225, white_out
 CURVE_MILD = 4.0
 CURVE_MEDIUM = 8.0
 
+# Column letters as printed on boards and diagrams ("I" is skipped).
+COLUMN_LABELS = "ABCDEFGHJKLMNOPQRST"
+
 
 def render_board(
     size: int,
@@ -56,6 +59,7 @@ def render_board(
     theme: Theme = WOOD_THEME,
     annotations: list[tuple[int, int, str]] | None = None,
     annotation_thickness: int = 1,
+    coordinates: bool = False,
 ) -> bytes:
     """Render a board and return PNG-encoded bytes.
 
@@ -63,6 +67,8 @@ def render_board(
     ``annotations`` are ``(column, row, text)`` printed labels, drawn after
     stones like a book kifu: white text on black stones, black text on white
     stones, line-coloured marks on empty intersections.
+    ``coordinates`` prints column letters and row numbers in the margins of
+    real sides, like a book diagram or app screenshot.
     """
 
     sides = real_sides or ALL_REAL
@@ -127,6 +133,29 @@ def render_board(
             annotation_thickness,
             cv2.LINE_AA,
         )
+
+    if coordinates:
+        color = (theme.line,) * 3
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        scale = 0.45
+
+        def put_centered(text: str, cx: int, cy: int) -> None:
+            (width, height), _ = cv2.getTextSize(text, font, scale, 1)
+            origin = (int(cx - round(width / 2)), int(cy + round(height / 2)))
+            cv2.putText(image, text, origin, font, scale, color, 1, cv2.LINE_AA)
+
+        for column, x in enumerate(xs):
+            if sides["top"]:
+                put_centered(COLUMN_LABELS[column], int(x), margin // 2)
+            if sides["bottom"]:
+                put_centered(COLUMN_LABELS[column], int(x), img_size - 1 - margin // 2)
+        for row, y in enumerate(ys):
+            # Rows are numbered from the bottom, as printed on real boards.
+            text = str(size - row)
+            if sides["left"]:
+                put_centered(text, margin // 2, int(y))
+            if sides["right"]:
+                put_centered(text, img_size - 1 - margin // 2, int(y))
 
     ok, buffer = cv2.imencode(".png", image)
     if not ok:
