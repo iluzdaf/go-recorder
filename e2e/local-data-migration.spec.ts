@@ -4,6 +4,8 @@ import fs from 'fs'
 const MINIMAL_PNG_DATA_URL =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI6QAAAABJRU5ErkJggg=='
 
+const BOARD_DRAFT_ROW_NAME = /^Draft\b/
+
 async function openSettings(page: Page) {
     if (new URL(page.url()).pathname === '/settings') {
         await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
@@ -30,6 +32,10 @@ async function closeSettings(page: Page) {
 
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog', { name: 'Settings' })).not.toBeVisible()
+}
+
+function getBoardDraftRow(page: Page) {
+    return page.getByTestId('recent-drafts-section').getByRole('button', { name: BOARD_DRAFT_ROW_NAME })
 }
 
 async function clearLocalGameRecords(page: Page) {
@@ -160,7 +166,7 @@ test('export and import restores local games and drafts', async ({ page }) => {
     // Close settings and verify records appear on home page
     await closeSettings(page)
     await expect(page.locator('text=MigrationTestBlack')).toBeVisible()
-    await expect(page.locator('button[aria-label="Draft"]')).toBeVisible()
+    await expect(getBoardDraftRow(page)).toBeVisible()
 })
 
 test('export and import preserves image source for image-created draft', async ({ page }) => {
@@ -259,7 +265,7 @@ test('export and import preserves image source for image-created draft', async (
 
     // Navigate to the imported draft and verify the source image overlay is available
     await closeSettings(page)
-    await page.locator('button[aria-label="Draft"]').first().click()
+    await getBoardDraftRow(page).click()
     await expect(page).toHaveURL(/\/drafts\//)
     await expect(page.locator('button[aria-label="Show source image"]')).toBeVisible()
 })
