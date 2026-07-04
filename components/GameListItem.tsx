@@ -14,8 +14,7 @@ type BoardPreviewRecord = {
     baseMoveCount?: number | null;
 };
 
-const THUMB_SIZE = 160;
-const THUMB_PAD = 6;
+const DEFAULT_THUMB_SIZE = 160;
 
 function getStarPoints(boardSize: number): [number, number][] {
     if (boardSize === 19) {
@@ -59,11 +58,14 @@ export function getGameTitle(game: LocalGameRecord) {
 
 export const GameBoardThumbnail = memo(function GameBoardThumbnail({
     game,
+    size = DEFAULT_THUMB_SIZE,
 }: {
     game: BoardPreviewRecord;
+    size?: number;
 }) {
     const n = game.boardSize;
-    const gridSize = THUMB_SIZE - THUMB_PAD * 2;
+    const thumbPad = Math.max(4, Math.round(size * 0.04));
+    const gridSize = size - thumbPad * 2;
 
     const range = getPositionViewRange({
         boardSize: n,
@@ -80,8 +82,8 @@ export const GameBoardThumbnail = memo(function GameBoardThumbnail({
     );
     const renderedWidth = (visibleColumns - 1) * step;
     const renderedHeight = (visibleRows - 1) * step;
-    const ox = THUMB_PAD + (gridSize - renderedWidth) / 2;
-    const oy = THUMB_PAD + (gridSize - renderedHeight) / 2;
+    const ox = thumbPad + (gridSize - renderedWidth) / 2;
+    const oy = thumbPad + (gridSize - renderedHeight) / 2;
     const stoneR = Math.max(2, step * 0.44);
     const fontSize = Math.max(6, stoneR * 0.95);
 
@@ -105,14 +107,14 @@ export const GameBoardThumbnail = memo(function GameBoardThumbnail({
 
     return (
         <svg
-            width={THUMB_SIZE}
-            height={THUMB_SIZE}
+            width={size}
+            height={size}
             className="shrink-0 rounded"
             aria-hidden
         >
             <rect
-                width={THUMB_SIZE}
-                height={THUMB_SIZE}
+                width={size}
+                height={size}
                 className="fill-zinc-200 dark:fill-neutral-700"
                 rx={4}
             />

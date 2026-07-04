@@ -2,11 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { LocalDraftRecord, LocalGameRecord } from "../lib/localGames";
 import {
+    createLocalDraft,
+    createLocalGame,
+    getAllLocalDrafts,
+    getAllLocalGames,
+} from "../lib/localGames";
+import type { CreateLocalDraftInput, CreateLocalGameInput } from "../lib/localGames";
+import {
     createHomeRecentPreviews,
     createLoadingHomeRecentState,
     loadHomeRecentState,
     shouldRenderHomeRecentSection,
 } from "../lib/homeRecent";
+import { deleteLocalEditableRecord } from "../lib/localRecordDeletion";
 import type { GameState } from "../components/types";
 
 const emptyGameState: GameState = {
@@ -53,6 +61,46 @@ function createDraft(overrides: Partial<LocalDraftRecord>): LocalDraftRecord {
         ...overrides,
     };
 }
+
+function createStorageMock() {
+    const items = new Map<string, string>();
+
+    return {
+        clear: vi.fn(() => {
+            items.clear();
+        }),
+        getItem: vi.fn((key: string) => items.get(key) ?? null),
+        key: vi.fn((index: number) => Array.from(items.keys())[index] ?? null),
+        removeItem: vi.fn((key: string) => {
+            items.delete(key);
+        }),
+        setItem: vi.fn((key: string, value: string) => {
+            items.set(key, value);
+        }),
+        get length() {
+            return items.size;
+        },
+    };
+}
+
+const BASE_LOCAL_GAME: CreateLocalGameInput = {
+    boardSize: 19,
+    gameState: emptyGameState,
+    blackPlayerName: "Home Black",
+    whitePlayerName: "Home White",
+    handicap: 0,
+};
+
+const BASE_LOCAL_DRAFT: CreateLocalDraftInput = {
+    draftKind: "board",
+    boardSize: 19,
+    gameState: emptyGameState,
+    blackPlayerName: "Draft Black",
+    whitePlayerName: "Draft White",
+    handicap: 0,
+    parentShareSlug: null,
+    baseMoveCount: null,
+};
 
 describe("home recent state", () => {
     beforeEach(() => {
@@ -156,5 +204,32 @@ describe("home recent state", () => {
         expect(refreshed.drafts.map((draft) => draft.id)).toEqual([
             "imported-draft",
         ]);
+    });
+
+    it("drops deleted games and drafts when reloaded from local storage", () => {
+        vi.stubGlobal("window", {
+            dispatchEvent: vi.fn(),
+            localStorage: createStorageMock(),
+        });
+        const game = createLocalGame(BASE_LOCAL_GAME);
+        const draft = createLocalDraft(BASE_LOCAL_DRAFT);
+
+        expect(
+            loadHomeRecentState({
+                loadGames: getAllLocalGames,
+                loadDrafts: getAllLocalDrafts,
+            }).games.map((record) => record.id)
+        ).toEqual([game.id]);
+
+        deleteLocalEditableRecord(game.id);
+        deleteLocalEditableRecord(draft.id);
+
+        const refreshed = loadHomeRecentState({
+            loadGames: getAllLocalGames,
+            loadDrafts: getAllLocalDrafts,
+        });
+
+        expect(refreshed.games).toEqual([]);
+        expect(refreshed.drafts).toEqual([]);
     });
 });
