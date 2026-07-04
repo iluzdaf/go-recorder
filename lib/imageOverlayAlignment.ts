@@ -126,6 +126,11 @@ export function computeImageOverlayStyle({
         top: 0,
         width: naturalWidth,
         height: naturalHeight,
+        // Tailwind preflight sets img { max-width: 100% }, which would clamp
+        // the layout box to the wrapper width while the inline height stays at
+        // naturalHeight, crushing the overlay into a tall strip before the
+        // transform is applied.
+        maxWidth: "none",
         transformOrigin: "0 0",
         transform: `matrix3d(${matrix.join(",")})`,
         pointerEvents: "none",

@@ -59,6 +59,22 @@ describe("computeImageOverlayStyle", () => {
         expect(style.height).toBe(600);
     });
 
+    it("overrides the global img max-width clamp", () => {
+        // Tailwind preflight's img { max-width: 100% } would otherwise crush a
+        // photo wider than the board wrapper into a tall strip.
+        const style = computeImageOverlayStyle({
+            imageSource: makeImageSource({
+                naturalWidth: 3024,
+                naturalHeight: 4032,
+            }),
+            boardSize: 19,
+            gridMetrics: makeGridMetrics(),
+            positionViewRange: null,
+        });
+
+        expect(style.maxWidth).toBe("none");
+    });
+
     it("produces a matrix3d transform string", () => {
         const style = computeImageOverlayStyle({
             imageSource: makeImageSource(),
