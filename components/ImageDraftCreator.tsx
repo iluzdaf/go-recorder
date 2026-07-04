@@ -11,6 +11,7 @@ import { storeImageSource } from "../lib/localImageStorage";
 import { navigateWithinApp } from "../lib/fullscreenNavigation";
 import { t } from "../lib/i18n";
 import {
+    computeCornerMagnifier,
     cornerToDisplay,
     createInitialCorners,
     scaleCornersToNatural,
@@ -76,6 +77,7 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
 
     const [image, setImage] = useState<SelectedImage | null>(null);
     const [corners, setCorners] = useState<OrderedCorners | null>(null);
+    const [activeCorner, setActiveCorner] = useState<CornerIndex | null>(null);
     const [imageBox, setImageBox] = useState<ImageBox>({
         left: 0,
         top: 0,
@@ -144,6 +146,7 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
         return (event: React.PointerEvent<HTMLDivElement>) => {
             event.preventDefault();
             draggingRef.current = index;
+            setActiveCorner(index);
             event.currentTarget.setPointerCapture(event.pointerId);
         };
     }
@@ -168,7 +171,10 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
 
     function handleHandlePointerUp(event: React.PointerEvent<HTMLDivElement>) {
         draggingRef.current = null;
-        event.currentTarget.releasePointerCapture(event.pointerId);
+        setActiveCorner(null);
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
     }
 
     async function handleDetect() {
@@ -330,6 +336,7 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                                                 )}
                                                 onPointerMove={handleHandlePointerMove}
                                                 onPointerUp={handleHandlePointerUp}
+                                                onPointerCancel={handleHandlePointerUp}
                                                 style={{
                                                     left: imageBox.left + point.x,
                                                     top: imageBox.top + point.y,
@@ -338,6 +345,43 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                                             />
                                         );
                                     })}
+
+                                    {activeCorner !== null &&
+                                        (() => {
+                                            const magnifier =
+                                                computeCornerMagnifier(
+                                                    corners[activeCorner],
+                                                    imageBox
+                                                );
+                                            return (
+                                                <div
+                                                    aria-hidden="true"
+                                                    className="pointer-events-none absolute z-10 overflow-hidden rounded-full border-2 border-white bg-zinc-900 shadow-lg"
+                                                    style={{
+                                                        left: magnifier.left,
+                                                        top: magnifier.top,
+                                                        width: magnifier.size,
+                                                        height: magnifier.size,
+                                                    }}
+                                                >
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img
+                                                        src={image.url}
+                                                        alt=""
+                                                        draggable={false}
+                                                        className="absolute max-w-none select-none"
+                                                        style={{
+                                                            left: magnifier.imageLeft,
+                                                            top: magnifier.imageTop,
+                                                            width: magnifier.imageWidth,
+                                                            height: magnifier.imageHeight,
+                                                        }}
+                                                    />
+                                                    <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-sky-400/80" />
+                                                    <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-sky-400/80" />
+                                                </div>
+                                            );
+                                        })()}
                                 </>
                             )}
                         </div>
