@@ -73,6 +73,7 @@ def render_board(
     annotations: list[tuple[int, int, str]] | None = None,
     annotation_thickness: int = 1,
     coordinates: bool = False,
+    caption: str | None = None,
 ) -> bytes:
     """Render a board and return PNG-encoded bytes.
 
@@ -82,6 +83,7 @@ def render_board(
     stones, line-coloured marks on empty intersections.
     ``coordinates`` prints column letters and row numbers in the margins of
     real sides, like a book diagram or app screenshot.
+    ``caption`` prints a title (like "Dia. 1") centred in the bottom margin.
     """
 
     sides = real_sides or ALL_REAL
@@ -170,6 +172,23 @@ def render_board(
             if sides["right"]:
                 put_centered(text, img_size - 1 - margin // 2, int(y))
 
+    if caption is not None:
+        (width, height), _ = cv2.getTextSize(caption, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+        origin = (
+            int(img_size / 2 - round(width / 2)),
+            int(img_size - 1 - margin // 2 + round(height / 2)),
+        )
+        cv2.putText(
+            image,
+            caption,
+            origin,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (theme.line,) * 3,
+            1,
+            cv2.LINE_AA,
+        )
+
     ok, buffer = cv2.imencode(".png", image)
     if not ok:
         raise RuntimeError("Failed to encode synthetic board image")
@@ -229,4 +248,33 @@ def full_corners(img_size: int = 720) -> list[dict[str, int]]:
         {"x": last, "y": 0},
         {"x": last, "y": last},
         {"x": 0, "y": last},
+    ]
+
+
+def bow_offset(
+    x: float, amplitude_px: float, img_size: int = 720, cycles: float = 0.5
+) -> float:
+    """Vertical displacement curve_page applies to content at column ``x``."""
+
+    return amplitude_px * float(np.sin(2.0 * np.pi * cycles * x / (img_size - 1)))
+
+
+def board_corners(
+    img_size: int = 720,
+    margin_frac: float = 0.06,
+    bow_amplitude: float = 0.0,
+    bow_cycles: float = 0.5,
+) -> list[dict[str, float]]:
+    """The outer grid intersections of a rendered full board, TL/TR/BR/BL.
+
+    Marks the corners exactly on the board, the way users are asked to, rather
+    than on the image corners. ``bow_amplitude`` accounts for curve_page moving
+    the corners of a bowed page.
+    """
+
+    margin = int(img_size * margin_frac)
+    low, high = margin, img_size - 1 - margin
+    return [
+        {"x": x, "y": y + bow_offset(x, bow_amplitude, img_size, bow_cycles)}
+        for x, y in ((low, low), (high, low), (high, high), (low, high))
     ]

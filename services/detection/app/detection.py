@@ -20,7 +20,16 @@ from .board_size import smallest_fitting_size, snap_board_size
 from .position_view import infer_position_view
 from .schemas import DetectionResult, SetupStone
 
-WARP_SIZE = 1280
+# Sized so the corner quad keeps the same resolution it had when it filled a
+# 1280px warp, now that the pad consumes 2 x 5% of the frame.
+WARP_SIZE = 1440
+# The corner quad maps to an inset rectangle rather than the full warp so
+# content just outside the quad survives: on a bowed book page a grid line can
+# bulge past the straight edge between two exactly-placed corners.
+WARP_PAD_FRAC = 0.05
+# Grid-line peaks may overflow the quad by up to half the pad (a bowed line's
+# bulge); anything farther out is page content such as captions, not the grid.
+LINE_OVERFLOW_FRAC = 0.5
 EDGE_INSET_FRAC = 0.03
 PEAK_HEIGHT_FRAC = 0.25
 PEAK_MIN_DISTANCE_FRAC = 0.02
@@ -76,10 +85,16 @@ def _decode(raw: bytes) -> np.ndarray:
     return image
 
 
+def _warp_pad() -> int:
+    return int(WARP_SIZE * WARP_PAD_FRAC)
+
+
 def _warp(image: np.ndarray, corners: Sequence[Corner]) -> np.ndarray:
+    pad = _warp_pad()
     source = np.array(corners, dtype=np.float32)
+    low, high = pad, WARP_SIZE - 1 - pad
     target = np.array(
-        [[0, 0], [WARP_SIZE - 1, 0], [WARP_SIZE - 1, WARP_SIZE - 1], [0, WARP_SIZE - 1]],
+        [[low, low], [high, low], [high, high], [low, high]],
         dtype=np.float32,
     )
     matrix = cv2.getPerspectiveTransform(source, target)
@@ -90,8 +105,14 @@ def _warp(image: np.ndarray, corners: Sequence[Corner]) -> np.ndarray:
         if max(image.shape[:2]) > WARP_SIZE
         else cv2.INTER_LINEAR
     )
+    # Replicate the border so a quad at the image edge (screenshots) does not
+    # introduce a black frame whose gradients would read as grid lines.
     return cv2.warpPerspective(
-        image, matrix, (WARP_SIZE, WARP_SIZE), flags=interpolation
+        image,
+        matrix,
+        (WARP_SIZE, WARP_SIZE),
+        flags=interpolation,
+        borderMode=cv2.BORDER_REPLICATE,
     )
 
 
@@ -127,16 +148,27 @@ def _line_positions(gray: np.ndarray, axis: str) -> list[int]:
     else:
         gradient = np.abs(cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3))
         profile = gradient.sum(axis=1)
-    return _find_peaks(_smooth(profile, 5))
+    peaks = _find_peaks(_smooth(profile, 5))
+    # Grid lines live inside the quad, overflowing it only by a bowed line's
+    # bulge; peaks farther into the pad are page content (captions, titles).
+    pad = _warp_pad()
+    overflow = pad * LINE_OVERFLOW_FRAC
+    low = pad - overflow
+    high = WARP_SIZE - 1 - pad + overflow
+    return [peak for peak in peaks if low <= peak <= high]
 
 
 def _real_sides(xs: list[int], ys: list[int], size: int) -> dict[str, bool]:
-    inset = size * EDGE_INSET_FRAC
+    # A side is real when a board margin separates the outermost grid line
+    # from the corner quad's edge (not the padded warp's edge).
+    pad = _warp_pad()
+    quad_size = size - 2 * pad
+    inset = quad_size * EDGE_INSET_FRAC
     return {
-        "left": xs[0] > inset,
-        "right": (size - 1 - xs[-1]) > inset,
-        "top": ys[0] > inset,
-        "bottom": (size - 1 - ys[-1]) > inset,
+        "left": xs[0] - pad > inset,
+        "right": (size - 1 - pad - xs[-1]) > inset,
+        "top": ys[0] - pad > inset,
+        "bottom": (size - 1 - pad - ys[-1]) > inset,
     }
 
 

@@ -45,6 +45,9 @@
 
 - Classical OpenCV; no machine learning in v1.
 - Perspective-correct the board from the four corners.
+  - Corners are meant to sit exactly on the board's outer grid intersections.
+  - The quad warps to a padded (inset) target so content just outside it survives: on a bowed book page a grid line can bulge past the straight edge between two exactly-placed corners.
+  - Grid-line peaks are only accepted near the quad; page content farther into the pad (captions, coordinate labels) is rejected.
 - Detect grid lines from gradient projections; auto-detect board size from the line count.
 - Classify each intersection against a local (per-cell) background:
   - A clearly dark fill is black.
@@ -56,6 +59,8 @@
 ## Known Limitations
 
 - Corner precision matters: over-marking by one cell shifts or rescales the grid. The grid uses the detected (possibly non-uniform, perspective-correct) line positions; do not force a uniform lattice, as that misaligns real photos.
+- Corners belong on the outer grid intersections; slack up to roughly half the warp pad (about half a cell) is tolerated, but past that, page content can be mistaken for grid lines.
+- Page bowing is absorbed up to roughly a third of a cell (single-arch or gutter curl); S-shaped waves tolerate far less. See the measured limits in `services/detection/tests/fixtures.py`.
 - Tuned for the common regimes: app screenshots (light and dark mode), straight-on kifu/book diagrams, and wood boards.
 - Exotic boards/stones and angled, cluttered photos are the long tail. Reliable coverage there needs a learned approach (a stone detector plus board-corner keypoints), deferred out of v1. The draft is editable, so users correct remaining mistakes by hand.
 
