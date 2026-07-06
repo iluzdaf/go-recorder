@@ -260,6 +260,75 @@ def full_corners(img_size: int = 720) -> list[dict[str, int]]:
     ]
 
 
+STAR_POINTS_19 = [(c, r) for c in (3, 9, 15) for r in (3, 9, 15)]
+
+
+def render_cropped_capture(
+    size: int,
+    stones: list[tuple[int, int, str]],
+    col_start: int,
+    col_end: int,
+    row_start: int,
+    row_end: int,
+    img_size: int = 1080,
+    margin_frac: float = 0.06,
+    bleed_frac: float = 0.45,
+    theme: Theme = WOOD_THEME,
+) -> tuple[bytes, list[dict[str, float]]]:
+    """A camera-style crop of a full board, with exact visible-grid corners.
+
+    Renders the whole board (with star points), then crops the window covering
+    the inclusive visible ranges: real sides keep their full margin, cut sides
+    keep ``bleed_frac`` of a cell of continuing grid, like a real photo framed
+    mid-cell. ``stones`` are full-board coordinates. Returns the PNG and the
+    corner points of the outermost visible intersections within the crop.
+    """
+
+    image_bytes = render_board(size, stones=[], img_size=img_size, margin_frac=margin_frac, theme=theme)
+    image = cv2.imdecode(np.frombuffer(image_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
+
+    margin = int(img_size * margin_frac)
+    grid = np.linspace(margin, img_size - 1 - margin, size)
+    cell = float(grid[1] - grid[0])
+    radius = int(cell * 0.42)
+
+    for column, row in STAR_POINTS_19 if size == 19 else []:
+        cv2.circle(
+            image,
+            (int(grid[column]), int(grid[row])),
+            max(2, int(cell * 0.08)),
+            (theme.line,) * 3,
+            -1,
+        )
+    for column, row, color in stones:
+        center = (int(grid[column]), int(grid[row]))
+        if color == "W":
+            cv2.circle(image, center, radius, (theme.white_fill,) * 3, -1)
+            if theme.white_outline is not None:
+                cv2.circle(image, center, radius, (theme.white_outline,) * 3, 3)
+        else:
+            cv2.circle(image, center, radius, (theme.black_fill,) * 3, -1)
+
+    bleed = cell * bleed_frac
+    left = 0 if col_start == 0 else int(grid[col_start] - bleed)
+    right = img_size if col_end == size - 1 else int(grid[col_end] + bleed)
+    top = 0 if row_start == 0 else int(grid[row_start] - bleed)
+    bottom = img_size if row_end == size - 1 else int(grid[row_end] + bleed)
+    cropped = image[top:bottom, left:right]
+
+    corners = [
+        {"x": float(grid[col_start] - left), "y": float(grid[row_start] - top)},
+        {"x": float(grid[col_end] - left), "y": float(grid[row_start] - top)},
+        {"x": float(grid[col_end] - left), "y": float(grid[row_end] - top)},
+        {"x": float(grid[col_start] - left), "y": float(grid[row_end] - top)},
+    ]
+
+    ok, buffer = cv2.imencode(".png", cropped)
+    if not ok:
+        raise RuntimeError("Failed to encode cropped capture")
+    return buffer.tobytes(), corners
+
+
 def bow_offset(
     x: float, amplitude_px: float, img_size: int = 720, cycles: float = 0.5
 ) -> float:

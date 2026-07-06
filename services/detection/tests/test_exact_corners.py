@@ -20,6 +20,7 @@ from tests.fixtures import (
     board_corners,
     curve_page,
     render_board,
+    render_cropped_capture,
 )
 
 
@@ -101,6 +102,40 @@ def test_partial_crop_with_exact_corners_keeps_anchor(
     assert _stone_set(result) == {
         (start_x, start_y, "B"),
         (start_x + columns - 1, start_y + rows - 1, "W"),
+    }
+
+
+def test_camera_crop_of_full_board_with_exact_corners():
+    # Mirrors a real photo: the bottom-right of a 19x19 wood board framed
+    # mid-cell (8 columns x 5 rows visible), star point in view, corners
+    # marked exactly on the outermost visible intersections.
+    visible = [
+        (0, 2, "B"),
+        (3, 2, "B"),
+        (4, 2, "B"),
+        (5, 1, "B"),
+        (6, 1, "B"),
+        (7, 1, "B"),
+        (5, 2, "W"),
+        (6, 2, "W"),
+        (4, 3, "W"),
+        (6, 4, "W"),
+    ]
+    stones = [(column + 11, row + 14, color) for column, row, color in visible]
+    image, corners = render_cropped_capture(
+        19, stones, col_start=11, col_end=18, row_start=14, row_end=18
+    )
+    result = detect_board(image, parse_corners(json.dumps(corners)))
+
+    assert result.boardSize == 9
+    view = result.positionView
+    assert view is not None
+    assert view.anchor == "bottom-right"
+    assert view.rows == 5
+    assert view.columns == 8
+    # 8 visible columns anchored to the end of a 9 board: offset (1, 4).
+    assert _stone_set(result) == {
+        (column + 1, row + 4, color) for column, row, color in visible
     }
 
 
