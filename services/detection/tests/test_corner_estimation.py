@@ -89,6 +89,21 @@ def test_estimates_corners_of_real_app_capture():
     )
 
 
+def test_estimates_corners_of_coordinate_labelled_board():
+    # A partial board framed with coordinate labels in all four margins: the
+    # labels must not pull the estimate inward (the grid gets cropped) or
+    # outward (row-aligned number labels read as extra grid lines).
+    raw = (DATA / "orange-coords-board.jpeg").read_bytes()
+    estimated = estimate_corners(raw)
+
+    assert estimated is not None
+    _assert_close(
+        estimated,
+        [(48, 48), (500, 48), (500, 349), (48, 349)],
+        tolerance=12.0,
+    )
+
+
 def test_returns_none_without_a_grid():
     flat = np.full((300, 300, 3), 150, dtype=np.uint8)
     ok, buffer = cv2.imencode(".png", flat)

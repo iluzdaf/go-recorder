@@ -21,20 +21,25 @@ CONTOUR_CANDIDATES = 10
 # An estimate needs a grid-like line count to be trustworthy; with fewer
 # lines the caller keeps its default corner placement.
 MIN_GRID_LINES = 4
-# A real grid line (or board edge) has line-coloured pixels along most of its
-# span; a texture or image-border artefact does not. Outermost candidates
-# without support are trimmed before the corners are read off.
-LINE_SUPPORT_SAMPLES = 25
-LINE_SUPPORT_THRESHOLD = 0.55
-LINE_SUPPORT_DELTA = 30.0
+# At its crossings with the perpendicular grid, a real line shows bimodal
+# evidence: genuinely dark intersections, or bright stones sitting on it. A
+# coordinate-label smear in the margin is a flat mid-grey — differing from the
+# board, but neither strongly dark nor stone-bright. Deltas are measured from
+# the board background; a line needs a few such crossings to be kept.
+GRID_DARK_DELTA = 100.0
+GRID_BRIGHT_DELTA = 50.0
+GRID_EVIDENCE_MIN = 2
 LINE_SUPPORT_JITTER = 3
-# The physical edge of the board surface also reads as a line, but the strip
-# just outside it is not board-coloured (table, page background). The strip
-# outside a true outer grid line is the board margin. Offsets are fractions
-# of the grid pitch, small enough to stay inside coordinate labels.
+# Grid lines are evenly spaced; the dominant run of near-constant spacing is
+# the grid and already excludes irregular margin clutter.
+PITCH_TOLERANCE_FRAC = 0.35
+# The physical edge of the board surface has non-board (table, page) just
+# beyond it; the strip outside a true outer grid line is board margin, even
+# with sparse coordinate labels. Judged by the strip's median, so labels do
+# not tip it. Offsets are fractions of the grid pitch.
 SURFACE_OFFSET_FRACS = (0.10, 0.18, 0.25)
 SURFACE_DELTA = 40.0
-SURFACE_EDGE_THRESHOLD = 0.5
+SURFACE_SAMPLES = 25
 
 
 def _order_quad(points: np.ndarray) -> np.ndarray:
@@ -76,60 +81,86 @@ def _board_quad(image: np.ndarray) -> np.ndarray | None:
     return None
 
 
-def _line_support(
+def _regular_run(positions: list[int]) -> list[int]:
+    """The longest run of near-evenly-spaced lines (the grid), which excludes
+    irregular margin clutter."""
+
+    if len(positions) < 3:
+        return list(positions)
+    diffs = np.diff(positions)
+    pitch = float(np.median(diffs))
+    tolerance = pitch * PITCH_TOLERANCE_FRAC
+
+    best_start, best_len = 0, 1
+    start = 0
+    for index in range(1, len(positions)):
+        if abs(float(positions[index] - positions[index - 1]) - pitch) <= tolerance:
+            if index - start + 1 > best_len:
+                best_start, best_len = start, index - start + 1
+        else:
+            start = index
+    return list(positions[best_start : best_start + best_len])
+
+
+def _grid_evidence(
     gray: np.ndarray,
     coordinate: int,
-    span: tuple[float, float],
+    crossings: list[int],
     axis: str,
     background: float,
-) -> float:
-    """Fraction of sample points along a candidate line that hold
-    line-coloured (non-board) pixels."""
+) -> int:
+    """Count of perpendicular crossings with real grid evidence: a strongly
+    dark intersection or a stone bright against the board. A flat mid-grey
+    label smear scores zero."""
 
     height, width = gray.shape
-    limit = height if axis == "x" else width
     if not 0 <= coordinate < (width if axis == "x" else height):
-        return 0.0
+        return 0
+    limit = height if axis == "x" else width
 
-    hits = 0
-    for position in np.linspace(span[0], span[1], LINE_SUPPORT_SAMPLES):
-        found = False
+    evidence = 0
+    for crossing in crossings:
+        darkest = background
+        brightest = background
         for jitter in range(-LINE_SUPPORT_JITTER, LINE_SUPPORT_JITTER + 1):
-            along = int(round(position)) + jitter
+            along = crossing + jitter
             if not 0 <= along < limit:
                 continue
-            value = (
+            value = float(
                 gray[along, coordinate] if axis == "x" else gray[coordinate, along]
             )
-            if abs(float(value) - background) > LINE_SUPPORT_DELTA:
-                found = True
-                break
-        hits += found
-    return hits / LINE_SUPPORT_SAMPLES
+            darkest = min(darkest, value)
+            brightest = max(brightest, value)
+        if (
+            background - darkest > GRID_DARK_DELTA
+            or brightest - background > GRID_BRIGHT_DELTA
+        ):
+            evidence += 1
+    return evidence
 
 
 def _trim_unsupported(
     gray: np.ndarray,
     positions: list[int],
-    span: tuple[float, float],
+    crossings: list[int],
     axis: str,
     background: float,
 ) -> list[int]:
     positions = list(positions)
     while positions and (
-        _line_support(gray, positions[0], span, axis, background)
-        < LINE_SUPPORT_THRESHOLD
+        _grid_evidence(gray, positions[0], crossings, axis, background)
+        < GRID_EVIDENCE_MIN
     ):
         positions.pop(0)
     while positions and (
-        _line_support(gray, positions[-1], span, axis, background)
-        < LINE_SUPPORT_THRESHOLD
+        _grid_evidence(gray, positions[-1], crossings, axis, background)
+        < GRID_EVIDENCE_MIN
     ):
         positions.pop()
     return positions
 
 
-def _outside_edge_fraction(
+def _outside_is_surface_edge(
     gray: np.ndarray,
     coordinate: int,
     span: tuple[float, float],
@@ -137,25 +168,27 @@ def _outside_edge_fraction(
     direction: int,
     pitch: float,
     background: float,
-) -> float:
-    """Fraction of sample points whose strip just outside a candidate outer
-    line is not board-coloured (the surface ends there)."""
+) -> bool:
+    """Whether the strip just outside a candidate outer line is predominantly
+    non-board — a table or page beyond the board's physical edge. Judged by
+    the strip's median, so sparse coordinate labels on the margin do not tip
+    it (their board-coloured surroundings dominate)."""
 
     height, width = gray.shape
     limit = width if axis == "x" else height
-    non_board = 0
-    for position in np.linspace(span[0], span[1], LINE_SUPPORT_SAMPLES):
-        values = []
+    samples: list[float] = []
+    for position in np.linspace(span[0], span[1], SURFACE_SAMPLES):
+        along = int(round(position))
         for fraction in SURFACE_OFFSET_FRACS:
             probe = int(round(coordinate + direction * pitch * fraction))
             if not 0 <= probe < limit:
                 continue
-            along = int(round(position))
-            value = gray[along, probe] if axis == "x" else gray[probe, along]
-            values.append(float(value))
-        if values and abs(float(np.median(values)) - background) > SURFACE_DELTA:
-            non_board += 1
-    return non_board / LINE_SUPPORT_SAMPLES
+            samples.append(
+                float(gray[along, probe] if axis == "x" else gray[probe, along])
+            )
+    if not samples:
+        return False
+    return abs(float(np.median(samples)) - background) > SURFACE_DELTA
 
 
 def _trim_surface_edges(
@@ -167,18 +200,12 @@ def _trim_surface_edges(
     background: float,
 ) -> list[int]:
     positions = list(positions)
-    if positions and (
-        _outside_edge_fraction(
-            gray, positions[0], span, axis, -1, pitch, background
-        )
-        > SURFACE_EDGE_THRESHOLD
+    if positions and _outside_is_surface_edge(
+        gray, positions[0], span, axis, -1, pitch, background
     ):
         positions.pop(0)
-    if positions and (
-        _outside_edge_fraction(
-            gray, positions[-1], span, axis, 1, pitch, background
-        )
-        > SURFACE_EDGE_THRESHOLD
+    if positions and _outside_is_surface_edge(
+        gray, positions[-1], span, axis, 1, pitch, background
     ):
         positions.pop()
     return positions
@@ -191,26 +218,35 @@ def _grid_corners_within(
 
     warped = _warp(image, [tuple(point) for point in quad])
     gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+    pad = _warp_pad()
     # Board brightness from the central region, uncontaminated by whatever
     # surrounds the board inside the padded warp.
     quarter = WARP_SIZE // 4
     background = float(np.median(gray[quarter:-quarter, quarter:-quarter]))
 
-    pad = _warp_pad()
-    span = (float(pad), float(WARP_SIZE - 1 - pad))
-    xs = _trim_unsupported(
-        gray, _line_positions(gray, "vertical"), span, "x", background
-    )
-    ys = _trim_unsupported(
-        gray, _line_positions(gray, "horizontal"), span, "y", background
-    )
+    xs_raw = _line_positions(gray, "vertical")
+    ys_raw = _line_positions(gray, "horizontal")
+    if len(xs_raw) < 2 or len(ys_raw) < 2:
+        return None
+
+    # The dominant even run is the grid; it already drops irregular margin
+    # clutter. Its outermost lines are then confirmed by grid evidence at the
+    # perpendicular crossings, dropping a flat label smear one pitch out.
+    x_grid = _regular_run(xs_raw)
+    y_grid = _regular_run(ys_raw)
+    xs = _trim_unsupported(gray, x_grid, y_grid, "x", background)
+    ys = _trim_unsupported(gray, y_grid, x_grid, "y", background)
     if len(xs) < 2 or len(ys) < 2:
         return None
 
     pitches = list(np.diff(xs)) + list(np.diff(ys))
     pitch = float(np.median(pitches))
-    xs = _trim_surface_edges(gray, xs, span, "x", pitch, background)
-    ys = _trim_surface_edges(gray, ys, span, "y", pitch, background)
+    xs = _trim_surface_edges(
+        gray, xs, (float(ys[0]), float(ys[-1])), "x", pitch, background
+    )
+    ys = _trim_surface_edges(
+        gray, ys, (float(xs[0]), float(xs[-1])), "y", pitch, background
+    )
     if len(xs) < MIN_GRID_LINES or len(ys) < MIN_GRID_LINES:
         return None
 
