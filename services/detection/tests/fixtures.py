@@ -103,10 +103,16 @@ def render_board(
     ys = positions(sides["top"], sides["bottom"], rows if rows is not None else size)
 
     line = (theme.line, theme.line, theme.line)
+    # On cut sides the board continues out of frame, so grid lines run all the
+    # way to the image border, like a real cropped capture.
+    x_low = int(xs[0]) if sides["left"] else 0
+    x_high = int(xs[-1]) if sides["right"] else img_size - 1
+    y_low = int(ys[0]) if sides["top"] else 0
+    y_high = int(ys[-1]) if sides["bottom"] else img_size - 1
     for x in xs:
-        cv2.line(image, (int(x), int(ys[0])), (int(x), int(ys[-1])), line, 2)
+        cv2.line(image, (int(x), y_low), (int(x), y_high), line, 2)
     for y in ys:
-        cv2.line(image, (int(xs[0]), int(y)), (int(xs[-1]), int(y)), line, 2)
+        cv2.line(image, (x_low, int(y)), (x_high, int(y)), line, 2)
 
     radius = int((xs[1] - xs[0]) * 0.42)
     for column, row, color in stones:
@@ -267,17 +273,25 @@ def board_corners(
     margin_frac: float = 0.06,
     bow_amplitude: float = 0.0,
     bow_cycles: float = 0.5,
+    real_sides: dict[str, bool] | None = None,
+    cut_frac: float = 0.01,
 ) -> list[dict[str, float]]:
-    """The outer grid intersections of a rendered full board, TL/TR/BR/BL.
+    """The outer grid intersections of a rendered board, TL/TR/BR/BL.
 
-    Marks the corners exactly on the board, the way users are asked to, rather
-    than on the image corners. ``bow_amplitude`` accounts for curve_page moving
-    the corners of a bowed page.
+    Marks the corners exactly on the visible grid, the way users are asked to,
+    rather than on the image corners. ``real_sides`` matches the render call
+    for partial crops. ``bow_amplitude`` accounts for curve_page moving the
+    corners of a bowed page.
     """
 
+    sides = real_sides or ALL_REAL
     margin = int(img_size * margin_frac)
-    low, high = margin, img_size - 1 - margin
+    cut = int(img_size * cut_frac)
+    left = margin if sides["left"] else cut
+    right = img_size - 1 - (margin if sides["right"] else cut)
+    top = margin if sides["top"] else cut
+    bottom = img_size - 1 - (margin if sides["bottom"] else cut)
     return [
         {"x": x, "y": y + bow_offset(x, bow_amplitude, img_size, bow_cycles)}
-        for x, y in ((low, low), (high, low), (high, high), (low, high))
+        for x, y in ((left, top), (right, top), (right, bottom), (left, bottom))
     ]

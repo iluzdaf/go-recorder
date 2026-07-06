@@ -64,6 +64,46 @@ def test_exact_corners_with_page_content_around_the_grid():
     assert _stone_set(result) == set(stones)
 
 
+def _sides(**real: bool) -> dict[str, bool]:
+    return {
+        "left": real.get("left", False),
+        "right": real.get("right", False),
+        "top": real.get("top", False),
+        "bottom": real.get("bottom", False),
+    }
+
+
+@pytest.mark.parametrize(
+    "sides,columns,rows,board_size,anchor,start",
+    [
+        # A photo of the bottom-right of a board, corners on the visible grid.
+        (_sides(right=True, bottom=True), 8, 5, 9, "bottom-right", (1, 4)),
+        (_sides(left=True, top=True), 8, 8, 9, "top-left", (0, 0)),
+        (_sides(left=True, right=True, top=True), 9, 6, 9, "top", (0, 0)),
+        (_sides(), 7, 7, 9, "center", (1, 1)),
+    ],
+)
+def test_partial_crop_with_exact_corners_keeps_anchor(
+    sides, columns, rows, board_size, anchor, start
+):
+    stones = [(0, 0, "B"), (columns - 1, rows - 1, "W")]
+    image = render_board(columns, stones=stones, real_sides=sides, rows=rows)
+    result = detect_board(image, _corners(real_sides=sides))
+
+    assert result.boardSize == board_size
+    view = result.positionView
+    assert view is not None
+    assert view.anchor == anchor
+    assert view.rows == rows
+    assert view.columns == columns
+
+    start_x, start_y = start
+    assert _stone_set(result) == {
+        (start_x, start_y, "B"),
+        (start_x + columns - 1, start_y + rows - 1, "W"),
+    }
+
+
 @pytest.mark.parametrize("amplitude", [CURVE_MILD, CURVE_MEDIUM])
 def test_curved_page_with_exact_corners(amplitude):
     # The bow pushes the bottom line's bulge outside the straight quad edge;

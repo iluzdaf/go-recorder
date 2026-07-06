@@ -2,8 +2,9 @@
 
 Mirrors the anchor math in ``lib/positionView.ts`` so a partial capture maps to
 the same ``PositionView`` model the app already understands. A side is treated
-as a real board edge when a wood margin separates the outermost grid line from
-the warped image border; cut sides indicate the board continues out of frame.
+as a real board edge when the grid lines stop at the outermost perpendicular
+line; cut sides, where the lines continue out of frame, indicate the board
+continues beyond the capture.
 """
 
 from __future__ import annotations

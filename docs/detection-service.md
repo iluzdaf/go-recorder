@@ -54,6 +54,8 @@
   - A clearly bright fill is white.
   - A board-coloured fill ringed by a dark outline is a white stone (outlined white stones on light boards and kifu diagrams). Black stones are solid and caught earlier, so the ring branch always yields white.
 - Infer a `positionView` for partial captures from which sides reach a real board edge.
+  - A side is cut (board continues out of frame) when most grid lines continue past the outermost perpendicular line into the padded warp; a real edge shows only margin there.
+  - This keeps anchors correct whether corners are placed exactly on the board corners or with margin included.
 - High-resolution photos are warped at a larger size with area interpolation so thin stone outlines survive downscaling.
 
 ## Known Limitations

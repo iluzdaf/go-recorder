@@ -30,7 +30,14 @@ WARP_PAD_FRAC = 0.05
 # Grid-line peaks may overflow the quad by up to half the pad (a bowed line's
 # bulge); anything farther out is page content such as captions, not the grid.
 LINE_OVERFLOW_FRAC = 0.5
-EDGE_INSET_FRAC = 0.03
+# A side is cut (the board continues out of frame) when most grid lines keep
+# going past the outermost perpendicular line; a real edge has only margin
+# there. Probed just outside the outer line so margin labels and captions
+# farther out are not mistaken for continuations.
+CONTINUATION_OFFSET_FRACS = (0.12, 0.20, 0.28)
+CONTINUATION_DELTA = 30.0
+CONTINUATION_THRESHOLD = 0.6
+CONTINUATION_JITTER = 2
 PEAK_HEIGHT_FRAC = 0.25
 PEAK_MIN_DISTANCE_FRAC = 0.02
 INTERIOR_RADIUS_FRAC = 0.26
@@ -158,17 +165,68 @@ def _line_positions(gray: np.ndarray, axis: str) -> list[int]:
     return [peak for peak in peaks if low <= peak <= high]
 
 
-def _real_sides(xs: list[int], ys: list[int], size: int) -> dict[str, bool]:
-    # A side is real when a board margin separates the outermost grid line
-    # from the corner quad's edge (not the padded warp's edge).
-    pad = _warp_pad()
-    quad_size = size - 2 * pad
-    inset = quad_size * EDGE_INSET_FRAC
+def _continuation_fraction(
+    gray: np.ndarray,
+    background: float,
+    cell: float,
+    line_positions: list[int],
+    edge: int,
+    direction: int,
+    axis: str,
+) -> float:
+    """Fraction of grid lines whose pixels continue past the outermost
+    perpendicular line at ``edge``, probed ``direction`` (+1/-1) into the
+    padded warp. A small jitter along each line tolerates rasterisation and
+    mild page bow."""
+
+    height, width = gray.shape
+    probe_limit = width if axis == "x" else height
+    along_limit = height if axis == "x" else width
+
+    continued = 0
+    for position in line_positions:
+        found = False
+        for frac in CONTINUATION_OFFSET_FRACS:
+            probe = int(round(edge + direction * cell * frac))
+            if not 0 <= probe < probe_limit:
+                continue
+            for jitter in range(-CONTINUATION_JITTER, CONTINUATION_JITTER + 1):
+                along = position + jitter
+                if not 0 <= along < along_limit:
+                    continue
+                value = gray[along, probe] if axis == "x" else gray[probe, along]
+                if abs(float(value) - background) > CONTINUATION_DELTA:
+                    found = True
+                    break
+            if found:
+                break
+        continued += found
+    return continued / len(line_positions) if line_positions else 0.0
+
+
+def _real_sides(gray: np.ndarray, xs: list[int], ys: list[int]) -> dict[str, bool]:
+    """Whether each side is a real board edge or a cut (board continues).
+
+    Decided by probing the padded warp just outside the outermost grid lines:
+    a cut side's perpendicular lines keep going (or are replicated outward
+    when the capture ends exactly there), while a real edge shows only margin.
+    This works whether the corners were placed exactly on the board corners or
+    with margin included."""
+
+    background = float(np.median(gray))
+    cell = _cell_size(xs, ys)
+
+    def is_real(line_positions: list[int], edge: int, direction: int, axis: str) -> bool:
+        fraction = _continuation_fraction(
+            gray, background, cell, line_positions, edge, direction, axis
+        )
+        return fraction < CONTINUATION_THRESHOLD
+
     return {
-        "left": xs[0] - pad > inset,
-        "right": (size - 1 - pad - xs[-1]) > inset,
-        "top": ys[0] - pad > inset,
-        "bottom": (size - 1 - pad - ys[-1]) > inset,
+        "left": is_real(ys, xs[0], -1, "x"),
+        "right": is_real(ys, xs[-1], 1, "x"),
+        "top": is_real(xs, ys[0], -1, "y"),
+        "bottom": is_real(xs, ys[-1], 1, "y"),
     }
 
 
@@ -334,7 +392,7 @@ def detect_board(raw: bytes, corners: Sequence[Corner]) -> DetectionResult:
 
     visible_columns = len(xs)
     visible_rows = len(ys)
-    sides = _real_sides(xs, ys, WARP_SIZE)
+    sides = _real_sides(gray, xs, ys)
     largest_visible = max(visible_rows, visible_columns)
 
     if all(sides.values()):
