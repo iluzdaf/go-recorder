@@ -49,3 +49,16 @@ class DetectionResult(BaseModel):
     setupStones: list[SetupStone]
     positionView: Optional[PositionView] = None
     confidence: float
+
+
+class CornerPoint(BaseModel):
+    """A point in image pixel coordinates."""
+
+    x: float
+    y: float
+
+
+class CornerEstimate(BaseModel):
+    """Suggested board corners, or null when no board grid was found."""
+
+    corners: Optional[list[CornerPoint]] = None

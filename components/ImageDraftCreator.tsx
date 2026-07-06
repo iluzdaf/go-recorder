@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { Loader2, X } from "lucide-react";
 
 import { createBoardDraftInputFromDetection } from "../lib/boardDetectionDraft";
-import { detectBoard } from "../lib/detectBoardClient";
+import { detectBoard, detectCorners } from "../lib/detectBoardClient";
 import { createLocalDraft } from "../lib/localGames";
 import { storeImageSource } from "../lib/localImageStorage";
 import { navigateWithinApp } from "../lib/fullscreenNavigation";
 import { t } from "../lib/i18n";
 import {
+    computeCornerMagnifier,
+    cornersFromNatural,
     cornerToDisplay,
     createInitialCorners,
     scaleCornersToNatural,
@@ -73,9 +75,11 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const imageRef = useRef<HTMLImageElement>(null);
     const draggingRef = useRef<CornerIndex | null>(null);
+    const cornerEstimateRunRef = useRef(0);
 
     const [image, setImage] = useState<SelectedImage | null>(null);
     const [corners, setCorners] = useState<OrderedCorners | null>(null);
+    const [activeCorner, setActiveCorner] = useState<CornerIndex | null>(null);
     const [imageBox, setImageBox] = useState<ImageBox>({
         left: 0,
         top: 0,
@@ -83,6 +87,7 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
         height: 0,
     });
     const [isDetecting, setIsDetecting] = useState(false);
+    const [isDetectingCorners, setIsDetectingCorners] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const measureImageBox = useCallback(() => {
@@ -138,12 +143,40 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
     function handleImageLoad() {
         setCorners(createInitialCorners());
         measureImageBox();
+
+        // Suggest corners automatically; a blocking overlay prevents editing
+        // until the estimate resolves. Keep the defaults if the estimate
+        // fails or the photo changed meanwhile.
+        const element = imageRef.current;
+        if (!image || !element) return;
+        const { naturalWidth, naturalHeight } = element;
+        const run = ++cornerEstimateRunRef.current;
+        setIsDetectingCorners(true);
+        void detectCorners({ image: image.file, imageName: image.file.name })
+            .then((estimated) => {
+                if (run !== cornerEstimateRunRef.current) return;
+                if (estimated) {
+                    const fractions = cornersFromNatural(estimated, {
+                        naturalWidth,
+                        naturalHeight,
+                    });
+                    if (fractions) {
+                        setCorners(fractions);
+                    }
+                }
+            })
+            .finally(() => {
+                if (run === cornerEstimateRunRef.current) {
+                    setIsDetectingCorners(false);
+                }
+            });
     }
 
     function handleHandlePointerDown(index: CornerIndex) {
         return (event: React.PointerEvent<HTMLDivElement>) => {
             event.preventDefault();
             draggingRef.current = index;
+            setActiveCorner(index);
             event.currentTarget.setPointerCapture(event.pointerId);
         };
     }
@@ -168,7 +201,10 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
 
     function handleHandlePointerUp(event: React.PointerEvent<HTMLDivElement>) {
         draggingRef.current = null;
-        event.currentTarget.releasePointerCapture(event.pointerId);
+        setActiveCorner(null);
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
     }
 
     async function handleDetect() {
@@ -241,7 +277,7 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                         <button
                             type="button"
                             onClick={handleDetect}
-                            disabled={isDetecting || !corners}
+                            disabled={isDetecting || isDetectingCorners || !corners}
                             className="inline-flex items-center gap-2 rounded bg-sky-600 px-4 py-2 font-medium text-white hover:bg-sky-500 disabled:opacity-50"
                         >
                             {isDetecting && (
@@ -330,6 +366,7 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                                                 )}
                                                 onPointerMove={handleHandlePointerMove}
                                                 onPointerUp={handleHandlePointerUp}
+                                                onPointerCancel={handleHandlePointerUp}
                                                 style={{
                                                     left: imageBox.left + point.x,
                                                     top: imageBox.top + point.y,
@@ -338,7 +375,62 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                                             />
                                         );
                                     })}
+
+                                    {activeCorner !== null &&
+                                        !isDetectingCorners &&
+                                        (() => {
+                                            const magnifier =
+                                                computeCornerMagnifier(
+                                                    corners[activeCorner],
+                                                    imageBox
+                                                );
+                                            return (
+                                                <div
+                                                    aria-hidden="true"
+                                                    className="pointer-events-none absolute z-10 overflow-hidden rounded-full border-2 border-white bg-zinc-900 shadow-lg"
+                                                    style={{
+                                                        left: magnifier.left,
+                                                        top: magnifier.top,
+                                                        width: magnifier.size,
+                                                        height: magnifier.size,
+                                                    }}
+                                                >
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img
+                                                        src={image.url}
+                                                        alt=""
+                                                        draggable={false}
+                                                        className="absolute max-w-none select-none"
+                                                        style={{
+                                                            left: magnifier.imageLeft,
+                                                            top: magnifier.imageTop,
+                                                            width: magnifier.imageWidth,
+                                                            height: magnifier.imageHeight,
+                                                        }}
+                                                    />
+                                                    <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-sky-400/80" />
+                                                    <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-sky-400/80" />
+                                                </div>
+                                            );
+                                        })()}
                                 </>
+                            )}
+
+                            {isDetectingCorners && (
+                                <div
+                                    role="status"
+                                    aria-live="polite"
+                                    className="absolute inset-0 z-20 flex items-center justify-center"
+                                >
+                                    <div className="absolute inset-0 bg-zinc-950/60" />
+                                    <div className="relative inline-flex items-center gap-3 rounded-lg bg-zinc-900/90 px-5 py-3 text-sm font-medium text-white shadow-lg">
+                                        <Loader2
+                                            size={18}
+                                            className="animate-spin"
+                                        />
+                                        {t("detectingCorners")}
+                                    </div>
+                                </div>
                             )}
                         </div>
 
@@ -352,7 +444,7 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
-                                disabled={isDetecting}
+                                disabled={isDetecting || isDetectingCorners}
                                 className="rounded border border-zinc-600 px-4 py-2 text-zinc-200 hover:border-zinc-400 hover:text-white disabled:opacity-50"
                             >
                                 {t("changeBoardImage")}

@@ -86,7 +86,7 @@ export function computeImageOverlayStyle({
     positionViewRange,
 }: ImageOverlayStyleParams): CSSProperties {
     const { naturalWidth, naturalHeight, corners } = imageSource;
-    const { left, top, cellSize } = gridMetrics;
+    const { left, top } = gridMetrics;
 
     const startX = positionViewRange?.startX ?? 0;
     const startY = positionViewRange?.startY ?? 0;
@@ -96,6 +96,14 @@ export function computeImageOverlayStyle({
     const endY = positionViewRange
         ? positionViewRange.startY + positionViewRange.rows - 1
         : boardSize - 1;
+
+    // gridMetrics.cellSize divides the rendered grid width by the full board
+    // size, but a partial view renders only its visible columns in that width.
+    // Derive the displayed cell size from the visible span, matching how the
+    // board and the stone-correction overlay are laid out.
+    const cellSize = positionViewRange
+        ? gridMetrics.boardSizePx / positionViewRange.columns
+        : gridMetrics.cellSize;
 
     // Board corner intersections in gobanWrapperRef-relative space, TL/TR/BR/BL
     const toScreen = (bx: number, by: number): Point => ({
@@ -120,15 +128,42 @@ export function computeImageOverlayStyle({
 
     const matrix = projectiveMatrix(src, dst);
 
+    // Clip to the corner quad (plus a little margin) in image space; the
+    // transform then maps the clipped region onto the board rectangle, so the
+    // photo's own slanted borders never show. clip-path applies before the
+    // CSS transform, which is what makes a quad-shaped clip come out straight.
+    const visibleCells = Math.max(1, Math.min(endX - startX, endY - startY));
+    const expand = 1 + 1.5 / visibleCells;
+    const centroid = {
+        x: (src[0].x + src[1].x + src[2].x + src[3].x) / 4,
+        y: (src[0].y + src[1].y + src[2].y + src[3].y) / 4,
+    };
+    const clip = src
+        .map((point) => {
+            const x = centroid.x + (point.x - centroid.x) * expand;
+            const y = centroid.y + (point.y - centroid.y) * expand;
+            return `${x}px ${y}px`;
+        })
+        .join(", ");
+
     return {
         position: "absolute",
         left: 0,
         top: 0,
         width: naturalWidth,
         height: naturalHeight,
+        // Tailwind preflight sets img { max-width: 100% }, which would clamp
+        // the layout box to the wrapper width while the inline height stays at
+        // naturalHeight, crushing the overlay into a tall strip before the
+        // transform is applied.
+        maxWidth: "none",
+        clipPath: `polygon(${clip})`,
         transformOrigin: "0 0",
         transform: `matrix3d(${matrix.join(",")})`,
         pointerEvents: "none",
-        opacity: 0.6,
+        // Above the board and its stones (Shudan stones sit in their own
+        // stacking context), so the photo reads as a comparison layer.
+        zIndex: 20,
+        opacity: 0.4,
     };
 }

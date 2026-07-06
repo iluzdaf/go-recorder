@@ -32,6 +32,9 @@
   - Proxies board-image detection to the external detection service.
   - Reads `DETECTION_SERVICE_URL` and forwards the shared secret `DETECTION_API_KEY` as an `X-API-Key` header.
   - Both env vars are server-side only and never sent to the browser.
+- `/api/detect-corners`
+  - Proxies automatic corner estimation to the detection service (same env vars and header).
+  - Returns suggested corner points or `null`; the corner-marking UI snaps handles to them unless the user has already adjusted.
 - `/shares/[slug]/opengraph-image`
   - Renders share previews.
 - `/changelog`

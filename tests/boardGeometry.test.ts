@@ -26,6 +26,52 @@ describe("board geometry helpers", () => {
         ).toBeCloseTo((320 - 4) / 11);
     });
 
+    it("fills a tall partial view by fitting rows to height", () => {
+        // A 10x16 partial view on a portrait area: the taller rows are the
+        // binding constraint, and it must not shrink to a 16x16 square.
+        const partial = getBoardVertexSize({
+            boardSize: 19,
+            columns: 10,
+            rows: 16,
+            width: 360,
+            height: 640,
+        });
+        const horizontal = (360 - 4) / (10 + 2);
+        const vertical = (640 - 4) / (16 + 2);
+        expect(partial).toBeCloseTo(Math.min(horizontal, vertical));
+        // Larger than sizing the full 19x19 board into the same area.
+        expect(partial).toBeGreaterThan(
+            getBoardVertexSize({ boardSize: 19, width: 360, height: 640 })
+        );
+    });
+
+    it("fills a wide-short partial view by fitting columns to width", () => {
+        // An 8x5 partial view: the wider columns are the binding constraint.
+        const partial = getBoardVertexSize({
+            boardSize: 9,
+            columns: 8,
+            rows: 5,
+            width: 360,
+            height: 640,
+        });
+        const horizontal = (360 - 4) / (8 + 2);
+        const vertical = (640 - 4) / (5 + 2);
+        expect(partial).toBeCloseTo(Math.min(horizontal, vertical));
+        expect(partial).toBeCloseTo(horizontal);
+    });
+
+    it("defaults columns and rows to the full board size", () => {
+        expect(
+            getBoardVertexSize({
+                boardSize: 13,
+                columns: 13,
+                rows: 13,
+                width: 400,
+                height: 400,
+            })
+        ).toBeCloseTo(getBoardVertexSize({ boardSize: 13, width: 400, height: 400 }));
+    });
+
     it("uses reclaimed coordinate label space when coordinates are hidden", () => {
         const withCoordinates = getBoardVertexSize({
             boardSize: 19,

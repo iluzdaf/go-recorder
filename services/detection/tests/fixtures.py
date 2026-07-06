@@ -38,6 +38,28 @@ class Theme:
 WOOD_THEME = Theme(board=185, line=60, black_fill=30, white_fill=235, white_outline=None)
 LIGHT_THEME = Theme(board=235, line=60, black_fill=30, white_fill=235, white_outline=150)
 DARK_THEME = Theme(board=110, line=185, black_fill=40, white_fill=235, white_outline=None)
+# A low-contrast scanned book page: pale lines, greyish blacks, outlined whites.
+PALE_THEME = Theme(board=225, line=170, black_fill=80, white_fill=225, white_outline=140)
+
+# Book-page bow amplitudes (pixels at the default 720 image size).
+CURVE_MILD = 4.0
+CURVE_MEDIUM = 8.0
+
+# Bow shapes for curve_page (cycles across the image width).
+CYCLES_ARCH = 0.5  # single arch, the default book-page bow
+CYCLES_S = 1.0  # S-shaped wave
+CYCLES_GUTTER = 0.25  # one-sided curl toward the spine
+
+# Measured detector limits per shape: the largest amplitude (at 720px, cell
+# ~35px) where 19x19 detection still passes; one more pixel breaks it. The
+# S-curve fails far earlier because its two displacement extremes split each
+# grid line into two gradient peaks.
+CURVE_MAX_ARCH = 12.0
+CURVE_MAX_S = 4.0
+CURVE_MAX_GUTTER = 12.0
+
+# Column letters as printed on boards and diagrams ("I" is skipped).
+COLUMN_LABELS = "ABCDEFGHJKLMNOPQRST"
 
 
 def render_board(
@@ -48,10 +70,30 @@ def render_board(
     margin_frac: float = 0.06,
     cut_frac: float = 0.01,
     theme: Theme = WOOD_THEME,
+    annotations: list[tuple[int, int, str]] | None = None,
+    annotation_thickness: int = 1,
+    coordinates: bool = False,
+    caption: str | None = None,
+    rows: int | None = None,
+    stone_offset: tuple[float, float] = (0.0, 0.0),
+    stone_offset_gradient: tuple[float, float] = (0.0, 0.0),
 ) -> bytes:
     """Render a board and return PNG-encoded bytes.
 
     ``stones`` are ``(column, row, color)`` in visible-grid coordinates.
+    ``annotations`` are ``(column, row, text)`` printed labels, drawn after
+    stones like a book kifu: white text on black stones, black text on white
+    stones, line-coloured marks on empty intersections.
+    ``coordinates`` prints column letters and row numbers in the margins of
+    real sides, like a book diagram or app screenshot.
+    ``caption`` prints a title (like "Dia. 1") centred in the bottom margin.
+    ``rows`` renders a non-square visible grid of ``size`` columns by ``rows``
+    rows (a band crop); cells stretch like a warped non-square capture.
+    ``stone_offset`` displaces every stone by cell fractions (dx, dy), the way
+    perspective parallax shifts stone tops away from their intersections.
+    ``stone_offset_gradient`` adds a further displacement growing linearly
+    across the board (zero at the first column/row, the full value at the
+    last), the way an off-axis camera shifts far-side stones more.
     """
 
     sides = real_sides or ALL_REAL
@@ -59,23 +101,37 @@ def render_board(
     margin = int(img_size * margin_frac)
     cut = int(img_size * cut_frac)
 
-    def positions(real_low: bool, real_high: bool) -> np.ndarray:
+    def positions(real_low: bool, real_high: bool, count: int) -> np.ndarray:
         low = margin if real_low else cut
         high = (img_size - 1 - margin) if real_high else (img_size - 1 - cut)
-        return np.linspace(low, high, size)
+        return np.linspace(low, high, count)
 
-    xs = positions(sides["left"], sides["right"])
-    ys = positions(sides["top"], sides["bottom"])
+    xs = positions(sides["left"], sides["right"], size)
+    ys = positions(sides["top"], sides["bottom"], rows if rows is not None else size)
 
     line = (theme.line, theme.line, theme.line)
+    # On cut sides the board continues out of frame, so grid lines run all the
+    # way to the image border, like a real cropped capture.
+    x_low = int(xs[0]) if sides["left"] else 0
+    x_high = int(xs[-1]) if sides["right"] else img_size - 1
+    y_low = int(ys[0]) if sides["top"] else 0
+    y_high = int(ys[-1]) if sides["bottom"] else img_size - 1
     for x in xs:
-        cv2.line(image, (int(x), int(ys[0])), (int(x), int(ys[-1])), line, 2)
+        cv2.line(image, (int(x), y_low), (int(x), y_high), line, 2)
     for y in ys:
-        cv2.line(image, (int(xs[0]), int(y)), (int(xs[-1]), int(y)), line, 2)
+        cv2.line(image, (x_low, int(y)), (x_high, int(y)), line, 2)
 
     radius = int((xs[1] - xs[0]) * 0.42)
     for column, row, color in stones:
-        center = (int(xs[column]), int(ys[row]))
+        column_frac = column / (len(xs) - 1) if len(xs) > 1 else 0.0
+        row_frac = row / (len(ys) - 1) if len(ys) > 1 else 0.0
+        offset_x = (
+            stone_offset[0] + stone_offset_gradient[0] * column_frac
+        ) * (xs[1] - xs[0])
+        offset_y = (
+            stone_offset[1] + stone_offset_gradient[1] * row_frac
+        ) * (ys[1] - ys[0])
+        center = (int(xs[column] + offset_x), int(ys[row] + offset_y))
         if color == "W":
             cv2.circle(image, center, radius, (theme.white_fill,) * 3, -1)
             if theme.white_outline is not None:
@@ -83,9 +139,127 @@ def render_board(
         else:
             cv2.circle(image, center, radius, (theme.black_fill,) * 3, -1)
 
+    stone_colors = {(column, row): color for column, row, color in stones}
+    for column, row, text in annotations or []:
+        color = stone_colors.get((column, row))
+        if color == "B":
+            value = theme.white_fill
+        elif color == "W":
+            value = theme.black_fill
+        else:
+            value = theme.line
+        scale = 0.9
+        while True:
+            (width, height), _ = cv2.getTextSize(
+                text, cv2.FONT_HERSHEY_SIMPLEX, scale, annotation_thickness
+            )
+            # Cap the glyph half-diagonal so labels stay inside the stone body
+            # and clear of the classifier's annulus samples.
+            if np.hypot(width, height) / 2 <= 0.55 * radius or scale <= 0.1:
+                break
+            scale -= 0.05
+        origin = (
+            int(xs[column] - round(width / 2)),
+            int(ys[row] + round(height / 2)),
+        )
+        cv2.putText(
+            image,
+            text,
+            origin,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            scale,
+            (value,) * 3,
+            annotation_thickness,
+            cv2.LINE_AA,
+        )
+
+    if coordinates:
+        color = (theme.line,) * 3
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        scale = 0.45
+
+        def put_centered(text: str, cx: int, cy: int) -> None:
+            (width, height), _ = cv2.getTextSize(text, font, scale, 1)
+            origin = (int(cx - round(width / 2)), int(cy + round(height / 2)))
+            cv2.putText(image, text, origin, font, scale, color, 1, cv2.LINE_AA)
+
+        for column, x in enumerate(xs):
+            if sides["top"]:
+                put_centered(COLUMN_LABELS[column], int(x), margin // 2)
+            if sides["bottom"]:
+                put_centered(COLUMN_LABELS[column], int(x), img_size - 1 - margin // 2)
+        for row, y in enumerate(ys):
+            # Rows are numbered from the bottom, as printed on real boards.
+            text = str(len(ys) - row)
+            if sides["left"]:
+                put_centered(text, margin // 2, int(y))
+            if sides["right"]:
+                put_centered(text, img_size - 1 - margin // 2, int(y))
+
+    if caption is not None:
+        (width, height), _ = cv2.getTextSize(caption, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+        origin = (
+            int(img_size / 2 - round(width / 2)),
+            int(img_size - 1 - margin // 2 + round(height / 2)),
+        )
+        cv2.putText(
+            image,
+            caption,
+            origin,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (theme.line,) * 3,
+            1,
+            cv2.LINE_AA,
+        )
+
     ok, buffer = cv2.imencode(".png", image)
     if not ok:
         raise RuntimeError("Failed to encode synthetic board image")
+    return buffer.tobytes()
+
+
+def curve_page(png_bytes: bytes, amplitude_px: float, cycles: float = 0.5) -> bytes:
+    """Bow the image vertically like a photographed book page.
+
+    Applies a sinusoidal vertical displacement across the width, bending
+    horizontal grid lines while vertical lines stay straight. Corners remain
+    the full-image corners. ``cycles`` picks the bow shape: 0.5 is a single
+    arch (default), 1.0 an S-curve, 0.25 a one-sided gutter curl.
+    """
+
+    image = cv2.imdecode(np.frombuffer(png_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
+    height, width = image.shape[:2]
+    map_x, map_y = np.meshgrid(
+        np.arange(width, dtype=np.float32), np.arange(height, dtype=np.float32)
+    )
+    map_y -= (
+        amplitude_px * np.sin(2.0 * np.pi * cycles * map_x / (width - 1))
+    ).astype(np.float32)
+    curved = cv2.remap(
+        image, map_x, map_y, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE
+    )
+    ok, buffer = cv2.imencode(".png", curved)
+    if not ok:
+        raise RuntimeError("Failed to encode curved board image")
+    return buffer.tobytes()
+
+
+def degrade(png_bytes: bytes, blur_sigma: float = 1.2, scale: float = 0.75) -> bytes:
+    """Mimic a slightly out-of-focus or downsampled capture."""
+
+    image = cv2.imdecode(np.frombuffer(png_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
+    height, width = image.shape[:2]
+    small = cv2.resize(
+        image,
+        (int(width * scale), int(height * scale)),
+        interpolation=cv2.INTER_AREA,
+    )
+    restored = cv2.resize(small, (width, height), interpolation=cv2.INTER_LINEAR)
+    blurred = cv2.GaussianBlur(restored, (0, 0), blur_sigma)
+    ok, buffer = cv2.imencode(".png", blurred)
+    if not ok:
+        raise RuntimeError("Failed to encode degraded board image")
     return buffer.tobytes()
 
 
@@ -98,4 +272,231 @@ def full_corners(img_size: int = 720) -> list[dict[str, int]]:
         {"x": last, "y": 0},
         {"x": last, "y": last},
         {"x": 0, "y": last},
+    ]
+
+
+STAR_POINTS_19 = [(c, r) for c in (3, 9, 15) for r in (3, 9, 15)]
+
+
+def render_cropped_capture(
+    size: int,
+    stones: list[tuple[int, int, str]],
+    col_start: int,
+    col_end: int,
+    row_start: int,
+    row_end: int,
+    img_size: int = 1080,
+    margin_frac: float = 0.06,
+    bleed_frac: float = 0.45,
+    theme: Theme = WOOD_THEME,
+    stone_offset: tuple[float, float] = (0.0, 0.0),
+) -> tuple[bytes, list[dict[str, float]]]:
+    """A camera-style crop of a full board, with exact visible-grid corners.
+
+    Renders the whole board (with star points), then crops the window covering
+    the inclusive visible ranges: real sides keep their full margin, cut sides
+    keep ``bleed_frac`` of a cell of continuing grid, like a real photo framed
+    mid-cell. ``stones`` are full-board coordinates. Returns the PNG and the
+    corner points of the outermost visible intersections within the crop.
+    """
+
+    image_bytes = render_board(size, stones=[], img_size=img_size, margin_frac=margin_frac, theme=theme)
+    image = cv2.imdecode(np.frombuffer(image_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
+
+    margin = int(img_size * margin_frac)
+    grid = np.linspace(margin, img_size - 1 - margin, size)
+    cell = float(grid[1] - grid[0])
+    radius = int(cell * 0.42)
+
+    for column, row in STAR_POINTS_19 if size == 19 else []:
+        cv2.circle(
+            image,
+            (int(grid[column]), int(grid[row])),
+            max(2, int(cell * 0.08)),
+            (theme.line,) * 3,
+            -1,
+        )
+    for column, row, color in stones:
+        center = (
+            int(grid[column] + stone_offset[0] * cell),
+            int(grid[row] + stone_offset[1] * cell),
+        )
+        if color == "W":
+            cv2.circle(image, center, radius, (theme.white_fill,) * 3, -1)
+            if theme.white_outline is not None:
+                cv2.circle(image, center, radius, (theme.white_outline,) * 3, 3)
+        else:
+            cv2.circle(image, center, radius, (theme.black_fill,) * 3, -1)
+
+    bleed = cell * bleed_frac
+    left = 0 if col_start == 0 else int(grid[col_start] - bleed)
+    right = img_size if col_end == size - 1 else int(grid[col_end] + bleed)
+    top = 0 if row_start == 0 else int(grid[row_start] - bleed)
+    bottom = img_size if row_end == size - 1 else int(grid[row_end] + bleed)
+    cropped = image[top:bottom, left:right]
+
+    corners = [
+        {"x": float(grid[col_start] - left), "y": float(grid[row_start] - top)},
+        {"x": float(grid[col_end] - left), "y": float(grid[row_start] - top)},
+        {"x": float(grid[col_end] - left), "y": float(grid[row_end] - top)},
+        {"x": float(grid[col_start] - left), "y": float(grid[row_end] - top)},
+    ]
+
+    ok, buffer = cv2.imencode(".png", cropped)
+    if not ok:
+        raise RuntimeError("Failed to encode cropped capture")
+    return buffer.tobytes(), corners
+
+
+def render_tilted_capture(
+    size: int,
+    stones: list[tuple[int, int, str]],
+    tilt_deg: float = 30.0,
+    stone_height_frac: float = 0.35,
+    img_size: int = 720,
+    margin_frac: float = 0.06,
+    theme: Theme = WOOD_THEME,
+) -> tuple[bytes, list[dict[str, float]]]:
+    """A pinhole-camera capture of a full board, tilted from vertical.
+
+    The grid lies on the board plane; stone tops lie on a plane raised by
+    ``stone_height_frac`` of a cell, so their projections shift off the
+    intersections exactly as a real photo's (or a 3D-rendering app's) do.
+    Returns the PNG and the corners of the outer grid intersections on the
+    board plane, where users are asked to mark.
+    """
+
+    margin = int(img_size * margin_frac)
+    grid = np.linspace(margin, img_size - 1 - margin, size)
+    cell = float(grid[1] - grid[0])
+    stone_height = stone_height_frac * cell
+
+    centre = (img_size - 1) / 2.0
+    distance = 2.1 * img_size
+    tilt = np.deg2rad(tilt_deg)
+    position = np.array(
+        [centre, centre + distance * np.sin(tilt), distance * np.cos(tilt)]
+    )
+    forward = np.array([centre, centre, 0.0]) - position
+    forward /= np.linalg.norm(forward)
+    right = np.cross([0.0, 0.0, 1.0], forward)
+    right /= np.linalg.norm(right)
+    down = np.cross(forward, right)
+    focal = 1.95 * img_size
+
+    def project(world: tuple[float, float, float]) -> np.ndarray:
+        rel = np.asarray(world, dtype=np.float64) - position
+        depth = rel @ forward
+        return np.array([rel @ right, rel @ down]) * focal / depth
+
+    image_corners = [
+        (0, 0),
+        (img_size - 1, 0),
+        (img_size - 1, img_size - 1),
+        (0, img_size - 1),
+    ]
+    board_quad = np.array([project((x, y, 0.0)) for x, y in image_corners])
+    stone_quad = np.array(
+        [project((x, y, stone_height)) for x, y in image_corners]
+    )
+    flip = np.array(
+        [
+            -1.0 if board_quad[0][0] > board_quad[1][0] else 1.0,
+            -1.0 if board_quad[0][1] > board_quad[3][1] else 1.0,
+        ]
+    )
+    board_quad *= flip
+    stone_quad *= flip
+    everything = np.vstack([board_quad, stone_quad])
+    offset = everything.min(axis=0) - 40
+    scale = float(img_size) / (everything.max(axis=0) - offset).max()
+
+    board = cv2.imdecode(
+        np.frombuffer(
+            render_board(size, stones=[], img_size=img_size, theme=theme),
+            dtype=np.uint8,
+        ),
+        cv2.IMREAD_COLOR,
+    )
+    stone_layer = np.zeros_like(board)
+    mask = np.zeros(board.shape[:2], dtype=np.uint8)
+    radius = int(cell * 0.42)
+    for column, row, color in stones:
+        point = (int(grid[column]), int(grid[row]))
+        if color == "W":
+            cv2.circle(stone_layer, point, radius, (theme.white_fill,) * 3, -1)
+            if theme.white_outline is not None:
+                cv2.circle(
+                    stone_layer, point, radius, (theme.white_outline,) * 3, 3
+                )
+        else:
+            cv2.circle(stone_layer, point, radius, (theme.black_fill,) * 3, -1)
+        cv2.circle(mask, point, radius, 255, -1)
+
+    out = img_size + 80
+    source = np.float32(image_corners)
+    board_matrix = cv2.getPerspectiveTransform(
+        source, np.float32((board_quad - offset) * scale)
+    )
+    stone_matrix = cv2.getPerspectiveTransform(
+        source, np.float32((stone_quad - offset) * scale)
+    )
+    photo = cv2.warpPerspective(
+        board, board_matrix, (out, out), borderValue=(30, 30, 34)
+    )
+    stones_warped = cv2.warpPerspective(stone_layer, stone_matrix, (out, out))
+    mask_warped = cv2.warpPerspective(mask, stone_matrix, (out, out))
+    photo[mask_warped > 0] = stones_warped[mask_warped > 0]
+
+    outer = [
+        (grid[0], grid[0]),
+        (grid[-1], grid[0]),
+        (grid[-1], grid[-1]),
+        (grid[0], grid[-1]),
+    ]
+    marked = (
+        np.array([project((x, y, 0.0)) for x, y in outer]) * flip - offset
+    ) * scale
+    corners = [{"x": float(x), "y": float(y)} for x, y in marked]
+
+    ok, buffer = cv2.imencode(".png", photo)
+    if not ok:
+        raise RuntimeError("Failed to encode tilted capture")
+    return buffer.tobytes(), corners
+
+
+def bow_offset(
+    x: float, amplitude_px: float, img_size: int = 720, cycles: float = 0.5
+) -> float:
+    """Vertical displacement curve_page applies to content at column ``x``."""
+
+    return amplitude_px * float(np.sin(2.0 * np.pi * cycles * x / (img_size - 1)))
+
+
+def board_corners(
+    img_size: int = 720,
+    margin_frac: float = 0.06,
+    bow_amplitude: float = 0.0,
+    bow_cycles: float = 0.5,
+    real_sides: dict[str, bool] | None = None,
+    cut_frac: float = 0.01,
+) -> list[dict[str, float]]:
+    """The outer grid intersections of a rendered board, TL/TR/BR/BL.
+
+    Marks the corners exactly on the visible grid, the way users are asked to,
+    rather than on the image corners. ``real_sides`` matches the render call
+    for partial crops. ``bow_amplitude`` accounts for curve_page moving the
+    corners of a bowed page.
+    """
+
+    sides = real_sides or ALL_REAL
+    margin = int(img_size * margin_frac)
+    cut = int(img_size * cut_frac)
+    left = margin if sides["left"] else cut
+    right = img_size - 1 - (margin if sides["right"] else cut)
+    top = margin if sides["top"] else cut
+    bottom = img_size - 1 - (margin if sides["bottom"] else cut)
+    return [
+        {"x": x, "y": y + bow_offset(x, bow_amplitude, img_size, bow_cycles)}
+        for x, y in ((left, top), (right, top), (right, bottom), (left, bottom))
     ]

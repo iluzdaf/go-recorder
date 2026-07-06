@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from app.detection import detect_board
 from app.position_view import infer_position_view
 from tests.fixtures import render_board
@@ -61,4 +63,56 @@ def test_detects_partial_board_from_image():
     assert {(stone.x, stone.y, stone.color) for stone in result.setupStones} == {
         (1, 1, "B"),
         (8, 8, "W"),
+    }
+
+
+def _sides(**real: bool) -> dict[str, bool]:
+    return {
+        "left": real.get("left", False),
+        "right": real.get("right", False),
+        "top": real.get("top", False),
+        "bottom": real.get("bottom", False),
+    }
+
+
+@pytest.mark.parametrize(
+    "sides,columns,rows,board_size,anchor,start",
+    [
+        # Square corner crops of a 9 board.
+        (_sides(left=True, top=True), 8, 8, 9, "top-left", (0, 0)),
+        (_sides(right=True, top=True), 8, 8, 9, "top-right", (1, 0)),
+        (_sides(left=True, bottom=True), 8, 8, 9, "bottom-left", (0, 1)),
+        (_sides(right=True, bottom=True), 8, 8, 9, "bottom-right", (1, 1)),
+        # Side bands of a 9 board (non-square: rows != columns).
+        (_sides(left=True, right=True, top=True), 9, 6, 9, "top", (0, 0)),
+        (_sides(left=True, right=True, bottom=True), 9, 6, 9, "bottom", (0, 3)),
+        (_sides(top=True, bottom=True, left=True), 6, 9, 9, "left", (0, 0)),
+        (_sides(top=True, bottom=True, right=True), 6, 9, 9, "right", (3, 0)),
+        # Middle of the board with no real edge in sight.
+        (_sides(), 7, 7, 9, "center", (1, 1)),
+        # Non-square corner crop.
+        (_sides(right=True, bottom=True), 8, 5, 9, "bottom-right", (1, 4)),
+        # Larger boards.
+        (_sides(right=True, bottom=True), 12, 12, 13, "bottom-right", (1, 1)),
+        (_sides(left=True, top=True), 14, 14, 19, "top-left", (0, 0)),
+    ],
+)
+def test_detected_position_view_anchor_rows_and_columns(
+    sides, columns, rows, board_size, anchor, start
+):
+    stones = [(0, 0, "B"), (columns - 1, rows - 1, "W")]
+    image = render_board(columns, stones=stones, real_sides=sides, rows=rows)
+    result = detect_board(image, CORNERS)
+
+    assert result.boardSize == board_size
+    view = result.positionView
+    assert view is not None
+    assert view.anchor == anchor
+    assert view.rows == rows
+    assert view.columns == columns
+
+    start_x, start_y = start
+    assert {(stone.x, stone.y, stone.color) for stone in result.setupStones} == {
+        (start_x, start_y, "B"),
+        (start_x + columns - 1, start_y + rows - 1, "W"),
     }

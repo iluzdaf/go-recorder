@@ -62,6 +62,87 @@ export function cornerToDisplay(corner: BoardCorner, { width, height }: Size) {
     };
 }
 
+type ImageBox = {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+};
+
+export type MagnifierLayout = {
+    /** Window position and size, in the same container space as the image box. */
+    left: number;
+    top: number;
+    size: number;
+    /** Scaled image placement inside the window. */
+    imageLeft: number;
+    imageTop: number;
+    imageWidth: number;
+    imageHeight: number;
+};
+
+function clampWithCentering(value: number, min: number, max: number) {
+    if (max < min) return min + (max - min) / 2;
+    return Math.max(min, Math.min(max, value));
+}
+
+/**
+ * Layout for a magnifier window shown while dragging a corner handle, so the
+ * exact point under the finger stays visible. The zoomed image is positioned
+ * so the corner sits at the window centre. The window floats above the handle
+ * and flips below it when it would leave the top of the container.
+ */
+export function computeCornerMagnifier(
+    corner: BoardCorner,
+    imageBox: ImageBox,
+    { size = 112, zoom = 3, gap = 24 } = {}
+): MagnifierLayout {
+    const point = cornerToDisplay(corner, imageBox);
+
+    const left = clampWithCentering(
+        imageBox.left + point.x - size / 2,
+        imageBox.left,
+        imageBox.left + imageBox.width - size
+    );
+    const above = imageBox.top + point.y - gap - size;
+    const top = above >= 0 ? above : imageBox.top + point.y + gap;
+
+    return {
+        left,
+        top,
+        size,
+        imageLeft: size / 2 - point.x * zoom,
+        imageTop: size / 2 - point.y * zoom,
+        imageWidth: imageBox.width * zoom,
+        imageHeight: imageBox.height * zoom,
+    };
+}
+
+/**
+ * Convert natural-pixel corner points (e.g. an auto-detected estimate) into
+ * the clamped fractional corners the handles use.
+ */
+export function cornersFromNatural(
+    corners: BoardCorner[],
+    {
+        naturalWidth,
+        naturalHeight,
+    }: {
+        naturalWidth: number;
+        naturalHeight: number;
+    }
+): OrderedCorners | null {
+    if (corners.length !== 4 || naturalWidth <= 0 || naturalHeight <= 0) {
+        return null;
+    }
+    return corners.map((corner) =>
+        clampCornerToBounds({
+            x: corner.x / naturalWidth,
+            y: corner.y / naturalHeight,
+        })
+    ) as OrderedCorners;
+}
+
 /**
  * Convert fractional corners into the natural-pixel coordinates the detection
  * service expects.
