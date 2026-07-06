@@ -12,7 +12,11 @@ import json
 import pytest
 
 from app.detection import detect_board, parse_corners
-from tests.fixtures import render_board, render_cropped_capture
+from tests.fixtures import (
+    render_board,
+    render_cropped_capture,
+    render_tilted_capture,
+)
 from tests.test_detection import CORNERS
 
 
@@ -61,6 +65,31 @@ def test_non_uniform_parallax_from_off_axis_camera():
         19, stones=stones, stone_offset_gradient=(0.5, 0.35)
     )
     result = detect_board(image, CORNERS)
+
+    assert result.boardSize == 19
+    assert result.positionView is None
+    assert _stone_set(result) == set(stones)
+
+
+@pytest.mark.parametrize("tilt", [20, 30, 35])
+def test_tilted_camera_capture_with_exact_corners(tilt):
+    # A true pinhole projection with stone tops on a raised plane — the same
+    # geometry as a tilted photo or a 3D-rendering app's board view. The
+    # detector holds up to a 35-degree tilt; 40 breaks line geometry.
+    stones = [
+        (2, 2, "B"),
+        (16, 2, "W"),
+        (9, 4, "W"),
+        (3, 9, "W"),
+        (16, 9, "W"),
+        (9, 9, "B"),
+        (2, 16, "W"),
+        (16, 16, "W"),
+        (10, 15, "B"),
+        (16, 15, "W"),
+    ]
+    image, corners = render_tilted_capture(19, stones, tilt_deg=tilt)
+    result = detect_board(image, parse_corners(json.dumps(corners)))
 
     assert result.boardSize == 19
     assert result.positionView is None

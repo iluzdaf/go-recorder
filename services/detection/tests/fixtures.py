@@ -348,6 +348,123 @@ def render_cropped_capture(
     return buffer.tobytes(), corners
 
 
+def render_tilted_capture(
+    size: int,
+    stones: list[tuple[int, int, str]],
+    tilt_deg: float = 30.0,
+    stone_height_frac: float = 0.35,
+    img_size: int = 720,
+    margin_frac: float = 0.06,
+    theme: Theme = WOOD_THEME,
+) -> tuple[bytes, list[dict[str, float]]]:
+    """A pinhole-camera capture of a full board, tilted from vertical.
+
+    The grid lies on the board plane; stone tops lie on a plane raised by
+    ``stone_height_frac`` of a cell, so their projections shift off the
+    intersections exactly as a real photo's (or a 3D-rendering app's) do.
+    Returns the PNG and the corners of the outer grid intersections on the
+    board plane, where users are asked to mark.
+    """
+
+    margin = int(img_size * margin_frac)
+    grid = np.linspace(margin, img_size - 1 - margin, size)
+    cell = float(grid[1] - grid[0])
+    stone_height = stone_height_frac * cell
+
+    centre = (img_size - 1) / 2.0
+    distance = 2.1 * img_size
+    tilt = np.deg2rad(tilt_deg)
+    position = np.array(
+        [centre, centre + distance * np.sin(tilt), distance * np.cos(tilt)]
+    )
+    forward = np.array([centre, centre, 0.0]) - position
+    forward /= np.linalg.norm(forward)
+    right = np.cross([0.0, 0.0, 1.0], forward)
+    right /= np.linalg.norm(right)
+    down = np.cross(forward, right)
+    focal = 1.95 * img_size
+
+    def project(world: tuple[float, float, float]) -> np.ndarray:
+        rel = np.asarray(world, dtype=np.float64) - position
+        depth = rel @ forward
+        return np.array([rel @ right, rel @ down]) * focal / depth
+
+    image_corners = [
+        (0, 0),
+        (img_size - 1, 0),
+        (img_size - 1, img_size - 1),
+        (0, img_size - 1),
+    ]
+    board_quad = np.array([project((x, y, 0.0)) for x, y in image_corners])
+    stone_quad = np.array(
+        [project((x, y, stone_height)) for x, y in image_corners]
+    )
+    flip = np.array(
+        [
+            -1.0 if board_quad[0][0] > board_quad[1][0] else 1.0,
+            -1.0 if board_quad[0][1] > board_quad[3][1] else 1.0,
+        ]
+    )
+    board_quad *= flip
+    stone_quad *= flip
+    everything = np.vstack([board_quad, stone_quad])
+    offset = everything.min(axis=0) - 40
+    scale = float(img_size) / (everything.max(axis=0) - offset).max()
+
+    board = cv2.imdecode(
+        np.frombuffer(
+            render_board(size, stones=[], img_size=img_size, theme=theme),
+            dtype=np.uint8,
+        ),
+        cv2.IMREAD_COLOR,
+    )
+    stone_layer = np.zeros_like(board)
+    mask = np.zeros(board.shape[:2], dtype=np.uint8)
+    radius = int(cell * 0.42)
+    for column, row, color in stones:
+        point = (int(grid[column]), int(grid[row]))
+        if color == "W":
+            cv2.circle(stone_layer, point, radius, (theme.white_fill,) * 3, -1)
+            if theme.white_outline is not None:
+                cv2.circle(
+                    stone_layer, point, radius, (theme.white_outline,) * 3, 3
+                )
+        else:
+            cv2.circle(stone_layer, point, radius, (theme.black_fill,) * 3, -1)
+        cv2.circle(mask, point, radius, 255, -1)
+
+    out = img_size + 80
+    source = np.float32(image_corners)
+    board_matrix = cv2.getPerspectiveTransform(
+        source, np.float32((board_quad - offset) * scale)
+    )
+    stone_matrix = cv2.getPerspectiveTransform(
+        source, np.float32((stone_quad - offset) * scale)
+    )
+    photo = cv2.warpPerspective(
+        board, board_matrix, (out, out), borderValue=(30, 30, 34)
+    )
+    stones_warped = cv2.warpPerspective(stone_layer, stone_matrix, (out, out))
+    mask_warped = cv2.warpPerspective(mask, stone_matrix, (out, out))
+    photo[mask_warped > 0] = stones_warped[mask_warped > 0]
+
+    outer = [
+        (grid[0], grid[0]),
+        (grid[-1], grid[0]),
+        (grid[-1], grid[-1]),
+        (grid[0], grid[-1]),
+    ]
+    marked = (
+        np.array([project((x, y, 0.0)) for x, y in outer]) * flip - offset
+    ) * scale
+    corners = [{"x": float(x), "y": float(y)} for x, y in marked]
+
+    ok, buffer = cv2.imencode(".png", photo)
+    if not ok:
+        raise RuntimeError("Failed to encode tilted capture")
+    return buffer.tobytes(), corners
+
+
 def bow_offset(
     x: float, amplitude_px: float, img_size: int = 720, cycles: float = 0.5
 ) -> float:
