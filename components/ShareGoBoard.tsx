@@ -141,12 +141,18 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         boardSize: share.boardSize,
         positionView,
     });
+    const displayRange = getPositionViewRange({
+        boardSize: share.boardSize,
+        positionView,
+    });
     const {
         boardAreaRef,
         gobanWrapperRef,
         vertexSize,
     } = useBoardGeometry({
         boardSize: displayBoardSize,
+        columns: displayRange?.columns,
+        rows: displayRange?.rows,
         measureGrid: true,
         showCoordinates: showBoardCoordinates,
     });

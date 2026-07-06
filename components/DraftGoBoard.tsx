@@ -186,9 +186,14 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
               positionView,
           })
         : 19;
+    const displayRange = draft
+        ? getPositionViewRange({ boardSize: draft.boardSize, positionView })
+        : null;
     const { boardAreaRef, gobanWrapperRef, gridMetrics, vertexSize } =
         useBoardGeometry({
             boardSize: displayBoardSize,
+            columns: displayRange?.columns,
+            rows: displayRange?.rows,
             measureGrid: true,
             showCoordinates: showBoardCoordinates,
         });

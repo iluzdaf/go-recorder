@@ -10,12 +10,18 @@ import {
 
 type UseBoardGeometryOptions = {
     boardSize: number;
+    // Visible extent for a partial (position-view) board; defaults to the full
+    // board so the recorder and full boards are unaffected.
+    columns?: number;
+    rows?: number;
     measureGrid?: boolean;
     showCoordinates?: boolean;
 };
 
 export default function useBoardGeometry({
     boardSize,
+    columns,
+    rows,
     measureGrid = false,
     showCoordinates = true,
 }: UseBoardGeometryOptions) {
@@ -63,6 +69,8 @@ export default function useBoardGeometry({
             const { width, height } = boardArea.getBoundingClientRect();
             const nextVertexSize = getBoardVertexSize({
                 boardSize,
+                columns,
+                rows,
                 showCoordinates,
                 width,
                 height,
@@ -105,7 +113,7 @@ export default function useBoardGeometry({
                 window.cancelAnimationFrame(animationFrameId);
             }
         };
-    }, [boardSize, measureGrid, showCoordinates]);
+    }, [boardSize, columns, rows, measureGrid, showCoordinates]);
 
     return {
         boardAreaRef,

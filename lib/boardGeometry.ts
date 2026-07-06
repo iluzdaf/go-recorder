@@ -19,6 +19,12 @@ export type LiveBoardGridMetrics = {
 
 type GetBoardVertexSizeOptions = {
     boardSize: number;
+    // Visible extent for a partial (position-view) board; defaults to the full
+    // board. Width fits the columns and height fits the rows independently, so
+    // a non-square visible region (e.g. 10x16 or 8x5) fills the screen instead
+    // of shrinking to a square of its larger side.
+    columns?: number;
+    rows?: number;
     showCoordinates?: boolean;
     width: number;
     height: number;
@@ -39,18 +45,19 @@ type GetLivePositionViewGridMetricsOptions = {
 
 export function getBoardVertexSize({
     boardSize,
+    columns = boardSize,
+    rows = boardSize,
     showCoordinates = true,
     width,
     height,
 }: GetBoardVertexSizeOptions) {
-    const availableSize = Math.max(0, Math.min(width, height));
-    const displaySize = showCoordinates
-        ? boardSize + COORDINATE_LABEL_GUTTER_VERTICES
-        : boardSize;
-    const nextVertexSize =
-        Math.max(0, availableSize - BOARD_EDGE_GUTTER_PX * 2) / displaySize;
+    const gutter = showCoordinates ? COORDINATE_LABEL_GUTTER_VERTICES : 0;
+    const horizontal =
+        Math.max(0, width - BOARD_EDGE_GUTTER_PX * 2) / (columns + gutter);
+    const vertical =
+        Math.max(0, height - BOARD_EDGE_GUTTER_PX * 2) / (rows + gutter);
 
-    return Math.max(MIN_VERTEX_SIZE_PX, nextVertexSize);
+    return Math.max(MIN_VERTEX_SIZE_PX, Math.min(horizontal, vertical));
 }
 
 export function createDefaultBoardGridMetrics(
