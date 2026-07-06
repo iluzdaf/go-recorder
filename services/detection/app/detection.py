@@ -50,6 +50,18 @@ RING_SAMPLES = 36
 RING_BAND_FRACS = (0.30, 0.34, 0.38, 0.42, 0.46)
 ANNULUS_RADIUS_FRAC = 0.28
 ANNULUS_SAMPLES = 24
+# Perspective parallax shifts stone tops away from the intersections by a
+# roughly uniform offset across the capture, and a white stone on wood clears
+# the brightness threshold by little enough that an off-centre patch misses
+# it. The offset is estimated globally (one shift for the whole board, scored
+# by solid-fill stone signal) so a shifted stone cannot be claimed by a
+# neighbouring intersection.
+OFFSET_SEARCH_FRAC = 0.16
+# Offset scoring accepts only solidly dark fills (a black stone's fill, not
+# the mid-grey mix an off-centre probe reads from outline rings and printed
+# labels), so flat diagrams keep the zero offset. Dark-mode blacks fall short
+# of this bar, but dark-mode captures are flat screenshots where zero wins.
+SCORE_DARK_DELTA = 100.0
 
 Corner = tuple[float, float]
 
@@ -313,6 +325,110 @@ def _annulus_median(
     return float(np.median(samples)) if samples else None
 
 
+def _classify_point(
+    gray: np.ndarray,
+    px: int,
+    py: int,
+    cell: float,
+    background: float,
+    interior_radius: int,
+) -> tuple[str | None, float]:
+    """Classify the patch at a point as a black stone, white stone, or empty
+    (``None``), with a confidence."""
+
+    interior = _patch_median(gray, px, py, interior_radius)
+    diff = interior - background
+    annulus = _annulus_median(gray, px, py, cell)
+    annulus_diff = annulus - background if annulus is not None else diff
+
+    if diff < -FILL_DARK_DELTA and annulus_diff < -FILL_DARK_DELTA:
+        # A solid dark fill: a black stone (any board), or a white stone on a
+        # dark board is handled by the bright branch below. The annulus check
+        # keeps dark printed labels on a white stone from reading as black; a
+        # vetoed dark centre falls through to the branches below.
+        return "B", min(1.0, -diff / (2.0 * FILL_DARK_DELTA))
+    if diff > FILL_LIGHT_DELTA or annulus_diff > FILL_LIGHT_DELTA:
+        # A solid bright fill: a white stone on a wood or dark board. The
+        # annulus recovers white stones whose centre median was dragged to
+        # board level by printed labels.
+        return "W", min(1.0, max(diff, annulus_diff) / (2.0 * FILL_LIGHT_DELTA))
+
+    # Fill matches the board (e.g. an outlined white stone on a light board):
+    # look for the stone's dark outline ring. Black stones are solid and
+    # already caught above, so the ring branch never returns black (a white
+    # stone's subtle interior shading must not be read as black).
+    coverage = _ring_coverage(gray, px, py, cell, background - RING_DARK_DELTA)
+    if coverage > RING_COVERAGE_THRESHOLD:
+        return "W", coverage
+    return None, 1.0 - coverage
+
+
+def _fill_score(
+    gray: np.ndarray,
+    xs: list[int],
+    ys: list[int],
+    cell: float,
+    backgrounds: list[list[float]],
+    interior_radius: int,
+    dx: int,
+    dy: int,
+) -> tuple[int, float]:
+    """Solid-fill stone evidence with every probe shifted by ``(dx, dy)``:
+    how many intersections read as a solid dark or bright fill, and how
+    strongly. Printed (flat) diagrams have no parallax, so outlined stones do
+    not need to influence the offset choice."""
+
+    count = 0
+    total = 0.0
+    for j, y in enumerate(ys):
+        for i, x in enumerate(xs):
+            interior = _patch_median(gray, x + dx, y + dy, interior_radius)
+            background = backgrounds[j][i]
+            diff = interior - background
+            if diff < -SCORE_DARK_DELTA:
+                # Apply the same annulus veto as classification, so printed
+                # labels on white stones are not scored as dark-stone evidence.
+                annulus = _annulus_median(gray, x + dx, y + dy, cell)
+                if annulus is not None and annulus - background >= -SCORE_DARK_DELTA:
+                    continue
+                count += 1
+                total += min(1.0, -diff / (2.0 * FILL_DARK_DELTA))
+            elif diff > FILL_LIGHT_DELTA:
+                count += 1
+                total += min(1.0, diff / (2.0 * FILL_LIGHT_DELTA))
+    return count, total
+
+
+def _stone_offset(
+    gray: np.ndarray,
+    xs: list[int],
+    ys: list[int],
+    cell: float,
+    backgrounds: list[list[float]],
+    interior_radius: int,
+) -> tuple[int, int]:
+    """The uniform parallax shift of stones relative to the grid, chosen as
+    the probe offset with the strongest solid-fill evidence. Zero wins ties,
+    so flat captures are classified exactly at the intersections."""
+
+    step = max(1, int(round(cell * OFFSET_SEARCH_FRAC)))
+    best_offset = (0, 0)
+    best_score = _fill_score(
+        gray, xs, ys, cell, backgrounds, interior_radius, 0, 0
+    )
+    for dx in (-step, 0, step):
+        for dy in (-step, 0, step):
+            if (dx, dy) == (0, 0):
+                continue
+            score = _fill_score(
+                gray, xs, ys, cell, backgrounds, interior_radius, dx, dy
+            )
+            if score > best_score:
+                best_score = score
+                best_offset = (dx, dy)
+    return best_offset
+
+
 def _detect_stones(
     gray: np.ndarray,
     xs: list[int],
@@ -325,52 +441,28 @@ def _detect_stones(
     background_radius = max(2, int(cell * BACKGROUND_RADIUS_FRAC))
 
     fallback_background = float(np.median(gray))
+    backgrounds: list[list[float]] = []
+    for j in range(len(ys)):
+        row: list[float] = []
+        for i in range(len(xs)):
+            background = _local_background(gray, xs, ys, i, j, background_radius)
+            row.append(background if background is not None else fallback_background)
+        backgrounds.append(row)
+
+    dx, dy = _stone_offset(gray, xs, ys, cell, backgrounds, interior_radius)
 
     stones: list[SetupStone] = []
     confidences: list[float] = []
     for j, y in enumerate(ys):
         for i, x in enumerate(xs):
-            interior = _patch_median(gray, x, y, interior_radius)
-            background = _local_background(gray, xs, ys, i, j, background_radius)
-            if background is None:
-                background = fallback_background
-
-            diff = interior - background
-            annulus = _annulus_median(gray, x, y, cell)
-            annulus_diff = annulus - background if annulus is not None else diff
-            if diff < -FILL_DARK_DELTA and annulus_diff < -FILL_DARK_DELTA:
-                # A solid dark fill: a black stone (any board), or a white stone
-                # on a dark board is handled by the bright branch below. The
-                # annulus check keeps dark printed labels on a white stone from
-                # reading as black; a vetoed dark centre falls through to the
-                # branches below.
-                stones.append(SetupStone(x=start_x + i, y=start_y + j, color="B"))
-                confidences.append(min(1.0, -diff / (2.0 * FILL_DARK_DELTA)))
-            elif diff > FILL_LIGHT_DELTA or annulus_diff > FILL_LIGHT_DELTA:
-                # A solid bright fill: a white stone on a wood or dark board.
-                # The annulus recovers white stones whose centre median was
-                # dragged to board level by printed labels.
-                stones.append(SetupStone(x=start_x + i, y=start_y + j, color="W"))
-                confidences.append(
-                    min(1.0, max(diff, annulus_diff) / (2.0 * FILL_LIGHT_DELTA))
+            color, confidence = _classify_point(
+                gray, x + dx, y + dy, cell, backgrounds[j][i], interior_radius
+            )
+            if color is not None:
+                stones.append(
+                    SetupStone(x=start_x + i, y=start_y + j, color=color)
                 )
-            else:
-                # Fill matches the board (e.g. an outlined white stone on a
-                # light board): look for the stone's dark outline ring.
-                coverage = _ring_coverage(
-                    gray, x, y, cell, background - RING_DARK_DELTA
-                )
-                if coverage > RING_COVERAGE_THRESHOLD:
-                    # A board-coloured fill ringed by a dark outline is a white
-                    # stone. Black stones are solid and already caught above, so
-                    # we do not second-guess the colour here (a white stone's
-                    # subtle interior shading must not be read as black).
-                    stones.append(
-                        SetupStone(x=start_x + i, y=start_y + j, color="W")
-                    )
-                    confidences.append(coverage)
-                else:
-                    confidences.append(1.0 - coverage)
+            confidences.append(confidence)
 
     confidence = float(np.mean(confidences)) if confidences else 0.0
     return stones, confidence

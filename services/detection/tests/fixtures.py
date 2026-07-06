@@ -75,6 +75,7 @@ def render_board(
     coordinates: bool = False,
     caption: str | None = None,
     rows: int | None = None,
+    stone_offset: tuple[float, float] = (0.0, 0.0),
 ) -> bytes:
     """Render a board and return PNG-encoded bytes.
 
@@ -87,6 +88,8 @@ def render_board(
     ``caption`` prints a title (like "Dia. 1") centred in the bottom margin.
     ``rows`` renders a non-square visible grid of ``size`` columns by ``rows``
     rows (a band crop); cells stretch like a warped non-square capture.
+    ``stone_offset`` displaces every stone by cell fractions (dx, dy), the way
+    perspective parallax shifts stone tops away from their intersections.
     """
 
     sides = real_sides or ALL_REAL
@@ -115,8 +118,10 @@ def render_board(
         cv2.line(image, (x_low, int(y)), (x_high, int(y)), line, 2)
 
     radius = int((xs[1] - xs[0]) * 0.42)
+    offset_x = stone_offset[0] * (xs[1] - xs[0])
+    offset_y = stone_offset[1] * (ys[1] - ys[0])
     for column, row, color in stones:
-        center = (int(xs[column]), int(ys[row]))
+        center = (int(xs[column] + offset_x), int(ys[row] + offset_y))
         if color == "W":
             cv2.circle(image, center, radius, (theme.white_fill,) * 3, -1)
             if theme.white_outline is not None:
@@ -274,6 +279,7 @@ def render_cropped_capture(
     margin_frac: float = 0.06,
     bleed_frac: float = 0.45,
     theme: Theme = WOOD_THEME,
+    stone_offset: tuple[float, float] = (0.0, 0.0),
 ) -> tuple[bytes, list[dict[str, float]]]:
     """A camera-style crop of a full board, with exact visible-grid corners.
 
@@ -301,7 +307,10 @@ def render_cropped_capture(
             -1,
         )
     for column, row, color in stones:
-        center = (int(grid[column]), int(grid[row]))
+        center = (
+            int(grid[column] + stone_offset[0] * cell),
+            int(grid[row] + stone_offset[1] * cell),
+        )
         if color == "W":
             cv2.circle(image, center, radius, (theme.white_fill,) * 3, -1)
             if theme.white_outline is not None:
