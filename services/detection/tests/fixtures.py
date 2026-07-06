@@ -76,6 +76,7 @@ def render_board(
     caption: str | None = None,
     rows: int | None = None,
     stone_offset: tuple[float, float] = (0.0, 0.0),
+    stone_offset_gradient: tuple[float, float] = (0.0, 0.0),
 ) -> bytes:
     """Render a board and return PNG-encoded bytes.
 
@@ -90,6 +91,9 @@ def render_board(
     rows (a band crop); cells stretch like a warped non-square capture.
     ``stone_offset`` displaces every stone by cell fractions (dx, dy), the way
     perspective parallax shifts stone tops away from their intersections.
+    ``stone_offset_gradient`` adds a further displacement growing linearly
+    across the board (zero at the first column/row, the full value at the
+    last), the way an off-axis camera shifts far-side stones more.
     """
 
     sides = real_sides or ALL_REAL
@@ -118,9 +122,15 @@ def render_board(
         cv2.line(image, (x_low, int(y)), (x_high, int(y)), line, 2)
 
     radius = int((xs[1] - xs[0]) * 0.42)
-    offset_x = stone_offset[0] * (xs[1] - xs[0])
-    offset_y = stone_offset[1] * (ys[1] - ys[0])
     for column, row, color in stones:
+        column_frac = column / (len(xs) - 1) if len(xs) > 1 else 0.0
+        row_frac = row / (len(ys) - 1) if len(ys) > 1 else 0.0
+        offset_x = (
+            stone_offset[0] + stone_offset_gradient[0] * column_frac
+        ) * (xs[1] - xs[0])
+        offset_y = (
+            stone_offset[1] + stone_offset_gradient[1] * row_frac
+        ) * (ys[1] - ys[0])
         center = (int(xs[column] + offset_x), int(ys[row] + offset_y))
         if color == "W":
             cv2.circle(image, center, radius, (theme.white_fill,) * 3, -1)

@@ -62,6 +62,11 @@ OFFSET_SEARCH_FRAC = 0.16
 # labels), so flat diagrams keep the zero offset. Dark-mode blacks fall short
 # of this bar, but dark-mode captures are flat screenshots where zero wins.
 SCORE_DARK_DELTA = 100.0
+# Perspective parallax is not perfectly uniform: far-side stones shift more.
+# Intersections that read empty at the global offset are re-probed within
+# this small radius around it. Bounded tightly, and searched only around the
+# global offset, so a probe can never reach a neighbouring stone.
+REFINE_SEARCH_FRAC = 0.10
 
 Corner = tuple[float, float]
 
@@ -429,6 +434,44 @@ def _stone_offset(
     return best_offset
 
 
+def _refine_empty_point(
+    gray: np.ndarray,
+    x: int,
+    y: int,
+    cell: float,
+    background: float,
+    interior_radius: int,
+    dx: int,
+    dy: int,
+) -> tuple[str, float] | None:
+    """Fill-only probes in a small neighbourhood around the global offset,
+    for the non-uniform residue of perspective parallax. Outlined (ring)
+    stones never need this: printed diagrams are flat. Bright checks use the
+    patch alone so annulus samples grazing a neighbouring stone cannot vote."""
+
+    step = max(1, int(round(cell * REFINE_SEARCH_FRAC)))
+    best: tuple[str, float] | None = None
+    for rx in (-step, 0, step):
+        for ry in (-step, 0, step):
+            if rx == 0 and ry == 0:
+                continue
+            px, py = x + dx + rx, y + dy + ry
+            interior = _patch_median(gray, px, py, interior_radius)
+            diff = interior - background
+            if diff < -FILL_DARK_DELTA:
+                annulus = _annulus_median(gray, px, py, cell)
+                if annulus is not None and annulus - background >= -FILL_DARK_DELTA:
+                    continue
+                confidence = min(1.0, -diff / (2.0 * FILL_DARK_DELTA))
+                if best is None or confidence > best[1]:
+                    best = ("B", confidence)
+            elif diff > FILL_LIGHT_DELTA:
+                confidence = min(1.0, diff / (2.0 * FILL_LIGHT_DELTA))
+                if best is None or confidence > best[1]:
+                    best = ("W", confidence)
+    return best
+
+
 def _detect_stones(
     gray: np.ndarray,
     xs: list[int],
@@ -458,6 +501,12 @@ def _detect_stones(
             color, confidence = _classify_point(
                 gray, x + dx, y + dy, cell, backgrounds[j][i], interior_radius
             )
+            if color is None:
+                refined = _refine_empty_point(
+                    gray, x, y, cell, backgrounds[j][i], interior_radius, dx, dy
+                )
+                if refined is not None:
+                    color, confidence = refined
             if color is not None:
                 stones.append(
                     SetupStone(x=start_x + i, y=start_y + j, color=color)

@@ -41,6 +41,32 @@ def test_parallax_shifted_stones_on_wood(offset):
     assert _stone_set(result) == set(stones)
 
 
+def test_non_uniform_parallax_from_off_axis_camera():
+    # An off-axis camera shifts far-side stones more than near-side ones; the
+    # visible symptom is a slanted image border in the overlay. The global
+    # offset alone leaves far-edge stones off-centre; bounded refinement
+    # around it recovers them.
+    stones = [
+        (2, 2, "B"),
+        (16, 2, "W"),
+        (9, 4, "W"),
+        (3, 9, "W"),
+        (16, 9, "W"),
+        (9, 9, "B"),
+        (2, 16, "W"),
+        (16, 16, "W"),
+        (10, 15, "B"),
+    ]
+    image = render_board(
+        19, stones=stones, stone_offset_gradient=(0.5, 0.35)
+    )
+    result = detect_board(image, CORNERS)
+
+    assert result.boardSize == 19
+    assert result.positionView is None
+    assert _stone_set(result) == set(stones)
+
+
 def test_parallax_camera_crop_with_exact_corners():
     # The real-photo scenario: a tilted capture of the bottom-right of a
     # 19x19 board, corners on the visible grid, stone tops shifted.
