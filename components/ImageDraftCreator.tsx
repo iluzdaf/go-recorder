@@ -75,7 +75,6 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const imageRef = useRef<HTMLImageElement>(null);
     const draggingRef = useRef<CornerIndex | null>(null);
-    const cornersAdjustedRef = useRef(false);
     const cornerEstimateRunRef = useRef(0);
 
     const [image, setImage] = useState<SelectedImage | null>(null);
@@ -88,6 +87,7 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
         height: 0,
     });
     const [isDetecting, setIsDetecting] = useState(false);
+    const [isDetectingCorners, setIsDetectingCorners] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const measureImageBox = useCallback(() => {
@@ -144,39 +144,38 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
         setCorners(createInitialCorners());
         measureImageBox();
 
-        // Suggest corners automatically; keep the defaults if the estimate
-        // fails, arrives after the user grabbed a handle, or the photo
-        // changed meanwhile.
+        // Suggest corners automatically; a blocking overlay prevents editing
+        // until the estimate resolves. Keep the defaults if the estimate
+        // fails or the photo changed meanwhile.
         const element = imageRef.current;
         if (!image || !element) return;
         const { naturalWidth, naturalHeight } = element;
-        cornersAdjustedRef.current = false;
         const run = ++cornerEstimateRunRef.current;
-        void detectCorners({ image: image.file, imageName: image.file.name }).then(
-            (estimated) => {
-                if (
-                    !estimated ||
-                    run !== cornerEstimateRunRef.current ||
-                    cornersAdjustedRef.current
-                ) {
-                    return;
+        setIsDetectingCorners(true);
+        void detectCorners({ image: image.file, imageName: image.file.name })
+            .then((estimated) => {
+                if (run !== cornerEstimateRunRef.current) return;
+                if (estimated) {
+                    const fractions = cornersFromNatural(estimated, {
+                        naturalWidth,
+                        naturalHeight,
+                    });
+                    if (fractions) {
+                        setCorners(fractions);
+                    }
                 }
-                const fractions = cornersFromNatural(estimated, {
-                    naturalWidth,
-                    naturalHeight,
-                });
-                if (fractions) {
-                    setCorners(fractions);
+            })
+            .finally(() => {
+                if (run === cornerEstimateRunRef.current) {
+                    setIsDetectingCorners(false);
                 }
-            }
-        );
+            });
     }
 
     function handleHandlePointerDown(index: CornerIndex) {
         return (event: React.PointerEvent<HTMLDivElement>) => {
             event.preventDefault();
             draggingRef.current = index;
-            cornersAdjustedRef.current = true;
             setActiveCorner(index);
             event.currentTarget.setPointerCapture(event.pointerId);
         };
@@ -278,7 +277,7 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                         <button
                             type="button"
                             onClick={handleDetect}
-                            disabled={isDetecting || !corners}
+                            disabled={isDetecting || isDetectingCorners || !corners}
                             className="inline-flex items-center gap-2 rounded bg-sky-600 px-4 py-2 font-medium text-white hover:bg-sky-500 disabled:opacity-50"
                         >
                             {isDetecting && (
@@ -378,6 +377,7 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                                     })}
 
                                     {activeCorner !== null &&
+                                        !isDetectingCorners &&
                                         (() => {
                                             const magnifier =
                                                 computeCornerMagnifier(
@@ -415,6 +415,23 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                                         })()}
                                 </>
                             )}
+
+                            {isDetectingCorners && (
+                                <div
+                                    role="status"
+                                    aria-live="polite"
+                                    className="absolute inset-0 z-20 flex items-center justify-center"
+                                >
+                                    <div className="absolute inset-0 bg-zinc-950/60" />
+                                    <div className="relative inline-flex items-center gap-3 rounded-lg bg-zinc-900/90 px-5 py-3 text-sm font-medium text-white shadow-lg">
+                                        <Loader2
+                                            size={18}
+                                            className="animate-spin"
+                                        />
+                                        {t("detectingCorners")}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {error && (
@@ -427,7 +444,7 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
-                                disabled={isDetecting}
+                                disabled={isDetecting || isDetectingCorners}
                                 className="rounded border border-zinc-600 px-4 py-2 text-zinc-200 hover:border-zinc-400 hover:text-white disabled:opacity-50"
                             >
                                 {t("changeBoardImage")}

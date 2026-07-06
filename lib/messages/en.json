@@ -131,6 +131,7 @@
     "selectBoardImage": "Choose a board photo",
     "changeBoardImage": "Choose a different photo",
     "adjustCornersHint": "Drag the four handles to the corners of the board.",
+    "detectingCorners": "Detecting corners…",
     "detectPosition": "Detect Position",
     "detectingPosition": "Detecting...",
     "detectionUnavailable": "Image detection is not configured.",
