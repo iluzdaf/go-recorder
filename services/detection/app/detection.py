@@ -44,6 +44,13 @@ INTERIOR_RADIUS_FRAC = 0.26
 BACKGROUND_RADIUS_FRAC = 0.12
 FILL_DARK_DELTA = 50.0
 FILL_LIGHT_DELTA = 40.0
+# Soft-shaded white stones on pale wood clear the board by well under
+# FILL_LIGHT_DELTA. They are still detectable because a stone occludes the
+# grid lines: its patch has no line-dark pixels, while an empty intersection
+# always does. The soft branch requires both the mild brightness and a clean
+# (line-free) patch.
+SOFT_LIGHT_DELTA = 18.0
+PATCH_LOW_PERCENTILE = 5.0
 RING_DARK_DELTA = 30.0
 RING_COVERAGE_THRESHOLD = 0.42
 RING_SAMPLES = 36
@@ -258,6 +265,20 @@ def _patch_median(gray: np.ndarray, cx: int, cy: int, radius: int) -> float:
     return float(np.median(patch))
 
 
+def _patch_low(gray: np.ndarray, cx: int, cy: int, radius: int) -> float:
+    """A low percentile of the patch: dark when grid lines cross it, bright
+    when a stone occludes them."""
+
+    x0 = max(0, cx - radius)
+    x1 = min(gray.shape[1], cx + radius + 1)
+    y0 = max(0, cy - radius)
+    y1 = min(gray.shape[0], cy + radius + 1)
+    patch = gray[y0:y1, x0:x1]
+    if patch.size == 0:
+        return float(gray[cy, cx])
+    return float(np.percentile(patch, PATCH_LOW_PERCENTILE))
+
+
 def _cell_size(xs: list[int], ys: list[int]) -> float:
     diffs = list(np.diff(xs)) + list(np.diff(ys))
     return float(np.median(diffs)) if diffs else float(WARP_SIZE)
@@ -357,6 +378,17 @@ def _classify_point(
         # annulus recovers white stones whose centre median was dragged to
         # board level by printed labels.
         return "W", min(1.0, max(diff, annulus_diff) / (2.0 * FILL_LIGHT_DELTA))
+
+    if (
+        diff > SOFT_LIGHT_DELTA
+        and annulus_diff > SOFT_LIGHT_DELTA
+        and _patch_low(gray, px, py, interior_radius)
+        > background - RING_DARK_DELTA
+    ):
+        # A soft-shaded white stone on pale wood: only mildly brighter than
+        # the board, but the patch is free of line-dark pixels, which an
+        # empty intersection can never be.
+        return "W", min(1.0, diff / FILL_LIGHT_DELTA)
 
     # Fill matches the board (e.g. an outlined white stone on a light board):
     # look for the stone's dark outline ring. Black stones are solid and

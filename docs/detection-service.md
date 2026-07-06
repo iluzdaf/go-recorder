@@ -52,7 +52,9 @@
 - Classify each intersection against a local (per-cell) background:
   - A clearly dark fill is black.
   - A clearly bright fill is white.
+  - A mildly bright fill whose patch is free of line-dark pixels is a white stone (soft-shaded stones on pale wood; a stone occludes the grid lines, an empty intersection never does).
   - A board-coloured fill ringed by a dark outline is a white stone (outlined white stones on light boards and kifu diagrams). Black stones are solid and caught earlier, so the ring branch always yields white.
+  - Stone probes compensate perspective parallax: a global offset estimated from solid-fill evidence, plus a small bounded refinement around it.
 - Infer a `positionView` for partial captures from which sides reach a real board edge.
   - A side is cut (board continues out of frame) when most grid lines continue past the outermost perpendicular line into the padded warp; a real edge shows only margin there.
   - This keeps anchors correct whether corners are placed exactly on the board corners or with margin included.
