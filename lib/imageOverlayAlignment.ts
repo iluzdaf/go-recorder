@@ -153,6 +153,9 @@ export function computeImageOverlayStyle({
         transformOrigin: "0 0",
         transform: `matrix3d(${matrix.join(",")})`,
         pointerEvents: "none",
-        opacity: 0.6,
+        // Above the board and its stones (Shudan stones sit in their own
+        // stacking context), so the photo reads as a comparison layer.
+        zIndex: 20,
+        opacity: 0.4,
     };
 }

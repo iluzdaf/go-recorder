@@ -47,6 +47,18 @@ describe("computeImageOverlayStyle", () => {
         expect(style.top).toBe(0);
     });
 
+    it("renders above the stones and stays see-through", () => {
+        const style = computeImageOverlayStyle({
+            imageSource: makeImageSource(),
+            boardSize: 9,
+            gridMetrics: makeGridMetrics(),
+            positionViewRange: null,
+        });
+
+        expect(style.zIndex).toBe(20);
+        expect(style.opacity).toBe(0.4);
+    });
+
     it("sets width and height to natural image dimensions", () => {
         const style = computeImageOverlayStyle({
             imageSource: makeImageSource({ naturalWidth: 800, naturalHeight: 600 }),
