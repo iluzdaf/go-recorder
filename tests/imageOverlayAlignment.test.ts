@@ -32,6 +32,21 @@ function makeGridMetrics(overrides: Partial<BoardGridMetrics> = {}): BoardGridMe
     };
 }
 
+// Apply the CSS matrix3d (column-major 4x4 projective transform) to an image
+// point, returning where it lands in board-wrapper space.
+function mapThroughTransform(transform: string, x: number, y: number) {
+    const v = transform
+        .replace("matrix3d(", "")
+        .replace(")", "")
+        .split(",")
+        .map(Number);
+    // Homography rows recovered from the column-major layout.
+    const px = v[0] * x + v[4] * y + v[12];
+    const py = v[1] * x + v[5] * y + v[13];
+    const pw = v[3] * x + v[7] * y + v[15];
+    return { x: px / pw, y: py / pw };
+}
+
 describe("computeImageOverlayStyle", () => {
     it("returns absolute positioning and pointer-events none", () => {
         const style = computeImageOverlayStyle({
@@ -110,6 +125,69 @@ describe("computeImageOverlayStyle", () => {
         });
 
         expect(style.maxWidth).toBe("none");
+    });
+
+    it("stretches a partial-view overlay across the visible region", () => {
+        // gridMetrics.cellSize divides the rendered grid width by the full
+        // board size, but a partial view renders only its visible columns in
+        // that width. The overlay must span the visible region, not shrink to
+        // columns/boardSize of it.
+        const boardSizePx = 570;
+        const columns = 10;
+        const rows = 16;
+        const style = computeImageOverlayStyle({
+            imageSource: makeImageSource({
+                naturalWidth: 1000,
+                naturalHeight: 1600,
+                // Full-image corners so the source maps exactly onto the
+                // destination rectangle.
+                corners: [
+                    { x: 0, y: 0 },
+                    { x: 1, y: 0 },
+                    { x: 1, y: 1 },
+                    { x: 0, y: 1 },
+                ],
+            }),
+            boardSize: 19,
+            gridMetrics: {
+                left: 10,
+                top: 20,
+                cellSize: boardSizePx / 19, // full-board value
+                boardSizePx,
+            },
+            positionViewRange: {
+                startX: 9,
+                startY: 3,
+                columns,
+                rows,
+                rangeX: [9, 18],
+                rangeY: [3, 18],
+            },
+        });
+
+        const topLeft = mapThroughTransform(style.transform as string, 0, 0);
+        const topRight = mapThroughTransform(
+            style.transform as string,
+            1000,
+            0
+        );
+        const bottomLeft = mapThroughTransform(
+            style.transform as string,
+            0,
+            1600
+        );
+
+        // Displayed cell size is boardSizePx / columns, so the source spans
+        // (columns - 1) and (rows - 1) cells between outer intersections.
+        const displayedCell = boardSizePx / columns;
+        expect(topRight.x - topLeft.x).toBeCloseTo(
+            (columns - 1) * displayedCell,
+            3
+        );
+        expect(bottomLeft.y - topLeft.y).toBeCloseTo(
+            (rows - 1) * displayedCell,
+            3
+        );
     });
 
     it("produces a matrix3d transform string", () => {

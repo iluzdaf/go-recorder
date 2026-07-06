@@ -86,7 +86,7 @@ export function computeImageOverlayStyle({
     positionViewRange,
 }: ImageOverlayStyleParams): CSSProperties {
     const { naturalWidth, naturalHeight, corners } = imageSource;
-    const { left, top, cellSize } = gridMetrics;
+    const { left, top } = gridMetrics;
 
     const startX = positionViewRange?.startX ?? 0;
     const startY = positionViewRange?.startY ?? 0;
@@ -96,6 +96,14 @@ export function computeImageOverlayStyle({
     const endY = positionViewRange
         ? positionViewRange.startY + positionViewRange.rows - 1
         : boardSize - 1;
+
+    // gridMetrics.cellSize divides the rendered grid width by the full board
+    // size, but a partial view renders only its visible columns in that width.
+    // Derive the displayed cell size from the visible span, matching how the
+    // board and the stone-correction overlay are laid out.
+    const cellSize = positionViewRange
+        ? gridMetrics.boardSizePx / positionViewRange.columns
+        : gridMetrics.cellSize;
 
     // Board corner intersections in gobanWrapperRef-relative space, TL/TR/BR/BL
     const toScreen = (bx: number, by: number): Point => ({
