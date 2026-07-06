@@ -51,6 +51,11 @@ FILL_LIGHT_DELTA = 40.0
 # (line-free) patch.
 SOFT_LIGHT_DELTA = 18.0
 PATCH_LOW_PERCENTILE = 5.0
+# The outline-ring branch (a board-coloured fill ringed by a dark outline)
+# only applies to light boards, where a white stone's fill matches the board.
+# On a mid-tone board the two crossing grid lines at an empty intersection
+# supply a false ring, so the branch is gated to a light local background.
+LIGHT_BOARD_MIN = 205.0
 RING_DARK_DELTA = 30.0
 RING_COVERAGE_THRESHOLD = 0.42
 RING_SAMPLES = 36
@@ -395,13 +400,16 @@ def _classify_point(
         return "W", min(1.0, diff / FILL_LIGHT_DELTA)
 
     # Fill matches the board (e.g. an outlined white stone on a light board):
-    # look for the stone's dark outline ring. Black stones are solid and
-    # already caught above, so the ring branch never returns black (a white
-    # stone's subtle interior shading must not be read as black).
-    coverage = _ring_coverage(gray, px, py, cell, background - RING_DARK_DELTA)
-    if coverage > RING_COVERAGE_THRESHOLD:
-        return "W", coverage
-    return None, 1.0 - coverage
+    # look for the stone's dark outline ring. Only on a light board, where a
+    # white stone's fill matches the board; on a mid-tone board the crossing
+    # grid lines at an empty intersection would fake a ring. Black stones are
+    # solid and already caught above, so the ring branch never returns black.
+    if background >= LIGHT_BOARD_MIN:
+        coverage = _ring_coverage(gray, px, py, cell, background - RING_DARK_DELTA)
+        if coverage > RING_COVERAGE_THRESHOLD:
+            return "W", coverage
+        return None, 1.0 - coverage
+    return None, 1.0
 
 
 def _fill_score(
