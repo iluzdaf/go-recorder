@@ -120,6 +120,24 @@ export function computeImageOverlayStyle({
 
     const matrix = projectiveMatrix(src, dst);
 
+    // Clip to the corner quad (plus a little margin) in image space; the
+    // transform then maps the clipped region onto the board rectangle, so the
+    // photo's own slanted borders never show. clip-path applies before the
+    // CSS transform, which is what makes a quad-shaped clip come out straight.
+    const visibleCells = Math.max(1, Math.min(endX - startX, endY - startY));
+    const expand = 1 + 1.5 / visibleCells;
+    const centroid = {
+        x: (src[0].x + src[1].x + src[2].x + src[3].x) / 4,
+        y: (src[0].y + src[1].y + src[2].y + src[3].y) / 4,
+    };
+    const clip = src
+        .map((point) => {
+            const x = centroid.x + (point.x - centroid.x) * expand;
+            const y = centroid.y + (point.y - centroid.y) * expand;
+            return `${x}px ${y}px`;
+        })
+        .join(", ");
+
     return {
         position: "absolute",
         left: 0,
@@ -131,6 +149,7 @@ export function computeImageOverlayStyle({
         // naturalHeight, crushing the overlay into a tall strip before the
         // transform is applied.
         maxWidth: "none",
+        clipPath: `polygon(${clip})`,
         transformOrigin: "0 0",
         transform: `matrix3d(${matrix.join(",")})`,
         pointerEvents: "none",

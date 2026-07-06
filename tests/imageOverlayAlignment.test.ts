@@ -59,6 +59,31 @@ describe("computeImageOverlayStyle", () => {
         expect(style.height).toBe(600);
     });
 
+    it("clips to the corner quad so photo borders never show", () => {
+        const style = computeImageOverlayStyle({
+            imageSource: makeImageSource({
+                naturalWidth: 1000,
+                naturalHeight: 1000,
+                corners: [
+                    { x: 0.2, y: 0.2 },
+                    { x: 0.8, y: 0.2 },
+                    { x: 0.8, y: 0.8 },
+                    { x: 0.2, y: 0.8 },
+                ],
+            }),
+            boardSize: 19,
+            gridMetrics: makeGridMetrics(),
+            positionViewRange: null,
+        });
+
+        const clip = style.clipPath as string;
+        expect(clip).toMatch(/^polygon\(/);
+        expect(clip.split(",")).toHaveLength(4);
+        // Expanded slightly beyond the quad (200px corner, centroid 500px):
+        // 500 - 300 * (1 + 1.5/18) = 175px.
+        expect(clip).toContain("175px 175px");
+    });
+
     it("overrides the global img max-width clamp", () => {
         // Tailwind preflight's img { max-width: 100% } would otherwise crush a
         // photo wider than the board wrapper into a tall strip.
