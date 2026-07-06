@@ -74,6 +74,7 @@ def render_board(
     annotation_thickness: int = 1,
     coordinates: bool = False,
     caption: str | None = None,
+    rows: int | None = None,
 ) -> bytes:
     """Render a board and return PNG-encoded bytes.
 
@@ -84,6 +85,8 @@ def render_board(
     ``coordinates`` prints column letters and row numbers in the margins of
     real sides, like a book diagram or app screenshot.
     ``caption`` prints a title (like "Dia. 1") centred in the bottom margin.
+    ``rows`` renders a non-square visible grid of ``size`` columns by ``rows``
+    rows (a band crop); cells stretch like a warped non-square capture.
     """
 
     sides = real_sides or ALL_REAL
@@ -91,13 +94,13 @@ def render_board(
     margin = int(img_size * margin_frac)
     cut = int(img_size * cut_frac)
 
-    def positions(real_low: bool, real_high: bool) -> np.ndarray:
+    def positions(real_low: bool, real_high: bool, count: int) -> np.ndarray:
         low = margin if real_low else cut
         high = (img_size - 1 - margin) if real_high else (img_size - 1 - cut)
-        return np.linspace(low, high, size)
+        return np.linspace(low, high, count)
 
-    xs = positions(sides["left"], sides["right"])
-    ys = positions(sides["top"], sides["bottom"])
+    xs = positions(sides["left"], sides["right"], size)
+    ys = positions(sides["top"], sides["bottom"], rows if rows is not None else size)
 
     line = (theme.line, theme.line, theme.line)
     for x in xs:
@@ -166,7 +169,7 @@ def render_board(
                 put_centered(COLUMN_LABELS[column], int(x), img_size - 1 - margin // 2)
         for row, y in enumerate(ys):
             # Rows are numbered from the bottom, as printed on real boards.
-            text = str(size - row)
+            text = str(len(ys) - row)
             if sides["left"]:
                 put_centered(text, margin // 2, int(y))
             if sides["right"]:
