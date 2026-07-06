@@ -35,6 +35,32 @@ function isSetupStone(value: unknown): value is SetupStone {
     );
 }
 
+export type CornerEstimate = {
+    corners: BoardCorner[] | null;
+};
+
+function isBoardCorner(value: unknown): value is BoardCorner {
+    if (typeof value !== "object" || value === null) return false;
+    const corner = value as Partial<BoardCorner>;
+    return (
+        typeof corner.x === "number" &&
+        Number.isFinite(corner.x) &&
+        typeof corner.y === "number" &&
+        Number.isFinite(corner.y)
+    );
+}
+
+export function isCornerEstimate(value: unknown): value is CornerEstimate {
+    if (typeof value !== "object" || value === null) return false;
+    const estimate = value as Partial<CornerEstimate>;
+    return (
+        estimate.corners === null ||
+        (Array.isArray(estimate.corners) &&
+            estimate.corners.length === 4 &&
+            estimate.corners.every(isBoardCorner))
+    );
+}
+
 export function isDetectionResult(value: unknown): value is DetectionResult {
     if (typeof value !== "object" || value === null) return false;
 

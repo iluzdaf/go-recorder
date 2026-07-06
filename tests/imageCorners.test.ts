@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
     clampCornerToBounds,
     computeCornerMagnifier,
+    cornersFromNatural,
     cornerToDisplay,
     createInitialCorners,
     scaleCornersToNatural,
@@ -59,6 +60,47 @@ describe("scaleCornersToNatural", () => {
             { x: 900, y: 450 },
             { x: 100, y: 450 },
         ]);
+    });
+});
+
+describe("cornersFromNatural", () => {
+    it("converts natural pixels into clamped fractions", () => {
+        const fractions = cornersFromNatural(
+            [
+                { x: 100, y: 50 },
+                { x: 900, y: 50 },
+                { x: 1100, y: 450 },
+                { x: -20, y: 450 },
+            ],
+            { naturalWidth: 1000, naturalHeight: 500 }
+        );
+
+        expect(fractions).toEqual([
+            { x: 0.1, y: 0.1 },
+            { x: 0.9, y: 0.1 },
+            { x: 1, y: 0.9 },
+            { x: 0, y: 0.9 },
+        ]);
+    });
+
+    it("rejects wrong corner counts and empty dimensions", () => {
+        expect(
+            cornersFromNatural([{ x: 1, y: 1 }], {
+                naturalWidth: 100,
+                naturalHeight: 100,
+            })
+        ).toBeNull();
+        expect(
+            cornersFromNatural(
+                [
+                    { x: 0, y: 0 },
+                    { x: 1, y: 0 },
+                    { x: 1, y: 1 },
+                    { x: 0, y: 1 },
+                ],
+                { naturalWidth: 0, naturalHeight: 100 }
+            )
+        ).toBeNull();
     });
 });
 

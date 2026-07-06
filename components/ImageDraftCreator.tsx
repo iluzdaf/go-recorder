@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { Loader2, X } from "lucide-react";
 
 import { createBoardDraftInputFromDetection } from "../lib/boardDetectionDraft";
-import { detectBoard } from "../lib/detectBoardClient";
+import { detectBoard, detectCorners } from "../lib/detectBoardClient";
 import { createLocalDraft } from "../lib/localGames";
 import { storeImageSource } from "../lib/localImageStorage";
 import { navigateWithinApp } from "../lib/fullscreenNavigation";
 import { t } from "../lib/i18n";
 import {
     computeCornerMagnifier,
+    cornersFromNatural,
     cornerToDisplay,
     createInitialCorners,
     scaleCornersToNatural,
@@ -74,6 +75,8 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const imageRef = useRef<HTMLImageElement>(null);
     const draggingRef = useRef<CornerIndex | null>(null);
+    const cornersAdjustedRef = useRef(false);
+    const cornerEstimateRunRef = useRef(0);
 
     const [image, setImage] = useState<SelectedImage | null>(null);
     const [corners, setCorners] = useState<OrderedCorners | null>(null);
@@ -140,12 +143,40 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
     function handleImageLoad() {
         setCorners(createInitialCorners());
         measureImageBox();
+
+        // Suggest corners automatically; keep the defaults if the estimate
+        // fails, arrives after the user grabbed a handle, or the photo
+        // changed meanwhile.
+        const element = imageRef.current;
+        if (!image || !element) return;
+        const { naturalWidth, naturalHeight } = element;
+        cornersAdjustedRef.current = false;
+        const run = ++cornerEstimateRunRef.current;
+        void detectCorners({ image: image.file, imageName: image.file.name }).then(
+            (estimated) => {
+                if (
+                    !estimated ||
+                    run !== cornerEstimateRunRef.current ||
+                    cornersAdjustedRef.current
+                ) {
+                    return;
+                }
+                const fractions = cornersFromNatural(estimated, {
+                    naturalWidth,
+                    naturalHeight,
+                });
+                if (fractions) {
+                    setCorners(fractions);
+                }
+            }
+        );
     }
 
     function handleHandlePointerDown(index: CornerIndex) {
         return (event: React.PointerEvent<HTMLDivElement>) => {
             event.preventDefault();
             draggingRef.current = index;
+            cornersAdjustedRef.current = true;
             setActiveCorner(index);
             event.currentTarget.setPointerCapture(event.pointerId);
         };

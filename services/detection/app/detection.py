@@ -158,6 +158,10 @@ def _find_peaks(profile: np.ndarray) -> list[int]:
         return []
 
     height = float(profile.max()) * PEAK_HEIGHT_FRAC
+    if height <= 0:
+        # A featureless profile has no lines; without this floor every sample
+        # would qualify as a peak.
+        return []
     min_distance = max(3, int(length * PEAK_MIN_DISTANCE_FRAC))
 
     peaks: list[int] = []

@@ -26,6 +26,11 @@
     - `positionView`: `{ "anchor", "rows", "columns" } | null` (null for a full board).
     - `confidence`: float in `[0, 1]`.
   - `400` on malformed input (missing/undecodable image, invalid `corners` JSON, wrong corner count).
+- `POST /detect-corners`
+  - `multipart/form-data` with an `image` file part only.
+  - Response JSON: `corners`: 4 points in pixel coordinates (TL, TR, BR, BL), or `null` when no board grid is found.
+  - Suggests where corner handles should start; the user can still adjust. Estimates land on the outer grid intersections, trimming board-surface edges and unsupported line candidates.
+  - Same auth as `/detect`; `400` on malformed input.
 - Response field names mirror `components/types.ts` so the result maps onto a board draft.
 
 ## Authentication

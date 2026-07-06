@@ -119,6 +119,31 @@ export function computeCornerMagnifier(
 }
 
 /**
+ * Convert natural-pixel corner points (e.g. an auto-detected estimate) into
+ * the clamped fractional corners the handles use.
+ */
+export function cornersFromNatural(
+    corners: BoardCorner[],
+    {
+        naturalWidth,
+        naturalHeight,
+    }: {
+        naturalWidth: number;
+        naturalHeight: number;
+    }
+): OrderedCorners | null {
+    if (corners.length !== 4 || naturalWidth <= 0 || naturalHeight <= 0) {
+        return null;
+    }
+    return corners.map((corner) =>
+        clampCornerToBounds({
+            x: corner.x / naturalWidth,
+            y: corner.y / naturalHeight,
+        })
+    ) as OrderedCorners;
+}
+
+/**
  * Convert fractional corners into the natural-pixel coordinates the detection
  * service expects.
  */
