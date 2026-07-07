@@ -45,6 +45,13 @@ PITCH_TOLERANCE_FRAC = 0.35
 SURFACE_OFFSET_FRACS = (0.10, 0.18, 0.25)
 SURFACE_DELTA = 40.0
 SURFACE_SAMPLES = 25
+# Returned corners are pushed slightly outward so the outer grid lines land
+# fully inside the quad with a cushion, the way users are asked to mark them.
+# A quad edge slicing along the outer line leaves detection at the mercy of
+# JPEG artefacts from re-encoding photo pickers.
+CORNER_CUSHION_FRAC = 0.015
+CORNER_CUSHION_MIN_PX = 3.0
+CORNER_CUSHION_MAX_PX = 12.0
 
 
 def _order_quad(points: np.ndarray) -> np.ndarray:
@@ -322,13 +329,34 @@ def _grid_corners_within(
     )
     image_points = cv2.perspectiveTransform(warp_points, inverse).reshape(4, 2)
 
+    # Push the corners slightly outward so the outer lines sit fully inside
+    # the marked quad with a cushion.
+    centroid = image_points.mean(axis=0)
+    smaller_side = float(
+        min(
+            image_points[:, 0].max() - image_points[:, 0].min(),
+            image_points[:, 1].max() - image_points[:, 1].min(),
+        )
+    )
+    cushion = float(
+        np.clip(
+            smaller_side * CORNER_CUSHION_FRAC,
+            CORNER_CUSHION_MIN_PX,
+            CORNER_CUSHION_MAX_PX,
+        )
+    )
+
     height, width = image.shape[:2]
     corners: list[Corner] = []
-    for x, y in image_points:
+    for point in image_points:
+        vector = point - centroid
+        norm = float(np.linalg.norm(vector))
+        if norm > 0:
+            point = point + vector / norm * cushion
         corners.append(
             (
-                float(np.clip(x, 0, width - 1)),
-                float(np.clip(y, 0, height - 1)),
+                float(np.clip(point[0], 0, width - 1)),
+                float(np.clip(point[1], 0, height - 1)),
             )
         )
     return corners

@@ -36,8 +36,15 @@ LINE_OVERFLOW_FRAC = 0.5
 # farther out are not mistaken for continuations.
 CONTINUATION_OFFSET_FRACS = (0.12, 0.20, 0.28)
 CONTINUATION_DELTA = 30.0
-CONTINUATION_THRESHOLD = 0.6
+# JPEG recompression (photo pickers re-encode uploads) blurs the thin
+# continuation sliver near the image boundary, so a cut side can drop to
+# around half of its rows continuing; a real edge stays near zero.
+CONTINUATION_THRESHOLD = 0.5
 CONTINUATION_JITTER = 2
+# A genuine continuation stays dark at several depths beyond the edge; JPEG
+# ringing beside high-contrast line endings hugs the edge and fails deeper
+# probes.
+CONTINUATION_MIN_OFFSETS = 2
 # A genuine continuation is a thin line: dark at the line position but board
 # on both sides of it. Coordinate labels printed beside a real edge are tall
 # glyphs, dark well beyond a line's thickness, and must not read as the board
@@ -230,8 +237,8 @@ def _continuation_fraction(
     thin = 0
     ambiguous = 0
     for position in line_positions:
-        found_thin = False
-        found_dark = False
+        thin_offsets = 0
+        dark_offsets = 0
         for frac in CONTINUATION_OFFSET_FRACS:
             probe = int(round(edge + direction * cell * frac))
             if not 0 <= probe < probe_limit:
@@ -244,7 +251,7 @@ def _continuation_fraction(
                     break
             if not hit:
                 continue
-            found_dark = True
+            dark_offsets += 1
             # Thin like a line, not tall like a label glyph or a stone:
             # board-coloured on both sides of the line position.
             flanks = [
@@ -256,13 +263,13 @@ def _continuation_fraction(
                 and abs(value - background) <= CONTINUATION_DELTA
                 for value in flanks
             ):
-                found_thin = True
-                break
-        if found_thin:
+                thin_offsets += 1
+        if thin_offsets >= CONTINUATION_MIN_OFFSETS:
             thin += 1
-        elif found_dark:
-            # Dark but thick: a stone on the cut edge or a label glyph beside
-            # a real edge — locally indistinguishable, so it votes neither way.
+        elif dark_offsets:
+            # Dark but thick (a stone on the cut edge, a label glyph beside a
+            # real edge) or too shallow (JPEG ringing at the line ending) —
+            # locally indistinguishable, so it votes neither way.
             ambiguous += 1
     informative = len(line_positions) - ambiguous
     if informative <= 0:

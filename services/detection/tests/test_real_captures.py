@@ -5,6 +5,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import cv2
+import numpy as np
+import pytest
+
 from app.corner_estimation import estimate_corners
 from app.detection import detect_board, parse_corners
 
@@ -92,6 +96,41 @@ def test_app_tilted_board_anchor_from_estimated_corners():
     assert _stone_set(result) == {
         (column + 1, row + 4, color) for column, row, color in visible
     }
+
+
+@pytest.mark.parametrize(
+    "scale,quality", [(1.0, 70), (1.0, 50), (0.7, 90), (0.5, 90)]
+)
+def test_app_tilted_board_survives_picker_transcodes(scale, quality):
+    # Phone photo pickers re-encode uploads (and sometimes downscale). JPEG
+    # ringing beside line endings and blur at the image boundary must not
+    # flip the anchor — this capture came back bottom-left on device.
+    raw = (DATA / "app-tilted-board.jpeg").read_bytes()
+    image = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)
+    if scale != 1.0:
+        image = cv2.resize(
+            image,
+            (int(image.shape[1] * scale), int(image.shape[0] * scale)),
+            interpolation=cv2.INTER_AREA,
+        )
+    ok, buffer = cv2.imencode(
+        ".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, quality]
+    )
+    assert ok
+    transcoded = buffer.tobytes()
+
+    corners = estimate_corners(transcoded)
+    assert corners is not None
+    result = detect_board(
+        transcoded,
+        parse_corners(json.dumps([{"x": x, "y": y} for x, y in corners])),
+    )
+
+    view = result.positionView
+    assert view is not None
+    assert view.anchor == "bottom-right"
+    assert view.rows == 5
+    assert view.columns == 8
 
 
 def test_top_left_diagram_anchor():
