@@ -30,6 +30,11 @@ GRID_DARK_DELTA = 100.0
 GRID_BRIGHT_DELTA = 50.0
 GRID_EVIDENCE_MIN = 2
 LINE_SUPPORT_JITTER = 3
+# A real grid line is continuous between crossings; a row or column of dark
+# coordinate labels has board-coloured gaps between the glyphs, even though
+# the glyphs themselves supply strong evidence at the crossings.
+LINE_GAP_BOARD_DELTA = 25.0
+LINE_GAP_BOARD_MAX_FRAC = 0.5
 # Grid lines are evenly spaced; the dominant run of near-constant spacing is
 # the grid and already excludes irregular margin clutter.
 PITCH_TOLERANCE_FRAC = 0.35
@@ -139,6 +144,61 @@ def _grid_evidence(
     return evidence
 
 
+def _board_gap_fraction(
+    gray: np.ndarray,
+    coordinate: int,
+    crossings: list[int],
+    axis: str,
+    background: float,
+) -> float:
+    """Fraction of inter-crossing midpoints that are board-coloured. A real
+    grid line stays line-dark (or stone-covered) between crossings; a line of
+    coordinate labels shows board between the glyphs."""
+
+    height, width = gray.shape
+    if not 0 <= coordinate < (width if axis == "x" else height):
+        return 1.0
+    limit = height if axis == "x" else width
+
+    perpendicular_limit = width if axis == "x" else height
+    midpoints = [
+        (first + second) // 2 for first, second in zip(crossings, crossings[1:])
+    ]
+    board_like = 0
+    for midpoint in midpoints:
+        if not 0 <= midpoint < limit:
+            continue
+        strongest = 0.0
+        # Jitter across the line: the detected peak can sit a pixel or two
+        # off the actual line pixels.
+        for jitter in range(-LINE_SUPPORT_JITTER, LINE_SUPPORT_JITTER + 1):
+            across = coordinate + jitter
+            if not 0 <= across < perpendicular_limit:
+                continue
+            value = float(
+                gray[midpoint, across] if axis == "x" else gray[across, midpoint]
+            )
+            strongest = max(strongest, abs(value - background))
+        if strongest <= LINE_GAP_BOARD_DELTA:
+            board_like += 1
+    return board_like / len(midpoints) if midpoints else 1.0
+
+
+def _is_grid_line(
+    gray: np.ndarray,
+    coordinate: int,
+    crossings: list[int],
+    axis: str,
+    background: float,
+) -> bool:
+    return (
+        _grid_evidence(gray, coordinate, crossings, axis, background)
+        >= GRID_EVIDENCE_MIN
+        and _board_gap_fraction(gray, coordinate, crossings, axis, background)
+        <= LINE_GAP_BOARD_MAX_FRAC
+    )
+
+
 def _trim_unsupported(
     gray: np.ndarray,
     positions: list[int],
@@ -147,14 +207,12 @@ def _trim_unsupported(
     background: float,
 ) -> list[int]:
     positions = list(positions)
-    while positions and (
-        _grid_evidence(gray, positions[0], crossings, axis, background)
-        < GRID_EVIDENCE_MIN
+    while positions and not _is_grid_line(
+        gray, positions[0], crossings, axis, background
     ):
         positions.pop(0)
-    while positions and (
-        _grid_evidence(gray, positions[-1], crossings, axis, background)
-        < GRID_EVIDENCE_MIN
+    while positions and not _is_grid_line(
+        gray, positions[-1], crossings, axis, background
     ):
         positions.pop()
     return positions

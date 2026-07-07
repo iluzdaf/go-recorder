@@ -58,6 +58,38 @@ def test_app_tilted_board_capture():
     }
 
 
+def test_top_left_diagram_anchor():
+    # A top-left corner diagram (columns A-K, rows 19-15) with coordinate
+    # labels on all four sides. The row-number labels sit flush against the
+    # left edge and the bottom letter row aligns with the columns; both used
+    # to fake grid lines or continuations, anchoring the view to center.
+    # Cut sides are recognised by their thin line stubs; label glyphs are
+    # thick and vote neither way.
+    raw = (DATA / "top-left-partial-board.jpeg").read_bytes()
+    corners = estimate_corners(raw)
+    assert corners is not None
+
+    result = detect_board(
+        raw, parse_corners(json.dumps([{"x": x, "y": y} for x, y in corners]))
+    )
+
+    view = result.positionView
+    assert view is not None
+    assert view.anchor == "top-left"
+    assert view.rows == 5
+    assert view.columns == 10
+    # Board size is the smallest standard size that fits the visible grid;
+    # only the printed labels say 19, which geometry alone cannot know.
+    assert result.boardSize == 13
+    # Spot-check stones against the printed diagram (visible coordinates
+    # equal full-board coordinates for a top-left anchor).
+    stones = _stone_set(result)
+    assert (2, 0, "B") in stones  # C19
+    assert (3, 0, "W") in stones  # D19
+    assert (0, 1, "B") in stones  # A18
+    assert (0, 2, "W") in stones  # A17
+
+
 def test_flat_photo_partial_board_no_ring_false_whites():
     # A near-top-down phone photo of a wooden board, corners auto-detected.
     # The board's own crossing grid lines used to fake outline rings at empty

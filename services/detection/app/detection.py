@@ -38,6 +38,11 @@ CONTINUATION_OFFSET_FRACS = (0.12, 0.20, 0.28)
 CONTINUATION_DELTA = 30.0
 CONTINUATION_THRESHOLD = 0.6
 CONTINUATION_JITTER = 2
+# A genuine continuation is a thin line: dark at the line position but board
+# on both sides of it. Coordinate labels printed beside a real edge are tall
+# glyphs, dark well beyond a line's thickness, and must not read as the board
+# continuing.
+CONTINUATION_THICKNESS_FRAC = 0.12
 PEAK_HEIGHT_FRAC = 0.25
 PEAK_MIN_DISTANCE_FRAC = 0.02
 INTERIOR_RADIUS_FRAC = 0.26
@@ -215,26 +220,54 @@ def _continuation_fraction(
     height, width = gray.shape
     probe_limit = width if axis == "x" else height
     along_limit = height if axis == "x" else width
+    thickness = max(3, int(round(cell * CONTINUATION_THICKNESS_FRAC)))
 
-    continued = 0
+    def sample(probe: int, along: int) -> float | None:
+        if not 0 <= along < along_limit:
+            return None
+        return float(gray[along, probe] if axis == "x" else gray[probe, along])
+
+    thin = 0
+    ambiguous = 0
     for position in line_positions:
-        found = False
+        found_thin = False
+        found_dark = False
         for frac in CONTINUATION_OFFSET_FRACS:
             probe = int(round(edge + direction * cell * frac))
             if not 0 <= probe < probe_limit:
                 continue
+            hit = False
             for jitter in range(-CONTINUATION_JITTER, CONTINUATION_JITTER + 1):
-                along = position + jitter
-                if not 0 <= along < along_limit:
-                    continue
-                value = gray[along, probe] if axis == "x" else gray[probe, along]
-                if abs(float(value) - background) > CONTINUATION_DELTA:
-                    found = True
+                value = sample(probe, position + jitter)
+                if value is not None and abs(value - background) > CONTINUATION_DELTA:
+                    hit = True
                     break
-            if found:
+            if not hit:
+                continue
+            found_dark = True
+            # Thin like a line, not tall like a label glyph or a stone:
+            # board-coloured on both sides of the line position.
+            flanks = [
+                sample(probe, position - thickness),
+                sample(probe, position + thickness),
+            ]
+            if all(
+                value is not None
+                and abs(value - background) <= CONTINUATION_DELTA
+                for value in flanks
+            ):
+                found_thin = True
                 break
-        continued += found
-    return continued / len(line_positions) if line_positions else 0.0
+        if found_thin:
+            thin += 1
+        elif found_dark:
+            # Dark but thick: a stone on the cut edge or a label glyph beside
+            # a real edge — locally indistinguishable, so it votes neither way.
+            ambiguous += 1
+    informative = len(line_positions) - ambiguous
+    if informative <= 0:
+        return 0.0
+    return thin / informative
 
 
 def _real_sides(gray: np.ndarray, xs: list[int], ys: list[int]) -> dict[str, bool]:
