@@ -7,7 +7,10 @@ labels. Stones travel as full-board coordinates and are mapped into the
 sidecar's visible grid through each side's position view, so the app and the
 sidecar do not need identical corner pixels — only a consistent grid.
 
-Run from services/detection:
+Run from services/detection. With no arguments, reads the photo-to-link
+manifest ``training/shares.txt`` and ingests every photo that has a link:
+    .venv/bin/python -m training.ingest_shares
+Individual pairs can also be given directly:
     .venv/bin/python -m training.ingest_shares \
         training/corpus/Kiseido/IMG_1662.jpeg=https://<app>/shares/<slug> ...
 """
@@ -51,6 +54,9 @@ def fetch_share(url: str) -> dict:
 
 def ingest(photo: Path, url: str) -> None:
     sidecar_file = photo.with_suffix(".json")
+    if not sidecar_file.exists():
+        print(f"{photo}: no sidecar yet (needs corners first) — skipped")
+        return
     sidecar = json.loads(sidecar_file.read_text())
     share = fetch_share(url)
     record = share.get("share", share)
@@ -94,10 +100,25 @@ def ingest(photo: Path, url: str) -> None:
     )
 
 
+def manifest_pairs(manifest: Path) -> list[str]:
+    pairs = []
+    for line in manifest.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        photo, _, remainder = line.partition("=")
+        url = remainder.split()[0] if remainder.split() else ""
+        if url:
+            pairs.append(f"{photo.strip()}={url}")
+    return pairs
+
+
 def main(args: list[str]) -> None:
     if not args:
-        print(__doc__)
-        return
+        args = manifest_pairs(Path("training/shares.txt"))
+        if not args:
+            print("no links in training/shares.txt yet")
+            return
     for arg in args:
         photo, _, url = arg.partition("=")
         ingest(Path(photo), url)

@@ -1,0 +1,40 @@
+# Map corpus photos to Go Recorder share links.
+#
+# For each photo: create a board from the photo in the app, correct the
+# stones, share it, and paste the share URL after the "=". Then run
+#     .venv/bin/python -m training.ingest_shares
+# which ingests every photo that has a link and skips the rest.
+# Lines starting with "#" are ignored.
+
+# Kiseido
+# IMG_1662 and IMG_1663 already verified via overlay review.
+training/corpus/Kiseido/IMG_1662.jpeg =
+training/corpus/Kiseido/IMG_1663.jpeg =
+training/corpus/Kiseido/IMG_1664.jpeg =
+training/corpus/Kiseido/IMG_1665.jpeg =
+training/corpus/Kiseido/IMG_1666.jpeg =
+training/corpus/Kiseido/IMG_1667.jpeg =
+
+# TGA-A
+training/corpus/TGA-A/IMG_1668.jpeg =
+training/corpus/TGA-A/IMG_1669.jpeg =
+training/corpus/TGA-A/IMG_1670.jpeg =
+training/corpus/TGA-A/IMG_1671.jpeg =
+training/corpus/TGA-A/IMG_1672.jpeg =
+training/corpus/TGA-A/IMG_1673.jpeg =
+
+# TGA-B — no sidecars yet (registration fails); links still welcome,
+# ingestion will pick them up once corners exist.
+training/corpus/TGA-B/IMG_1674.jpeg =
+training/corpus/TGA-B/IMG_1675.jpeg =
+training/corpus/TGA-B/IMG_1676.jpeg =
+training/corpus/TGA-B/IMG_1677.jpeg =
+training/corpus/TGA-B/IMG_1678.jpeg =
+
+# Slate-&-Shell — if you had to move the corners in the app, add a note
+# like "corners moved" after the URL so the sidecar corners get re-done.
+training/corpus/Slate-&-Shell/IMG_1679.jpeg =
+training/corpus/Slate-&-Shell/IMG_1680.jpeg =
+training/corpus/Slate-&-Shell/IMG_1681.jpeg =
+training/corpus/Slate-&-Shell/IMG_1682.jpeg =
+training/corpus/Slate-&-Shell/IMG_1683.jpeg =
