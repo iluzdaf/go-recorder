@@ -1,0 +1,4 @@
+# Regenerable artefacts
+corpus/**/*.overlay.png
+corpus/**/*.pred.png
+dataset.npz
