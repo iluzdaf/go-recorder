@@ -25,11 +25,11 @@ training/corpus/TGA-A/IMG_1673.jpeg = https://go-recorder-ten.vercel.app/shares/
 
 # TGA-B — no sidecars yet (registration fails); links still welcome,
 # ingestion will pick them up once corners exist.
-training/corpus/TGA-B/IMG_1674.jpeg =
-training/corpus/TGA-B/IMG_1675.jpeg =
-training/corpus/TGA-B/IMG_1676.jpeg =
-training/corpus/TGA-B/IMG_1677.jpeg =
-training/corpus/TGA-B/IMG_1678.jpeg =
+training/corpus/TGA-B/IMG_1674.jpeg = https://go-recorder-ten.vercel.app/shares/9984aafa
+training/corpus/TGA-B/IMG_1675.jpeg = https://go-recorder-ten.vercel.app/shares/9a624122
+training/corpus/TGA-B/IMG_1676.jpeg = https://go-recorder-ten.vercel.app/shares/60e720ec
+training/corpus/TGA-B/IMG_1677.jpeg = https://go-recorder-ten.vercel.app/shares/ad92f43c
+training/corpus/TGA-B/IMG_1678.jpeg = https://go-recorder-ten.vercel.app/shares/2f579ee9
 
 # Slate-&-Shell — if you had to move the corners in the app, add a note
 # like "corners moved" after the URL so the sidecar corners get re-done.

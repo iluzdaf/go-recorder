@@ -34,6 +34,7 @@ COMPOSITES_PER_BACKGROUND = 2
 ROUND_ONE_DIRS = (
     "training/corpus/Kiseido",
     "training/corpus/TGA-A",
+    "training/corpus/TGA-B",
     "training/corpus/Slate-&-Shell",
 )
 EXTRA_PHOTOS = ("tests/data/book-flat-board.jpeg",)
@@ -115,6 +116,38 @@ def composite(background: np.ndarray, cls: int, cell: float, ink: float) -> np.n
     return patch
 
 
+def _snap_stone_centre(small, x, y, cell, color):
+    height, width = small.shape
+    rad = 0.33 * cell
+    angles = np.linspace(0, 2 * np.pi, 8, endpoint=False)
+    span = int(0.3 * cell)
+    offsets = sorted(
+        ((dx, dy) for dy in range(-span, span + 1, 3)
+         for dx in range(-span, span + 1, 3)),
+        key=lambda o: o[0] * o[0] + o[1] * o[1],
+    )
+    best = (-1e18, (x, y))
+    for dx, dy in offsets:
+        cx = int(np.clip(x + dx, 0, width - 1))
+        cy = int(np.clip(y + dy, 0, height - 1))
+        if color == "B":
+            score = 255.0 - small[cy, cx]
+        else:
+            ring = np.mean([
+                small[
+                    int(np.clip(cy + rad * np.sin(a), 0, height - 1)),
+                    int(np.clip(cx + rad * np.cos(a), 0, width - 1)),
+                ]
+                for a in angles
+            ])
+            score = small[cy, cx] - ring
+        # centre-outward order plus a real-improvement bar keeps snaps
+        # centred on the plateau of a uniform stone
+        if score > best[0] + 1.5:
+            best = (score, (cx, cy))
+    return best[1]
+
+
 def suspect_white(gray, x, y, cell, background) -> bool:
     coverage = d._ring_coverage(gray, x, y, cell, background - d.RING_DARK_DELTA)
     return coverage > d.RING_COVERAGE_THRESHOLD
@@ -132,6 +165,7 @@ def photo_patches(photo: Path):
     )
     xs, ys = grid_positions(gray, sidecar)
     cell = d._cell_size(xs, ys)
+    smooth = cv2.GaussianBlur(gray, (0, 0), 3)
     window = int(cell * WINDOW_CELL_FRAC)
     ink = line_ink(gray, xs, ys)
     fallback = float(np.median(gray))
@@ -141,37 +175,49 @@ def photo_patches(photo: Path):
     }
     verified = bool(sidecar.get("verified"))
 
+    def crop_at(x, y):
+        x0 = max(0, x - window // 2)
+        y0 = max(0, y - window // 2)
+        crop = gray[y0 : y0 + window, x0 : x0 + window]
+        if crop.shape[0] < window // 2 or crop.shape[1] < window // 2:
+            return None
+        return crop
+
     for j, y in enumerate(ys):
         for i, x in enumerate(xs):
-            x0 = max(0, x - window // 2)
-            y0 = max(0, y - window // 2)
-            crop = gray[y0 : y0 + window, x0 : x0 + window]
-            if crop.shape[0] < window // 2 or crop.shape[1] < window // 2:
-                continue
             label = stones.get((i, j))
-            if label == "B":
-                yield normalise(crop), 1
-            elif label == "W":
-                yield normalise(crop), 2
-            else:
-                background = (
-                    d._local_background(
-                        gray, xs, ys, i, j,
-                        max(2, int(cell * d.BACKGROUND_RADIUS_FRAC)),
-                    )
-                    or fallback
+            if label:
+                # Bowed pages leave individual stones up to half a cell off
+                # any lattice. Train on both views: the lattice-point patch
+                # matches what inference will sample; the snapped-centre
+                # patch guarantees a clean example of the stone itself.
+                cls = 1 if label == "B" else 2
+                for px, py in ((x, y), _snap_stone_centre(smooth, x, y, cell, label)):
+                    crop = crop_at(px, py)
+                    if crop is not None:
+                        yield normalise(crop), cls
+                continue
+            crop = crop_at(x, y)
+            if crop is None:
+                continue
+            background = (
+                d._local_background(
+                    gray, xs, ys, i, j,
+                    max(2, int(cell * d.BACKGROUND_RADIUS_FRAC)),
                 )
-                if not verified and suspect_white(gray, x, y, cell, background):
-                    # Unlabelled but ring-like on an unverified photo: exclude
-                    # rather than risk training a real stone as empty. On a
-                    # verified photo every non-stone intersection is certified
-                    # empty — including ring-like paper noise, which the model
-                    # must learn to reject.
-                    continue
-                yield normalise(crop), 0
-                for _ in range(COMPOSITES_PER_BACKGROUND):
-                    yield normalise(composite(crop, 1, cell, ink)), 1
-                    yield normalise(composite(crop, 2, cell, ink)), 2
+                or fallback
+            )
+            if not verified and suspect_white(gray, x, y, cell, background):
+                # Unlabelled but ring-like on an unverified photo: exclude
+                # rather than risk training a real stone as empty. On a
+                # verified photo every non-stone intersection is certified
+                # empty — including ring-like paper noise, which the model
+                # must learn to reject.
+                continue
+            yield normalise(crop), 0
+            for _ in range(COMPOSITES_PER_BACKGROUND):
+                yield normalise(composite(crop, 1, cell, ink)), 1
+                yield normalise(composite(crop, 2, cell, ink)), 2
 
 
 def main() -> None:
