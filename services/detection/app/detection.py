@@ -966,6 +966,14 @@ def detect_board(raw: bytes, corners: Sequence[Corner]) -> DetectionResult:
         sides, visible_rows, visible_columns, board_size
     )
     stones, confidence = _detect_stones(gray, xs, ys, start_x, start_y)
+    # A phantom outer line (a margin label row riding the chain window's
+    # bulge allowance) yields grid points beyond the board; whatever gets
+    # classified there cannot be a stone of this board.
+    stones = [
+        stone
+        for stone in stones
+        if 0 <= stone.x < board_size and 0 <= stone.y < board_size
+    ]
 
     return DetectionResult(
         boardSize=board_size,
