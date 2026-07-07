@@ -1,0 +1,6 @@
+# Exclude from Cloud Run source uploads (gcloud run deploy --source).
+.venv/
+training/
+tests/
+.pytest_cache/
+__pycache__/
