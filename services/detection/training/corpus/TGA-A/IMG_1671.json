@@ -28,8 +28,11 @@
     "2,3": "B",
     "3,4": "B",
     "8,4": "B",
-    "6,5": "B"
+    "6,5": "B",
+    "5,0": "W",
+    "5,2": "W",
+    "5,4": "W"
   },
-  "verified": false,
-  "notes": ""
+  "verified": true,
+  "notes": "Labelled via share https://go-recorder-ten.vercel.app/shares/444f8401 (share view bottom-left)"
 }

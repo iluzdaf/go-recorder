@@ -23,10 +23,13 @@
   "columns": 10,
   "stones": {
     "4,3": "B",
-    "6,4": "B",
+    "3,2": "W",
+    "6,2": "W",
+    "7,6": "W",
     "7,4": "B",
-    "7,8": "B"
+    "7,8": "B",
+    "6,5": "W"
   },
-  "verified": false,
-  "notes": ""
+  "verified": true,
+  "notes": "Labelled via share https://go-recorder-ten.vercel.app/shares/84fe1257 (share view top-right)"
 }

@@ -106,12 +106,13 @@ def draft_sidecar(photo: Path) -> dict | None:
 
 
 def render_overlay(photo: Path, sidecar: dict) -> None:
+    from training.dataset import grid_positions
+
     raw = photo.read_bytes()
     corners = [tuple(point) for point in sidecar["corners"]]
     warped = _warp(_decode(raw), corners)
-    gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-    xs = _line_positions(gray, "vertical")
-    ys = _line_positions(gray, "horizontal")
+    gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY).astype("float32")
+    xs, ys = grid_positions(gray, sidecar)
     vis = warped.copy()
     for key, color in sidecar["stones"].items():
         i, j = (int(v) for v in key.split(","))

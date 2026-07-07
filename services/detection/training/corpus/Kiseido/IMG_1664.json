@@ -29,8 +29,14 @@
     "16,3": "B",
     "2,4": "B",
     "15,5": "B",
-    "15,15": "B"
+    "15,15": "B",
+    "3,15": "W",
+    "3,2": "W",
+    "4,2": "W",
+    "11,3": "W",
+    "14,3": "W",
+    "14,2": "W"
   },
-  "verified": false,
-  "notes": ""
+  "verified": true,
+  "notes": "Labelled via share https://go-recorder-ten.vercel.app/shares/df642b4b"
 }

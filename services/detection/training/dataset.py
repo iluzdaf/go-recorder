@@ -37,6 +37,27 @@ EXTRA_PHOTOS = ("tests/data/book-flat-board.jpeg",)
 rng = np.random.default_rng(20260707)
 
 
+def grid_positions(gray: np.ndarray, sidecar: dict):
+    """Grid line positions on the warp, honouring the sidecar's extent.
+
+    Line detection can lock onto a half-pitch chain when dense stone rows
+    add edges between the real lines. The sidecar corners sit exactly on
+    the outer grid intersections, so when detection disagrees with the
+    sidecar's rows/columns, the uniform lattice implied by the warp's
+    padded quad is the more trustworthy source.
+    """
+
+    xs = _line_positions(gray, "vertical")
+    ys = _line_positions(gray, "horizontal")
+    columns, rows = sidecar.get("columns"), sidecar.get("rows")
+    pad = d.WARP_SIZE * d.WARP_PAD_FRAC
+    if columns and len(xs) != columns:
+        xs = [int(round(v)) for v in np.linspace(pad, d.WARP_SIZE - pad, columns)]
+    if rows and len(ys) != rows:
+        ys = [int(round(v)) for v in np.linspace(pad, d.WARP_SIZE - pad, rows)]
+    return xs, ys
+
+
 def normalise(patch: np.ndarray) -> np.ndarray:
     patch = cv2.resize(patch, (PATCH, PATCH))
     return (patch - patch.mean()) / (patch.std() + 1e-6)
@@ -105,8 +126,7 @@ def photo_patches(photo: Path):
     gray = cv2.cvtColor(_warp(_decode(raw), corners), cv2.COLOR_BGR2GRAY).astype(
         np.float32
     )
-    xs = _line_positions(gray, "vertical")
-    ys = _line_positions(gray, "horizontal")
+    xs, ys = grid_positions(gray, sidecar)
     cell = d._cell_size(xs, ys)
     window = int(cell * WINDOW_CELL_FRAC)
     ink = line_ink(gray, xs, ys)

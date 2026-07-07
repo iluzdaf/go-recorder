@@ -23,7 +23,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app import detection as d  # noqa: E402
 from app.detection import _decode, _line_positions, _warp  # noqa: E402
-from training.dataset import PATCH, WINDOW_CELL_FRAC, normalise  # noqa: E402
+from training.dataset import (  # noqa: E402
+    PATCH,
+    WINDOW_CELL_FRAC,
+    grid_positions,
+    normalise,
+)
 
 
 def predict_photo(photo: Path, params):
@@ -32,8 +37,7 @@ def predict_photo(photo: Path, params):
     corners = [tuple(p) for p in sidecar["corners"]]
     warped = _warp(_decode(raw), corners)
     gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY).astype(np.float32)
-    xs = _line_positions(gray, "vertical")
-    ys = _line_positions(gray, "horizontal")
+    xs, ys = grid_positions(gray, sidecar)
     cell = d._cell_size(xs, ys)
     window = int(cell * WINDOW_CELL_FRAC)
 

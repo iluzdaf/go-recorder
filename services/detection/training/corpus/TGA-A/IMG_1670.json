@@ -27,8 +27,17 @@
     "7,9": "B",
     "8,9": "B",
     "5,10": "B",
-    "9,10": "B"
+    "9,10": "B",
+    "2,7": "W",
+    "2,9": "W",
+    "3,10": "W",
+    "4,10": "W",
+    "7,10": "W",
+    "8,10": "W",
+    "9,11": "W",
+    "11,10": "W",
+    "12,9": "W"
   },
-  "verified": false,
-  "notes": ""
+  "verified": true,
+  "notes": "Labelled via share https://go-recorder-ten.vercel.app/shares/a0d3c3b5"
 }

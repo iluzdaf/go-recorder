@@ -8,20 +8,20 @@
 
 # Kiseido
 # IMG_1662 and IMG_1663 already verified via overlay review.
-training/corpus/Kiseido/IMG_1662.jpeg =
-training/corpus/Kiseido/IMG_1663.jpeg =
-training/corpus/Kiseido/IMG_1664.jpeg =
-training/corpus/Kiseido/IMG_1665.jpeg =
-training/corpus/Kiseido/IMG_1666.jpeg =
-training/corpus/Kiseido/IMG_1667.jpeg =
+training/corpus/Kiseido/IMG_1662.jpeg = https://go-recorder-ten.vercel.app/shares/e9e2a3ca
+training/corpus/Kiseido/IMG_1663.jpeg = https://go-recorder-ten.vercel.app/shares/818a2d49
+training/corpus/Kiseido/IMG_1664.jpeg = https://go-recorder-ten.vercel.app/shares/df642b4b
+training/corpus/Kiseido/IMG_1665.jpeg = https://go-recorder-ten.vercel.app/shares/ae2f4c0a
+training/corpus/Kiseido/IMG_1666.jpeg = https://go-recorder-ten.vercel.app/shares/1eab780d
+training/corpus/Kiseido/IMG_1667.jpeg = https://go-recorder-ten.vercel.app/shares/2c75ffde
 
 # TGA-A
-training/corpus/TGA-A/IMG_1668.jpeg =
-training/corpus/TGA-A/IMG_1669.jpeg =
-training/corpus/TGA-A/IMG_1670.jpeg =
-training/corpus/TGA-A/IMG_1671.jpeg =
-training/corpus/TGA-A/IMG_1672.jpeg =
-training/corpus/TGA-A/IMG_1673.jpeg =
+training/corpus/TGA-A/IMG_1668.jpeg = https://go-recorder-ten.vercel.app/shares/4517ee45
+training/corpus/TGA-A/IMG_1669.jpeg = https://go-recorder-ten.vercel.app/shares/05ef94af
+training/corpus/TGA-A/IMG_1670.jpeg = https://go-recorder-ten.vercel.app/shares/a0d3c3b5
+training/corpus/TGA-A/IMG_1671.jpeg = https://go-recorder-ten.vercel.app/shares/444f8401
+training/corpus/TGA-A/IMG_1672.jpeg = https://go-recorder-ten.vercel.app/shares/a1c12458
+training/corpus/TGA-A/IMG_1673.jpeg = https://go-recorder-ten.vercel.app/shares/20f4bb8a
 
 # TGA-B — no sidecars yet (registration fails); links still welcome,
 # ingestion will pick them up once corners exist.
@@ -33,8 +33,8 @@ training/corpus/TGA-B/IMG_1678.jpeg =
 
 # Slate-&-Shell — if you had to move the corners in the app, add a note
 # like "corners moved" after the URL so the sidecar corners get re-done.
-training/corpus/Slate-&-Shell/IMG_1679.jpeg =
-training/corpus/Slate-&-Shell/IMG_1680.jpeg =
-training/corpus/Slate-&-Shell/IMG_1681.jpeg =
-training/corpus/Slate-&-Shell/IMG_1682.jpeg =
-training/corpus/Slate-&-Shell/IMG_1683.jpeg =
+training/corpus/Slate-&-Shell/IMG_1679.jpeg = https://go-recorder-ten.vercel.app/shares/65b555dc
+training/corpus/Slate-&-Shell/IMG_1680.jpeg = https://go-recorder-ten.vercel.app/shares/1428ba39
+training/corpus/Slate-&-Shell/IMG_1681.jpeg = https://go-recorder-ten.vercel.app/shares/43c4cde9
+training/corpus/Slate-&-Shell/IMG_1682.jpeg = https://go-recorder-ten.vercel.app/shares/84fe1257
+training/corpus/Slate-&-Shell/IMG_1683.jpeg = https://go-recorder-ten.vercel.app/shares/3fa56932

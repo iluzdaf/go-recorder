@@ -60,9 +60,9 @@ def ingest(photo: Path, url: str) -> None:
     sidecar = json.loads(sidecar_file.read_text())
     share = fetch_share(url)
     record = share.get("share", share)
-    board_size = record["boardSize"]
-    stones = record["gameState"]["setupStones"]
-    view = record.get("positionView")
+    board_size = record["board_size"]
+    stones = record["game_state"]["setupStones"]
+    view = record.get("position_view")
 
     if board_size != sidecar["board_size"]:
         print(
