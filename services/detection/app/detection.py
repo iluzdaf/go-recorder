@@ -34,6 +34,11 @@ LINE_OVERFLOW_FRAC = 0.5
 # add gradient peaks between them (dense high-contrast boards can produce
 # more clutter peaks than real lines). Chains may skip such interlopers.
 PITCH_TOLERANCE_FRAC = 0.35
+# After chaining, a line displaced from the lattice by more than this fraction
+# of the pitch (a stone edge picked over a masked grid line) is snapped back.
+# Wide enough that a bowed page's gradual deviation is preserved.
+LATTICE_MIN_LINES = 5
+LATTICE_KEEP_FRAC = 0.34
 # A side is cut (the board continues out of frame) when most grid lines keep
 # going past the outermost perpendicular line; a real edge has only margin
 # there. Probed just outside the outer line so margin labels and captions
@@ -252,6 +257,43 @@ def _regular_chain(positions: list[int]) -> list[int]:
     return best
 
 
+def _snap_to_lattice(positions: list[int]) -> list[int]:
+    """Correct grossly misplaced lines to the grid lattice.
+
+    Stone edges in dense clusters can be picked over a masked grid line,
+    displacing it. The grid is otherwise evenly spaced, so fit a robust
+    lattice (pitch and phase from the majority of lines) and pull only the
+    far outliers onto it. The tolerance is wide enough that a bowed page's
+    gradual deviation is preserved."""
+
+    count = len(positions)
+    if count < LATTICE_MIN_LINES:
+        return positions
+
+    # The chain lines are consecutive grid lines, so their list index is their
+    # lattice index. Fit pitch and phase robustly (Theil-Sen: the median of
+    # pairwise slopes ignores the few displaced lines), then pull only the
+    # far outliers onto the fitted lattice.
+    indices = np.arange(count)
+    values = np.array(positions, dtype=float)
+    slopes = [
+        (values[j] - values[i]) / (j - i)
+        for i in range(count)
+        for j in range(i + 1, count)
+    ]
+    pitch = float(np.median(slopes))
+    if pitch <= 0:
+        return positions
+    offset = float(np.median(values - pitch * indices))
+    fitted = pitch * indices + offset
+
+    tolerance = pitch * LATTICE_KEEP_FRAC
+    return [
+        int(round(position if abs(position - fit) <= tolerance else fit))
+        for position, fit in zip(positions, fitted)
+    ]
+
+
 def _line_positions(gray: np.ndarray, axis: str) -> list[int]:
     if axis == "vertical":
         gradient = np.abs(cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3))
@@ -266,7 +308,8 @@ def _line_positions(gray: np.ndarray, axis: str) -> list[int]:
     overflow = pad * LINE_OVERFLOW_FRAC
     low = pad - overflow
     high = WARP_SIZE - 1 - pad + overflow
-    return _regular_chain([peak for peak in peaks if low <= peak <= high])
+    chain = _regular_chain([peak for peak in peaks if low <= peak <= high])
+    return _snap_to_lattice(chain)
 
 
 def _continuation_fraction(

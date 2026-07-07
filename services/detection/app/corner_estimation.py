@@ -28,7 +28,11 @@ MIN_GRID_LINES = 4
 # the board background; a line needs a few such crossings to be kept.
 GRID_DARK_DELTA = 100.0
 GRID_BRIGHT_DELTA = 50.0
-GRID_EVIDENCE_MIN = 2
+# One crossing of real evidence (a stone, or a dark intersection) is enough to
+# keep an outer line, so a faint board-edge line with a single stone on it is
+# not clipped. A flat mid-grey label smear has zero and is still rejected; a
+# label row is caught by the board-gap test regardless of its evidence.
+GRID_EVIDENCE_MIN = 1
 LINE_SUPPORT_JITTER = 3
 # A real grid line is continuous between crossings; a row or column of dark
 # coordinate labels has board-coloured gaps between the glyphs, even though

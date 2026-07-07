@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
-from app.detection import detect_board, parse_corners
+from app.detection import _snap_to_lattice, detect_board, parse_corners
 from tests.fixtures import full_corners, render_board
 
 CORNERS = parse_corners(
@@ -55,3 +56,28 @@ def test_detects_stones_on_board_edges():
 
 def test_corners_helper_matches_image_size():
     assert full_corners(720)[2] == {"x": 719, "y": 719}
+
+
+def test_snap_to_lattice_corrects_a_stone_edge_outlier():
+    # A clean 75-pitch lattice with two lines grossly displaced (stone edges
+    # picked over masked grid lines, ~0.5 pitch off, the real failure mode).
+    clean = [4 + i * 75 for i in range(19)]
+    drifted = list(clean)
+    drifted[3] -= 40
+    drifted[4] -= 44
+
+    snapped = _snap_to_lattice(drifted)
+
+    assert snapped[3] == pytest.approx(clean[3], abs=2)
+    assert snapped[4] == pytest.approx(clean[4], abs=2)
+    # Untouched lines stay put.
+    for index in (0, 1, 2, 10, 18):
+        assert snapped[index] == pytest.approx(clean[index], abs=2)
+
+
+def test_snap_to_lattice_preserves_a_bowed_page():
+    # A bowed page: gentle sinusoidal deviation within the keep tolerance.
+    base = [72 + i * 63 for i in range(19)]
+    bowed = [int(b + 8 * np.sin(np.pi * i / 18)) for i, b in enumerate(base)]
+
+    assert _snap_to_lattice(bowed) == bowed
