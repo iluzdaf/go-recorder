@@ -163,8 +163,9 @@ def test_book_page_registration_from_estimated_corners():
     # A phone photo of a book page: faint printed grid sharing the frame with
     # a title and paragraphs. Text used to contaminate the grid search; the
     # periodicity localization isolates the board, and chain extension
-    # recovers the faintly printed outer lines. Whites are outlined stones,
-    # not yet classified on mid-tone paper — only blacks are asserted.
+    # recovers the faintly printed outer lines. Outlined whites are beyond
+    # the classical branches on mid-tone paper; the learned classifier
+    # supplies them (verified ground truth in book-flat-board.json).
     raw = (DATA / "book-flat-board.jpeg").read_bytes()
     corners = estimate_corners(raw)
     assert corners is not None
@@ -180,13 +181,10 @@ def test_book_page_registration_from_estimated_corners():
     assert result.boardSize == 19
     assert result.positionView is None
     assert result.confidence > 0.9
-    assert all(stone.color == "B" for stone in result.setupStones)
-    assert {(stone.x, stone.y) for stone in result.setupStones} == {
-        (5, 2),
-        (8, 3),
-        (13, 2),
-        (15, 3),
-        (15, 15),
+    sidecar = json.loads((DATA / "book-flat-board.json").read_text())
+    assert {(stone.x, stone.y, stone.color) for stone in result.setupStones} == {
+        (int(key.split(",")[0]), int(key.split(",")[1]), color)
+        for key, color in sidecar["stones"].items()
     }
 
 

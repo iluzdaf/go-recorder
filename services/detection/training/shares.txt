@@ -1,0 +1,40 @@
+# Map corpus photos to Go Recorder share links.
+#
+# For each photo: create a board from the photo in the app, correct the
+# stones, share it, and paste the share URL after the "=". Then run
+#     .venv/bin/python -m training.ingest_shares
+# which ingests every photo that has a link and skips the rest.
+# Lines starting with "#" are ignored.
+
+# Kiseido
+# IMG_1662 and IMG_1663 already verified via overlay review.
+training/corpus/Kiseido/IMG_1662.jpeg = https://go-recorder-ten.vercel.app/shares/e9e2a3ca
+training/corpus/Kiseido/IMG_1663.jpeg = https://go-recorder-ten.vercel.app/shares/818a2d49
+training/corpus/Kiseido/IMG_1664.jpeg = https://go-recorder-ten.vercel.app/shares/df642b4b
+training/corpus/Kiseido/IMG_1665.jpeg = https://go-recorder-ten.vercel.app/shares/ae2f4c0a
+training/corpus/Kiseido/IMG_1666.jpeg = https://go-recorder-ten.vercel.app/shares/1eab780d
+training/corpus/Kiseido/IMG_1667.jpeg = https://go-recorder-ten.vercel.app/shares/2c75ffde
+
+# TGA-A
+training/corpus/TGA-A/IMG_1668.jpeg = https://go-recorder-ten.vercel.app/shares/4517ee45
+training/corpus/TGA-A/IMG_1669.jpeg = https://go-recorder-ten.vercel.app/shares/05ef94af
+training/corpus/TGA-A/IMG_1670.jpeg = https://go-recorder-ten.vercel.app/shares/a0d3c3b5
+training/corpus/TGA-A/IMG_1671.jpeg = https://go-recorder-ten.vercel.app/shares/444f8401
+training/corpus/TGA-A/IMG_1672.jpeg = https://go-recorder-ten.vercel.app/shares/a1c12458
+training/corpus/TGA-A/IMG_1673.jpeg = https://go-recorder-ten.vercel.app/shares/20f4bb8a
+
+# TGA-B — no sidecars yet (registration fails); links still welcome,
+# ingestion will pick them up once corners exist.
+training/corpus/TGA-B/IMG_1674.jpeg = https://go-recorder-ten.vercel.app/shares/9984aafa
+training/corpus/TGA-B/IMG_1675.jpeg = https://go-recorder-ten.vercel.app/shares/9a624122
+training/corpus/TGA-B/IMG_1676.jpeg = https://go-recorder-ten.vercel.app/shares/60e720ec
+training/corpus/TGA-B/IMG_1677.jpeg = https://go-recorder-ten.vercel.app/shares/ad92f43c
+training/corpus/TGA-B/IMG_1678.jpeg = https://go-recorder-ten.vercel.app/shares/2f579ee9
+
+# Slate-&-Shell — if you had to move the corners in the app, add a note
+# like "corners moved" after the URL so the sidecar corners get re-done.
+training/corpus/Slate-&-Shell/IMG_1679.jpeg = https://go-recorder-ten.vercel.app/shares/65b555dc
+training/corpus/Slate-&-Shell/IMG_1680.jpeg = https://go-recorder-ten.vercel.app/shares/1428ba39
+training/corpus/Slate-&-Shell/IMG_1681.jpeg = https://go-recorder-ten.vercel.app/shares/43c4cde9
+training/corpus/Slate-&-Shell/IMG_1682.jpeg = https://go-recorder-ten.vercel.app/shares/84fe1257
+training/corpus/Slate-&-Shell/IMG_1683.jpeg = https://go-recorder-ten.vercel.app/shares/3fa56932

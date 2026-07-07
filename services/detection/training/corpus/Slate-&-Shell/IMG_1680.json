@@ -1,0 +1,36 @@
+{
+  "corners": [
+    [
+      119,
+      1944
+    ],
+    [
+      2226,
+      1930
+    ],
+    [
+      2226,
+      3094
+    ],
+    [
+      119,
+      3109
+    ]
+  ],
+  "board_size": 19,
+  "anchor": "top",
+  "columns": 19,
+  "rows": 11,
+  "stones": {
+    "5,2": "B",
+    "9,2": "B",
+    "14,3": "B",
+    "16,3": "B",
+    "3,3": "W",
+    "3,5": "W",
+    "16,6": "W",
+    "16,9": "W"
+  },
+  "verified": true,
+  "notes": "Labelled via share https://go-recorder-ten.vercel.app/shares/1428ba39 (share view top)"
+}

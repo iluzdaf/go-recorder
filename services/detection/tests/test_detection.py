@@ -81,3 +81,27 @@ def test_snap_to_lattice_preserves_a_bowed_page():
     bowed = [int(b + 8 * np.sin(np.pi * i / 18)) for i, b in enumerate(base)]
 
     assert _snap_to_lattice(bowed) == bowed
+
+
+def test_out_of_board_stones_are_dropped(monkeypatch):
+    # A phantom outer line (e.g. a margin label row that rides the chain
+    # window's bulge allowance on some platforms) produces grid points
+    # beyond the board; whatever gets classified there must not surface.
+    from app import detection
+    from app.schemas import SetupStone
+
+    def fake_detect_stones(gray, xs, ys, start_x, start_y):
+        return (
+            [
+                SetupStone(x=3, y=3, color="B"),
+                SetupStone(x=7, y=19, color="B"),
+                SetupStone(x=19, y=4, color="W"),
+            ],
+            0.95,
+        )
+
+    monkeypatch.setattr(detection, "_detect_stones", fake_detect_stones)
+    result = detect_board(render_board(19, stones=[]), CORNERS)
+
+    assert result.boardSize == 19
+    assert _stone_set(result) == {(3, 3, "B")}

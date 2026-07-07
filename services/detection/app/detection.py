@@ -16,6 +16,7 @@ from typing import Sequence
 import cv2
 import numpy as np
 
+from . import stone_classifier
 from .board_size import smallest_fitting_size, snap_board_size
 from .position_view import infer_position_view
 from .schemas import DetectionResult, SetupStone
@@ -92,6 +93,24 @@ DARK_LINES_DELTA = 15.0
 # On a mid-tone board the two crossing grid lines at an empty intersection
 # supply a false ring, so the branch is gated to a light local background.
 LIGHT_BOARD_MIN = 205.0
+# The learned classifier only runs on printed pages. Measured separation:
+# printed white stones sit within +-26 of the paper brightness, while real
+# and rendered white stones measure +39..+139 over the board; dark boards
+# (median 97 on the wood capture) hallucinate whites under the model's
+# per-patch standardisation, so they are excluded by background brightness.
+LEARNED_MIN_PROB = 0.90
+# Half-pitch phantom pruning: measured on the failing capture, true lines
+# hold thin-ridge support 0.20-0.68 while interleaved stone-edge phantoms
+# sit at 0.00-0.07; healthy pages show no parity asymmetry and dark boards
+# score ~0 on every line, leaving both untouched.
+HALF_PITCH_MIN_LINES = 7
+HALF_PITCH_THICKNESS_FRAC = 0.09
+HALF_PITCH_DARK_DELTA = 25.0
+HALF_PITCH_STRONG_MIN = 0.15
+HALF_PITCH_WEAK_MAX = 0.08
+HALF_PITCH_RATIO = 3.0
+LEARNED_PAGE_MIN_BACKGROUND = 150.0
+LEARNED_REAL_WHITE_DELTA = 30.0
 RING_DARK_DELTA = 30.0
 RING_COVERAGE_THRESHOLD = 0.42
 RING_SAMPLES = 36
@@ -350,6 +369,7 @@ def _line_positions(gray: np.ndarray, axis: str, extend: bool = False) -> list[i
     low = pad - overflow
     high = WARP_SIZE - 1 - pad + overflow
     chain = _regular_chain([peak for peak in peaks if low <= peak <= high])
+    chain = _prune_half_pitch_chain(chain, gray, axis)
     # Faint outer lines are recovered only strictly inside the quad: one
     # pitch beyond it lie margin labels and captions, which trims vet in the
     # estimation path but nothing vets here.
@@ -357,6 +377,76 @@ def _line_positions(gray: np.ndarray, axis: str, extend: bool = False) -> list[i
     extend_high = high if extend else WARP_SIZE - 1 - pad
     chain = _extend_chain(chain, smoothed, extend_low, extend_high)
     return _snap_to_lattice(chain)
+
+
+def _line_ridge_support(gray: np.ndarray, position: int, axis: str, pitch: float) -> float:
+    """Fraction of samples along a candidate line that are a thin dark ridge.
+
+    A printed grid line is dark at the line and board-coloured just beside
+    it wherever no stone covers it. A stone-edge phantom line has no such
+    ridge: inside a stone run it is uniformly dark (thick), elsewhere it is
+    bare board."""
+
+    source = gray.astype(np.float32)
+    background = float(np.median(source))
+    thickness = max(3, int(round(pitch * HALF_PITCH_THICKNESS_FRAC)))
+    pad = _warp_pad()
+    height, width = source.shape
+    limit = width if axis == "vertical" else height
+    hits = total = 0
+    lo = max(0, position - 1)
+    for along in range(pad, (height if axis == "vertical" else width) - pad, 7):
+        # Chain positions are gradient peaks, which sit a pixel off a crisp
+        # line's centre; take the darkest pixel within +-1. Wider jitter
+        # starts crediting stone rims to the phantom lines.
+        if axis == "vertical":
+            centre = float(source[along, lo : position + 2].min())
+            flanks = (
+                source[along, max(0, position - thickness)],
+                source[along, min(limit - 1, position + thickness)],
+            )
+        else:
+            centre = float(source[lo : position + 2, along].min())
+            flanks = (
+                source[max(0, position - thickness), along],
+                source[min(limit - 1, position + thickness), along],
+            )
+        total += 1
+        if centre < background - HALF_PITCH_DARK_DELTA and all(
+            flank > background - HALF_PITCH_DARK_DELTA for flank in flanks
+        ):
+            hits += 1
+    return hits / max(1, total)
+
+
+def _prune_half_pitch_chain(chain: list[int], gray: np.ndarray, axis: str) -> list[int]:
+    """Drop interleaved stone-edge phantoms from a half-pitch chain.
+
+    Rows of adjacent stones add gradient peaks midway between grid lines,
+    and the resulting half-pitch sequence is more regular than the true
+    one, so ``_regular_chain`` prefers it. The impostors betray themselves
+    structurally: every other chain line has thin-ridge support, the
+    alternate ones have none. The test is purely relative — dark boards
+    score near zero on every line and are left alone."""
+
+    if len(chain) < HALF_PITCH_MIN_LINES:
+        return chain
+    pitch = float(np.median(np.diff(chain)))
+    if pitch <= 0:
+        return chain
+    support = [_line_ridge_support(gray, pos, axis, pitch * 2) for pos in chain]
+    subsets = [(chain[start::2], support[start::2]) for start in (0, 1)]
+    subsets.sort(key=lambda pair: -float(np.median(pair[1])))
+    (strong_chain, strong), (_, weak) = subsets
+    strong_median = float(np.median(strong))
+    weak_median = float(np.median(weak))
+    if (
+        strong_median >= HALF_PITCH_STRONG_MIN
+        and weak_median <= HALF_PITCH_WEAK_MAX
+        and strong_median >= HALF_PITCH_RATIO * max(weak_median, 1e-6)
+    ):
+        return strong_chain
+    return chain
 
 
 def _continuation_fraction(
@@ -762,7 +852,7 @@ def _detect_stones(
     dx, dy = _stone_offset(gray, xs, ys, cell, backgrounds, interior_radius)
     soft_whites = _lines_are_dark(gray, xs, ys, fallback_background)
 
-    stones: list[SetupStone] = []
+    grid: dict[tuple[int, int], tuple[str, float]] = {}
     confidences: list[float] = []
     for j, y in enumerate(ys):
         for i, x in enumerate(xs):
@@ -783,13 +873,67 @@ def _detect_stones(
                 if refined is not None:
                     color, confidence = refined
             if color is not None:
-                stones.append(
-                    SetupStone(x=start_x + i, y=start_y + j, color=color)
-                )
+                grid[(i, j)] = (color, confidence)
             confidences.append(confidence)
 
+    if stone_classifier.enabled() and _printed_page(
+        gray, xs, ys, cell, grid, fallback_background
+    ):
+        for coord, (label, prob) in stone_classifier.classify(
+            gray, xs, ys, cell
+        ).items():
+            if label is None or prob < LEARNED_MIN_PROB:
+                continue
+            # Additions only: the model supplies stones the classical
+            # branches miss (printed outlined whites, boldly labelled
+            # blacks). Classical detections are never recoloured or
+            # removed — measured on the corpus, classical colours are
+            # never wrong, while the model confidently misreads boldly
+            # labelled stones it was not trained on. Literal board
+            # corners are excluded: a bowed corner junction flanked by
+            # coordinate glyphs reads as a white ring at any threshold.
+            i, j = coord
+            if i in (0, len(xs) - 1) and j in (0, len(ys) - 1):
+                continue
+            if coord not in grid:
+                grid[coord] = (label, prob)
+                confidences.append(prob)
+
+    stones = [
+        SetupStone(x=start_x + i, y=start_y + j, color=color)
+        for (i, j), (color, _) in sorted(grid.items(), key=lambda t: (t[0][1], t[0][0]))
+    ]
     confidence = float(np.mean(confidences)) if confidences else 0.0
     return stones, confidence
+
+
+def _printed_page(
+    gray: np.ndarray,
+    xs: list[int],
+    ys: list[int],
+    cell: float,
+    grid: dict[tuple[int, int], tuple[str, float]],
+    background: float,
+) -> bool:
+    """A bright capture whose white stones are no brighter than the board."""
+
+    if background < LEARNED_PAGE_MIN_BACKGROUND:
+        return False
+    radius = max(2, int(cell * 0.3))
+    for (i, j), (color, _) in grid.items():
+        if color != "W":
+            continue
+        x0 = max(0, xs[i] - radius)
+        y0 = max(0, ys[j] - radius)
+        disc = gray[y0 : ys[j] + radius, x0 : xs[i] + radius]
+        if disc.size == 0:
+            continue
+        # A printed number can darken the stone centre, so judge the stone
+        # by its brighter quartile rather than the centre median.
+        bright = float(np.percentile(disc.astype(np.float32), 75))
+        if bright - background > LEARNED_REAL_WHITE_DELTA:
+            return False
+    return True
 
 
 def detect_board(raw: bytes, corners: Sequence[Corner]) -> DetectionResult:
@@ -822,6 +966,14 @@ def detect_board(raw: bytes, corners: Sequence[Corner]) -> DetectionResult:
         sides, visible_rows, visible_columns, board_size
     )
     stones, confidence = _detect_stones(gray, xs, ys, start_x, start_y)
+    # A phantom outer line (a margin label row riding the chain window's
+    # bulge allowance) yields grid points beyond the board; whatever gets
+    # classified there cannot be a stone of this board.
+    stones = [
+        stone
+        for stone in stones
+        if 0 <= stone.x < board_size and 0 <= stone.y < board_size
+    ]
 
     return DetectionResult(
         boardSize=board_size,
