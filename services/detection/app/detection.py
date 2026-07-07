@@ -99,6 +99,16 @@ LIGHT_BOARD_MIN = 205.0
 # (median 97 on the wood capture) hallucinate whites under the model's
 # per-patch standardisation, so they are excluded by background brightness.
 LEARNED_MIN_PROB = 0.90
+# Half-pitch phantom pruning: measured on the failing capture, true lines
+# hold thin-ridge support 0.20-0.68 while interleaved stone-edge phantoms
+# sit at 0.00-0.07; healthy pages show no parity asymmetry and dark boards
+# score ~0 on every line, leaving both untouched.
+HALF_PITCH_MIN_LINES = 7
+HALF_PITCH_THICKNESS_FRAC = 0.09
+HALF_PITCH_DARK_DELTA = 25.0
+HALF_PITCH_STRONG_MIN = 0.15
+HALF_PITCH_WEAK_MAX = 0.08
+HALF_PITCH_RATIO = 3.0
 LEARNED_PAGE_MIN_BACKGROUND = 150.0
 LEARNED_REAL_WHITE_DELTA = 30.0
 RING_DARK_DELTA = 30.0
@@ -359,6 +369,7 @@ def _line_positions(gray: np.ndarray, axis: str, extend: bool = False) -> list[i
     low = pad - overflow
     high = WARP_SIZE - 1 - pad + overflow
     chain = _regular_chain([peak for peak in peaks if low <= peak <= high])
+    chain = _prune_half_pitch_chain(chain, gray, axis)
     # Faint outer lines are recovered only strictly inside the quad: one
     # pitch beyond it lie margin labels and captions, which trims vet in the
     # estimation path but nothing vets here.
@@ -366,6 +377,76 @@ def _line_positions(gray: np.ndarray, axis: str, extend: bool = False) -> list[i
     extend_high = high if extend else WARP_SIZE - 1 - pad
     chain = _extend_chain(chain, smoothed, extend_low, extend_high)
     return _snap_to_lattice(chain)
+
+
+def _line_ridge_support(gray: np.ndarray, position: int, axis: str, pitch: float) -> float:
+    """Fraction of samples along a candidate line that are a thin dark ridge.
+
+    A printed grid line is dark at the line and board-coloured just beside
+    it wherever no stone covers it. A stone-edge phantom line has no such
+    ridge: inside a stone run it is uniformly dark (thick), elsewhere it is
+    bare board."""
+
+    source = gray.astype(np.float32)
+    background = float(np.median(source))
+    thickness = max(3, int(round(pitch * HALF_PITCH_THICKNESS_FRAC)))
+    pad = _warp_pad()
+    height, width = source.shape
+    limit = width if axis == "vertical" else height
+    hits = total = 0
+    lo = max(0, position - 1)
+    for along in range(pad, (height if axis == "vertical" else width) - pad, 7):
+        # Chain positions are gradient peaks, which sit a pixel off a crisp
+        # line's centre; take the darkest pixel within +-1. Wider jitter
+        # starts crediting stone rims to the phantom lines.
+        if axis == "vertical":
+            centre = float(source[along, lo : position + 2].min())
+            flanks = (
+                source[along, max(0, position - thickness)],
+                source[along, min(limit - 1, position + thickness)],
+            )
+        else:
+            centre = float(source[lo : position + 2, along].min())
+            flanks = (
+                source[max(0, position - thickness), along],
+                source[min(limit - 1, position + thickness), along],
+            )
+        total += 1
+        if centre < background - HALF_PITCH_DARK_DELTA and all(
+            flank > background - HALF_PITCH_DARK_DELTA for flank in flanks
+        ):
+            hits += 1
+    return hits / max(1, total)
+
+
+def _prune_half_pitch_chain(chain: list[int], gray: np.ndarray, axis: str) -> list[int]:
+    """Drop interleaved stone-edge phantoms from a half-pitch chain.
+
+    Rows of adjacent stones add gradient peaks midway between grid lines,
+    and the resulting half-pitch sequence is more regular than the true
+    one, so ``_regular_chain`` prefers it. The impostors betray themselves
+    structurally: every other chain line has thin-ridge support, the
+    alternate ones have none. The test is purely relative — dark boards
+    score near zero on every line and are left alone."""
+
+    if len(chain) < HALF_PITCH_MIN_LINES:
+        return chain
+    pitch = float(np.median(np.diff(chain)))
+    if pitch <= 0:
+        return chain
+    support = [_line_ridge_support(gray, pos, axis, pitch * 2) for pos in chain]
+    subsets = [(chain[start::2], support[start::2]) for start in (0, 1)]
+    subsets.sort(key=lambda pair: -float(np.median(pair[1])))
+    (strong_chain, strong), (_, weak) = subsets
+    strong_median = float(np.median(strong))
+    weak_median = float(np.median(weak))
+    if (
+        strong_median >= HALF_PITCH_STRONG_MIN
+        and weak_median <= HALF_PITCH_WEAK_MAX
+        and strong_median >= HALF_PITCH_RATIO * max(weak_median, 1e-6)
+    ):
+        return strong_chain
+    return chain
 
 
 def _continuation_fraction(

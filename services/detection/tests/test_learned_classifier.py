@@ -58,6 +58,24 @@ def test_verified_book_positions_detected_exactly(relative):
     assert _visible_stones(result) == expected
 
 
+def test_half_pitch_chain_pruned_on_dense_diagram():
+    # Rows of adjacent stones on this 9x9 problem diagram add gradient
+    # peaks midway between grid lines; the half-pitch chain is more
+    # regular than the true one, so it used to win and inflate the board
+    # to 19x19. Thin-ridge parity pruning drops the stone-edge phantoms.
+    result, sidecar = _detect(CORPUS / "TGA-A/IMG_1673.jpeg")
+    assert result.boardSize == 9
+    expected_blacks = {
+        (int(key.split(",")[0]), int(key.split(",")[1]))
+        for key, color in sidecar["stones"].items()
+        if color == "B"
+    }
+    detected_blacks = {
+        (x, y) for x, y, color in _visible_stones(result) if color == "B"
+    }
+    assert detected_blacks == expected_blacks
+
+
 def test_flag_disables_learned_classifier(monkeypatch):
     monkeypatch.setenv("LEARNED_CLASSIFIER", "0")
     assert not stone_classifier.enabled()
