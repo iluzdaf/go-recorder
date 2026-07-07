@@ -18,6 +18,32 @@ from .detection import Corner, WARP_SIZE, _decode, _line_positions, _warp, _warp
 # quadrilaterals are stones, diagrams on facing pages, or clutter.
 MIN_QUAD_AREA_FRAC = 0.2
 CONTOUR_CANDIDATES = 10
+# Periodicity-based localization for pages: a Go grid is periodic in both
+# axes with similar pitch, while text is periodic in at most one axis. Tiles
+# whose gradient profiles autocorrelate strongly in both axes localize the
+# board, so page text cannot contaminate the grid search.
+PERIODIC_SCALE_MAX = 1000.0
+PERIODIC_TILES = 8
+PERIODIC_MIN_STRENGTH = 0.3
+# Below ~10px the autocorrelation locks onto JPEG block texture, not grid.
+PERIODIC_MIN_PITCH = 10
+PERIODIC_PITCH_RATIO = 1.7
+PERIODIC_MIN_TILES = 4
+# Tiles in the board block share the grid pitch; qualifying tiles whose pitch
+# strays (noise, other periodic content) are dropped before the bounding box.
+PERIODIC_COHERENCE_RATIO = 1.35
+# A text band holds dense dark glyph pixels (measured: 0.10-0.23 over the
+# central third); a board band holds thin lines (~0.05-0.07); a margin or
+# paragraph-gap band almost none. Text and empty bands are trimmed from the
+# region's edges; anything grid-like or in between stops the march, and no
+# side may trim beyond this share of the region.
+TEXT_DARKNESS_MAX = 120.0
+TEXT_MIN_DARK_FRAC = 0.09
+EMPTY_MAX_DARK_FRAC = 0.02
+TRIM_MAX_SHARE = 0.45
+# A Go board has at most 19 lines per axis; a "grid" with more is page
+# content masquerading as one.
+MAX_GRID_LINES = 21
 # An estimate needs a grid-like line count to be trustworthy; with fewer
 # lines the caller keeps its default corner placement.
 MIN_GRID_LINES = 4
@@ -44,7 +70,10 @@ LINE_GAP_BOARD_MAX_FRAC = 0.5
 # with sparse coordinate labels. Judged by the strip's median, so labels do
 # not tip it. Offsets are fractions of the grid pitch.
 SURFACE_OFFSET_FRACS = (0.10, 0.18, 0.25)
-SURFACE_DELTA = 40.0
+# Table or page background beyond a physical board edge differs from the
+# board by 75+; page-margin shading next to a book grid's outer line reads
+# around 45 and must not trim that line.
+SURFACE_DELTA = 60.0
 SURFACE_SAMPLES = 25
 # Returned corners are pushed slightly outward so the outer grid lines land
 # fully inside the quad with a cushion, the way users are asked to mark them.
@@ -92,6 +121,195 @@ def _board_quad(image: np.ndarray) -> np.ndarray | None:
         if len(approx) == 4 and cv2.isContourConvex(approx):
             return _order_quad(approx.reshape(4, 2).astype(np.float32))
     return None
+
+
+def _axis_periodicity(profile: np.ndarray, max_pitch: int) -> tuple[float, int]:
+    """Autocorrelation peak strength and pitch of a 1D gradient profile."""
+
+    centred = profile - profile.mean()
+    if centred.std() < 1e-6:
+        return 0.0, 0
+    correlation = np.correlate(centred, centred, mode="full")[len(centred) - 1 :]
+    correlation = correlation / (correlation[0] + 1e-9)
+    if max_pitch <= PERIODIC_MIN_PITCH:
+        return 0.0, 0
+    lag = int(np.argmax(correlation[PERIODIC_MIN_PITCH:max_pitch])) + PERIODIC_MIN_PITCH
+    return float(correlation[lag]), lag
+
+
+def _band_is_trimmable(
+    gray_band: np.ndarray, gradient_band: np.ndarray, axis: int, pitch: float
+) -> bool:
+    """Whether an edge band is page content rather than board: dense dark
+    glyphs without grid periodicity (text, captions), or nearly empty paper
+    (margins, paragraph gaps). A grid-like band — even a dense one, whose
+    stones keep the pitch periodicity — stops the trim."""
+
+    # Density over the central third along the band: a centred caption fills
+    # the middle while its full-width density stays low.
+    if axis == 0:
+        third = gray_band.shape[1] // 3
+        centre = gray_band[:, third : 2 * third] if third else gray_band
+    else:
+        third = gray_band.shape[0] // 3
+        centre = gray_band[third : 2 * third, :] if third else gray_band
+    dark_fraction = float((centre < TEXT_DARKNESS_MAX).mean())
+    if dark_fraction < EMPTY_MAX_DARK_FRAC:
+        return True
+    if dark_fraction < TEXT_MIN_DARK_FRAC:
+        return False
+    profile = gradient_band.sum(axis=axis)
+    limit = int(pitch * PERIODIC_PITCH_RATIO) + 2
+    strength, lag = _axis_periodicity(profile, min(limit, len(profile) // 2))
+    gridlike = (
+        lag > 0
+        and strength > PERIODIC_MIN_STRENGTH
+        and 1.0 / PERIODIC_COHERENCE_RATIO < lag / pitch < PERIODIC_COHERENCE_RATIO
+    )
+    return not gridlike
+
+
+def _trim_region_bands(
+    gray: np.ndarray,
+    grad_x: np.ndarray,
+    grad_y: np.ndarray,
+    left: int,
+    right: int,
+    top: int,
+    bottom: int,
+    pitch: float,
+) -> tuple[int, int, int, int]:
+    """Trim page-content bands (titles, captions, paragraphs, blank margins)
+    from the region's edges, stopping at grid-like content."""
+
+    band = max(8, int(round(pitch)))
+    max_trim_y = int((bottom - top) * TRIM_MAX_SHARE)
+    max_trim_x = int((right - left) * TRIM_MAX_SHARE)
+    top_limit, bottom_limit = top + max_trim_y, bottom - max_trim_y
+    left_limit, right_limit = left + max_trim_x, right - max_trim_x
+
+    while top < top_limit and _band_is_trimmable(
+        gray[top : top + band, left:right],
+        grad_x[top : top + band, left:right],
+        0,
+        pitch,
+    ):
+        top += band
+    while bottom > bottom_limit and _band_is_trimmable(
+        gray[bottom - band : bottom, left:right],
+        grad_x[bottom - band : bottom, left:right],
+        0,
+        pitch,
+    ):
+        bottom -= band
+    while left < left_limit and _band_is_trimmable(
+        gray[top:bottom, left : left + band],
+        grad_y[top:bottom, left : left + band],
+        1,
+        pitch,
+    ):
+        left += band
+    while right > right_limit and _band_is_trimmable(
+        gray[top:bottom, right - band : right],
+        grad_y[top:bottom, right - band : right],
+        1,
+        pitch,
+    ):
+        right -= band
+    return left, right, top, bottom
+
+
+def _periodic_region(image: np.ndarray) -> np.ndarray | None:
+    """Bounding quad of the region that is periodic in both axes (the grid).
+
+    Text on a page is periodic in at most one axis, so the connected block of
+    two-axis-periodic tiles is the board even when it shares the frame with
+    paragraphs, captions, and margins."""
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    height, width = gray.shape
+    scale = min(1.0, PERIODIC_SCALE_MAX / max(height, width))
+    if scale < 1.0:
+        gray = cv2.resize(
+            gray,
+            (int(width * scale), int(height * scale)),
+            interpolation=cv2.INTER_AREA,
+        )
+    grad_x = np.abs(cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3))
+    grad_y = np.abs(cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3))
+
+    tiles = PERIODIC_TILES
+    tile_h = gray.shape[0] // tiles
+    tile_w = gray.shape[1] // tiles
+    if tile_h < 2 * PERIODIC_MIN_PITCH or tile_w < 2 * PERIODIC_MIN_PITCH:
+        return None
+
+    qualified = np.zeros((tiles, tiles), dtype=bool)
+    pitches = np.zeros((tiles, tiles))
+    for tj in range(tiles):
+        for ti in range(tiles):
+            tile_gx = grad_x[tj * tile_h : (tj + 1) * tile_h, ti * tile_w : (ti + 1) * tile_w]
+            tile_gy = grad_y[tj * tile_h : (tj + 1) * tile_h, ti * tile_w : (ti + 1) * tile_w]
+            strength_x, pitch_x = _axis_periodicity(tile_gx.sum(axis=0), tile_w // 2)
+            strength_y, pitch_y = _axis_periodicity(tile_gy.sum(axis=1), tile_h // 2)
+            if (
+                pitch_x
+                and pitch_y
+                and min(strength_x, strength_y) > PERIODIC_MIN_STRENGTH
+                and 1.0 / PERIODIC_PITCH_RATIO < pitch_x / pitch_y < PERIODIC_PITCH_RATIO
+            ):
+                qualified[tj, ti] = True
+                pitches[tj, ti] = (pitch_x + pitch_y) / 2.0
+
+    if not qualified.any():
+        return None
+    # The board block shares one pitch; drop qualifying tiles that stray.
+    board_pitch = float(np.median(pitches[qualified]))
+    coherent = qualified & (
+        (pitches > board_pitch / PERIODIC_COHERENCE_RATIO)
+        & (pitches < board_pitch * PERIODIC_COHERENCE_RATIO)
+    )
+
+    # Largest connected component of coherent tiles.
+    count, labels = cv2.connectedComponents(coherent.astype(np.uint8))
+    best_label, best_size = 0, 0
+    for label in range(1, count):
+        size = int((labels == label).sum())
+        if size > best_size:
+            best_label, best_size = label, size
+    if best_size < PERIODIC_MIN_TILES:
+        return None
+
+    component = labels == best_label
+    # Text with line spacing near the grid pitch can attach a stray tile to
+    # the block; the board occupies multiple tiles per row and column, so
+    # keep only rows and columns with a meaningful share of the block.
+    row_counts = component.sum(axis=1)
+    col_counts = component.sum(axis=0)
+    row_keep = row_counts >= max(2, int(row_counts.max() * 0.4))
+    col_keep = col_counts >= max(2, int(col_counts.max() * 0.4))
+    if not row_keep.any() or not col_keep.any():
+        return None
+    rows = np.where(row_keep)[0]
+    cols = np.where(col_keep)[0]
+
+    # One-tile margin so the outer lines sit inside the region.
+    left = max(0, cols.min() - 0) * tile_w
+    right = min(tiles, cols.max() + 2) * tile_w
+    top = max(0, rows.min() - 0) * tile_h
+    bottom = min(tiles, rows.max() + 2) * tile_h
+
+    left, right, top, bottom = _trim_region_bands(
+        gray, grad_x, grad_y, left, right, top, bottom, board_pitch
+    )
+
+    left, top = left / scale, top / scale
+    right, bottom = right / scale, bottom / scale
+    right = min(right, width - 1)
+    bottom = min(bottom, height - 1)
+    return np.float32(
+        [[left, top], [right, top], [right, bottom], [left, bottom]]
+    )
 
 
 def _grid_evidence(
@@ -269,8 +487,10 @@ def _grid_corners_within(
     quarter = WARP_SIZE // 4
     background = float(np.median(gray[quarter:-quarter, quarter:-quarter]))
 
-    xs_raw = _line_positions(gray, "vertical")
-    ys_raw = _line_positions(gray, "horizontal")
+    # Extension recovers faintly printed outer lines; the trims below vet
+    # every line it adds, so labels and captions cannot ride in.
+    xs_raw = _line_positions(gray, "vertical", extend=True)
+    ys_raw = _line_positions(gray, "horizontal", extend=True)
     if len(xs_raw) < 2 or len(ys_raw) < 2:
         return None
 
@@ -292,6 +512,10 @@ def _grid_corners_within(
         gray, ys, (float(xs[0]), float(xs[-1])), "y", pitch, background
     )
     if len(xs) < MIN_GRID_LINES or len(ys) < MIN_GRID_LINES:
+        return None
+    if len(xs) > MAX_GRID_LINES or len(ys) > MAX_GRID_LINES:
+        # More lines than any Go board has: page content masquerading as a
+        # grid. Reject so a later stage (or the default corners) applies.
         return None
 
     low, high = pad, WARP_SIZE - 1 - pad
@@ -357,6 +581,13 @@ def estimate_corners(raw: bytes) -> list[Corner] | None:
     quad = _board_quad(image)
     if quad is not None:
         corners = _grid_corners_within(image, quad)
+        if corners is not None:
+            return corners
+    # Faint printed grids (book pages) give no contour; the block of
+    # coherently grid-like tiles localizes the board among page text.
+    region = _periodic_region(image)
+    if region is not None:
+        corners = _grid_corners_within(image, region)
         if corners is not None:
             return corners
     return _grid_corners_within(image, full_quad)

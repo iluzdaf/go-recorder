@@ -159,6 +159,37 @@ def test_dark_mode_full_board_from_estimated_corners():
     assert result.confidence > 0.9
 
 
+def test_book_page_registration_from_estimated_corners():
+    # A phone photo of a book page: faint printed grid sharing the frame with
+    # a title and paragraphs. Text used to contaminate the grid search; the
+    # periodicity localization isolates the board, and chain extension
+    # recovers the faintly printed outer lines. Whites are outlined stones,
+    # not yet classified on mid-tone paper — only blacks are asserted.
+    raw = (DATA / "book-flat-board.jpeg").read_bytes()
+    corners = estimate_corners(raw)
+    assert corners is not None
+    expected = [(138, 643), (2099, 643), (2099, 2635), (138, 2635)]
+    for (x, y), (ex, ey) in zip(corners, expected):
+        assert abs(x - ex) <= 30
+        assert abs(y - ey) <= 30
+
+    result = detect_board(
+        raw, parse_corners(json.dumps([{"x": x, "y": y} for x, y in corners]))
+    )
+
+    assert result.boardSize == 19
+    assert result.positionView is None
+    assert result.confidence > 0.9
+    assert all(stone.color == "B" for stone in result.setupStones)
+    assert {(stone.x, stone.y) for stone in result.setupStones} == {
+        (5, 2),
+        (8, 3),
+        (13, 2),
+        (15, 3),
+        (15, 15),
+    }
+
+
 def test_top_left_diagram_anchor():
     # A top-left corner diagram (columns A-K, rows 19-15) with coordinate
     # labels on all four sides. The row-number labels sit flush against the

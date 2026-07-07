@@ -39,6 +39,12 @@ PITCH_TOLERANCE_FRAC = 0.35
 # Wide enough that a bowed page's gradual deviation is preserved.
 LATTICE_MIN_LINES = 5
 LATTICE_KEEP_FRAC = 0.34
+# Faintly printed outer lines can fall just under the peak threshold. When
+# extension is requested (corner estimation, whose trims vet every line), the
+# chain grows outward one pitch at a time wherever the profile holds a local
+# maximum above this fraction of the normal threshold.
+LINE_EXTEND_RELAX = 0.6
+LINE_EXTEND_TOL_FRAC = 0.2
 # A side is cut (the board continues out of frame) when most grid lines keep
 # going past the outermost perpendicular line; a real edge has only margin
 # there. Probed just outside the outer line so margin labels and captions
@@ -294,14 +300,49 @@ def _snap_to_lattice(positions: list[int]) -> list[int]:
     ]
 
 
-def _line_positions(gray: np.ndarray, axis: str) -> list[int]:
+def _extend_chain(
+    chain: list[int], profile: np.ndarray, low: float, high: float
+) -> list[int]:
+    """Grow the chain outward onto faint outer lines: a real but weakly
+    printed line holds a local maximum near the next lattice slot, just under
+    the normal peak threshold."""
+
+    if len(chain) < LATTICE_MIN_LINES:
+        return chain
+    pitch = float(np.median(np.diff(chain)))
+    if pitch <= 0:
+        return chain
+    relaxed = float(profile.max()) * PEAK_HEIGHT_FRAC * LINE_EXTEND_RELAX
+    tolerance = max(3, int(round(pitch * LINE_EXTEND_TOL_FRAC)))
+
+    chain = list(chain)
+    for direction in (-1, 1):
+        while True:
+            slot = (chain[0] if direction < 0 else chain[-1]) + direction * pitch
+            if not low <= slot <= high:
+                break
+            start = max(0, int(round(slot)) - tolerance)
+            stop = min(len(profile), int(round(slot)) + tolerance + 1)
+            window = profile[start:stop]
+            if window.size == 0 or float(window.max()) < relaxed:
+                break
+            position = start + int(np.argmax(window))
+            if direction < 0:
+                chain.insert(0, position)
+            else:
+                chain.append(position)
+    return chain
+
+
+def _line_positions(gray: np.ndarray, axis: str, extend: bool = False) -> list[int]:
     if axis == "vertical":
         gradient = np.abs(cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3))
         profile = gradient.sum(axis=0)
     else:
         gradient = np.abs(cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3))
         profile = gradient.sum(axis=1)
-    peaks = _find_peaks(_smooth(profile, 5))
+    smoothed = _smooth(profile, 5)
+    peaks = _find_peaks(smoothed)
     # Grid lines live inside the quad, overflowing it only by a bowed line's
     # bulge; peaks farther into the pad are page content (captions, titles).
     pad = _warp_pad()
@@ -309,6 +350,12 @@ def _line_positions(gray: np.ndarray, axis: str) -> list[int]:
     low = pad - overflow
     high = WARP_SIZE - 1 - pad + overflow
     chain = _regular_chain([peak for peak in peaks if low <= peak <= high])
+    # Faint outer lines are recovered only strictly inside the quad: one
+    # pitch beyond it lie margin labels and captions, which trims vet in the
+    # estimation path but nothing vets here.
+    extend_low = low if extend else pad
+    extend_high = high if extend else WARP_SIZE - 1 - pad
+    chain = _extend_chain(chain, smoothed, extend_low, extend_high)
     return _snap_to_lattice(chain)
 
 
