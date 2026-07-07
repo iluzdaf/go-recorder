@@ -31,7 +31,11 @@ from app.detection import _decode, _line_positions, _warp  # noqa: E402
 PATCH = 32
 WINDOW_CELL_FRAC = 1.3
 COMPOSITES_PER_BACKGROUND = 2
-ROUND_ONE_DIRS = ("training/corpus/Kiseido", "training/corpus/TGA-A")
+ROUND_ONE_DIRS = (
+    "training/corpus/Kiseido",
+    "training/corpus/TGA-A",
+    "training/corpus/Slate-&-Shell",
+)
 EXTRA_PHOTOS = ("tests/data/book-flat-board.jpeg",)
 
 rng = np.random.default_rng(20260707)
