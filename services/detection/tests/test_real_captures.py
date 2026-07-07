@@ -58,6 +58,42 @@ def test_app_tilted_board_capture():
     }
 
 
+def test_app_tilted_board_anchor_from_estimated_corners():
+    # The app flow: corners auto-estimated, then detection — the anchor must
+    # still come out bottom-right with the same stones as the hand-marked
+    # corners, including blacks sitting on the cut edges.
+    raw = (DATA / "app-tilted-board.jpeg").read_bytes()
+    corners = estimate_corners(raw)
+    assert corners is not None
+
+    result = detect_board(
+        raw, parse_corners(json.dumps([{"x": x, "y": y} for x, y in corners]))
+    )
+
+    assert result.boardSize == 9
+    view = result.positionView
+    assert view is not None
+    assert view.anchor == "bottom-right"
+    assert view.rows == 5
+    assert view.columns == 8
+
+    visible = [
+        (1, 2, "B"),
+        (3, 2, "B"),
+        (4, 2, "B"),
+        (5, 1, "B"),
+        (6, 1, "B"),
+        (7, 1, "B"),
+        (5, 2, "W"),
+        (6, 2, "W"),
+        (4, 3, "W"),
+        (6, 4, "W"),
+    ]
+    assert _stone_set(result) == {
+        (column + 1, row + 4, color) for column, row, color in visible
+    }
+
+
 def test_top_left_diagram_anchor():
     # A top-left corner diagram (columns A-K, rows 19-15) with coordinate
     # labels on all four sides. The row-number labels sit flush against the
