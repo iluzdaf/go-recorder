@@ -6,6 +6,7 @@ import { Loader2, X } from "lucide-react";
 
 import { createBoardDraftInputFromDetection } from "../lib/boardDetectionDraft";
 import { detectBoard, detectCorners } from "../lib/detectBoardClient";
+import { normalizeImageFile } from "../lib/normalizeImageFile";
 import { createLocalDraft } from "../lib/localGames";
 import { storeImageSource } from "../lib/localImageStorage";
 import { navigateWithinApp } from "../lib/fullscreenNavigation";
@@ -134,9 +135,16 @@ export default function ImageDraftCreator({ onClose }: ImageDraftCreatorProps) {
 
         setError(null);
         setCorners(null);
-        setImage((previous) => {
-            if (previous) URL.revokeObjectURL(previous.url);
-            return { file, url: URL.createObjectURL(file) };
+        // Strip EXIF orientation by re-encoding, so the pixels the service
+        // sees match the image the user marks corners on.
+        void normalizeImageFile(file).then((normalized) => {
+            setImage((previous) => {
+                if (previous) URL.revokeObjectURL(previous.url);
+                return {
+                    file: normalized,
+                    url: URL.createObjectURL(normalized),
+                };
+            });
         });
     }
 

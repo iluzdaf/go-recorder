@@ -5,6 +5,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import cv2
+import numpy as np
+import pytest
+
 from app.corner_estimation import estimate_corners
 from app.detection import detect_board, parse_corners
 
@@ -56,6 +60,135 @@ def test_app_tilted_board_capture():
     assert _stone_set(result) == {
         (column + 1, row + 4, color) for column, row, color in visible
     }
+
+
+def test_app_tilted_board_anchor_from_estimated_corners():
+    # The app flow: corners auto-estimated, then detection — the anchor must
+    # still come out bottom-right with the same stones as the hand-marked
+    # corners, including blacks sitting on the cut edges.
+    raw = (DATA / "app-tilted-board.jpeg").read_bytes()
+    corners = estimate_corners(raw)
+    assert corners is not None
+
+    result = detect_board(
+        raw, parse_corners(json.dumps([{"x": x, "y": y} for x, y in corners]))
+    )
+
+    assert result.boardSize == 9
+    view = result.positionView
+    assert view is not None
+    assert view.anchor == "bottom-right"
+    assert view.rows == 5
+    assert view.columns == 8
+
+    visible = [
+        (1, 2, "B"),
+        (3, 2, "B"),
+        (4, 2, "B"),
+        (5, 1, "B"),
+        (6, 1, "B"),
+        (7, 1, "B"),
+        (5, 2, "W"),
+        (6, 2, "W"),
+        (4, 3, "W"),
+        (6, 4, "W"),
+    ]
+    assert _stone_set(result) == {
+        (column + 1, row + 4, color) for column, row, color in visible
+    }
+
+
+@pytest.mark.parametrize(
+    "scale,quality", [(1.0, 70), (1.0, 50), (0.7, 90), (0.5, 90)]
+)
+def test_app_tilted_board_survives_picker_transcodes(scale, quality):
+    # Phone photo pickers re-encode uploads (and sometimes downscale). JPEG
+    # ringing beside line endings and blur at the image boundary must not
+    # flip the anchor — this capture came back bottom-left on device.
+    raw = (DATA / "app-tilted-board.jpeg").read_bytes()
+    image = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)
+    if scale != 1.0:
+        image = cv2.resize(
+            image,
+            (int(image.shape[1] * scale), int(image.shape[0] * scale)),
+            interpolation=cv2.INTER_AREA,
+        )
+    ok, buffer = cv2.imencode(
+        ".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, quality]
+    )
+    assert ok
+    transcoded = buffer.tobytes()
+
+    corners = estimate_corners(transcoded)
+    assert corners is not None
+    result = detect_board(
+        transcoded,
+        parse_corners(json.dumps([{"x": x, "y": y} for x, y in corners])),
+    )
+
+    view = result.positionView
+    assert view is not None
+    assert view.anchor == "bottom-right"
+    assert view.rows == 5
+    assert view.columns == 8
+
+
+def test_dark_mode_full_board_from_estimated_corners():
+    # The app's own dark-mode screenshot: bright grid lines on a dark board,
+    # coordinate labels on all four sides, dense high-contrast stone
+    # clusters. Stone edges used to flood the line detector with clutter
+    # peaks (26 rows detected, hundreds of phantom whites); the periodic
+    # chain keeps only the lattice, and bright-line boards disable the
+    # dark-line occlusion and annulus shortcuts.
+    raw = (DATA / "full-19x19-board.jpeg").read_bytes()
+    corners = estimate_corners(raw)
+    assert corners is not None
+
+    result = detect_board(
+        raw, parse_corners(json.dumps([{"x": x, "y": y} for x, y in corners]))
+    )
+
+    assert result.boardSize == 19
+    assert result.positionView is None
+    blacks = sum(1 for stone in result.setupStones if stone.color == "B")
+    whites = sum(1 for stone in result.setupStones if stone.color == "W")
+    # The position holds roughly two dozen stones of each colour; the failure
+    # mode this guards against produced hundreds of whites.
+    assert 15 <= blacks <= 30
+    assert 20 <= whites <= 40
+    assert result.confidence > 0.9
+
+
+def test_top_left_diagram_anchor():
+    # A top-left corner diagram (columns A-K, rows 19-15) with coordinate
+    # labels on all four sides. The row-number labels sit flush against the
+    # left edge and the bottom letter row aligns with the columns; both used
+    # to fake grid lines or continuations, anchoring the view to center.
+    # Cut sides are recognised by their thin line stubs; label glyphs are
+    # thick and vote neither way.
+    raw = (DATA / "top-left-partial-board.jpeg").read_bytes()
+    corners = estimate_corners(raw)
+    assert corners is not None
+
+    result = detect_board(
+        raw, parse_corners(json.dumps([{"x": x, "y": y} for x, y in corners]))
+    )
+
+    view = result.positionView
+    assert view is not None
+    assert view.anchor == "top-left"
+    assert view.rows == 5
+    assert view.columns == 10
+    # Board size is the smallest standard size that fits the visible grid;
+    # only the printed labels say 19, which geometry alone cannot know.
+    assert result.boardSize == 13
+    # Spot-check stones against the printed diagram (visible coordinates
+    # equal full-board coordinates for a top-left anchor).
+    stones = _stone_set(result)
+    assert (2, 0, "B") in stones  # C19
+    assert (3, 0, "W") in stones  # D19
+    assert (0, 1, "B") in stones  # A18
+    assert (0, 2, "W") in stones  # A17
 
 
 def test_flat_photo_partial_board_no_ring_false_whites():

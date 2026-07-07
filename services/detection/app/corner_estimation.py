@@ -28,11 +28,17 @@ MIN_GRID_LINES = 4
 # the board background; a line needs a few such crossings to be kept.
 GRID_DARK_DELTA = 100.0
 GRID_BRIGHT_DELTA = 50.0
-GRID_EVIDENCE_MIN = 2
+# One crossing of real evidence (a stone, or a dark intersection) is enough to
+# keep an outer line, so a faint board-edge line with a single stone on it is
+# not clipped. A flat mid-grey label smear has zero and is still rejected; a
+# label row is caught by the board-gap test regardless of its evidence.
+GRID_EVIDENCE_MIN = 1
 LINE_SUPPORT_JITTER = 3
-# Grid lines are evenly spaced; the dominant run of near-constant spacing is
-# the grid and already excludes irregular margin clutter.
-PITCH_TOLERANCE_FRAC = 0.35
+# A real grid line is continuous between crossings; a row or column of dark
+# coordinate labels has board-coloured gaps between the glyphs, even though
+# the glyphs themselves supply strong evidence at the crossings.
+LINE_GAP_BOARD_DELTA = 25.0
+LINE_GAP_BOARD_MAX_FRAC = 0.5
 # The physical edge of the board surface has non-board (table, page) just
 # beyond it; the strip outside a true outer grid line is board margin, even
 # with sparse coordinate labels. Judged by the strip's median, so labels do
@@ -40,6 +46,13 @@ PITCH_TOLERANCE_FRAC = 0.35
 SURFACE_OFFSET_FRACS = (0.10, 0.18, 0.25)
 SURFACE_DELTA = 40.0
 SURFACE_SAMPLES = 25
+# Returned corners are pushed slightly outward so the outer grid lines land
+# fully inside the quad with a cushion, the way users are asked to mark them.
+# A quad edge slicing along the outer line leaves detection at the mercy of
+# JPEG artefacts from re-encoding photo pickers.
+CORNER_CUSHION_FRAC = 0.015
+CORNER_CUSHION_MIN_PX = 3.0
+CORNER_CUSHION_MAX_PX = 12.0
 
 
 def _order_quad(points: np.ndarray) -> np.ndarray:
@@ -81,27 +94,6 @@ def _board_quad(image: np.ndarray) -> np.ndarray | None:
     return None
 
 
-def _regular_run(positions: list[int]) -> list[int]:
-    """The longest run of near-evenly-spaced lines (the grid), which excludes
-    irregular margin clutter."""
-
-    if len(positions) < 3:
-        return list(positions)
-    diffs = np.diff(positions)
-    pitch = float(np.median(diffs))
-    tolerance = pitch * PITCH_TOLERANCE_FRAC
-
-    best_start, best_len = 0, 1
-    start = 0
-    for index in range(1, len(positions)):
-        if abs(float(positions[index] - positions[index - 1]) - pitch) <= tolerance:
-            if index - start + 1 > best_len:
-                best_start, best_len = start, index - start + 1
-        else:
-            start = index
-    return list(positions[best_start : best_start + best_len])
-
-
 def _grid_evidence(
     gray: np.ndarray,
     coordinate: int,
@@ -139,6 +131,61 @@ def _grid_evidence(
     return evidence
 
 
+def _board_gap_fraction(
+    gray: np.ndarray,
+    coordinate: int,
+    crossings: list[int],
+    axis: str,
+    background: float,
+) -> float:
+    """Fraction of inter-crossing midpoints that are board-coloured. A real
+    grid line stays line-dark (or stone-covered) between crossings; a line of
+    coordinate labels shows board between the glyphs."""
+
+    height, width = gray.shape
+    if not 0 <= coordinate < (width if axis == "x" else height):
+        return 1.0
+    limit = height if axis == "x" else width
+
+    perpendicular_limit = width if axis == "x" else height
+    midpoints = [
+        (first + second) // 2 for first, second in zip(crossings, crossings[1:])
+    ]
+    board_like = 0
+    for midpoint in midpoints:
+        if not 0 <= midpoint < limit:
+            continue
+        strongest = 0.0
+        # Jitter across the line: the detected peak can sit a pixel or two
+        # off the actual line pixels.
+        for jitter in range(-LINE_SUPPORT_JITTER, LINE_SUPPORT_JITTER + 1):
+            across = coordinate + jitter
+            if not 0 <= across < perpendicular_limit:
+                continue
+            value = float(
+                gray[midpoint, across] if axis == "x" else gray[across, midpoint]
+            )
+            strongest = max(strongest, abs(value - background))
+        if strongest <= LINE_GAP_BOARD_DELTA:
+            board_like += 1
+    return board_like / len(midpoints) if midpoints else 1.0
+
+
+def _is_grid_line(
+    gray: np.ndarray,
+    coordinate: int,
+    crossings: list[int],
+    axis: str,
+    background: float,
+) -> bool:
+    return (
+        _grid_evidence(gray, coordinate, crossings, axis, background)
+        >= GRID_EVIDENCE_MIN
+        and _board_gap_fraction(gray, coordinate, crossings, axis, background)
+        <= LINE_GAP_BOARD_MAX_FRAC
+    )
+
+
 def _trim_unsupported(
     gray: np.ndarray,
     positions: list[int],
@@ -147,14 +194,12 @@ def _trim_unsupported(
     background: float,
 ) -> list[int]:
     positions = list(positions)
-    while positions and (
-        _grid_evidence(gray, positions[0], crossings, axis, background)
-        < GRID_EVIDENCE_MIN
+    while positions and not _is_grid_line(
+        gray, positions[0], crossings, axis, background
     ):
         positions.pop(0)
-    while positions and (
-        _grid_evidence(gray, positions[-1], crossings, axis, background)
-        < GRID_EVIDENCE_MIN
+    while positions and not _is_grid_line(
+        gray, positions[-1], crossings, axis, background
     ):
         positions.pop()
     return positions
@@ -229,13 +274,12 @@ def _grid_corners_within(
     if len(xs_raw) < 2 or len(ys_raw) < 2:
         return None
 
-    # The dominant even run is the grid; it already drops irregular margin
-    # clutter. Its outermost lines are then confirmed by grid evidence at the
-    # perpendicular crossings, dropping a flat label smear one pitch out.
-    x_grid = _regular_run(xs_raw)
-    y_grid = _regular_run(ys_raw)
-    xs = _trim_unsupported(gray, x_grid, y_grid, "x", background)
-    ys = _trim_unsupported(gray, y_grid, x_grid, "y", background)
+    # _line_positions already reduces peaks to the dominant even chain (the
+    # grid), dropping irregular margin clutter. Its outermost lines are then
+    # confirmed by grid evidence at the perpendicular crossings, dropping a
+    # flat label smear one pitch out.
+    xs = _trim_unsupported(gray, xs_raw, ys_raw, "x", background)
+    ys = _trim_unsupported(gray, ys_raw, xs_raw, "y", background)
     if len(xs) < 2 or len(ys) < 2:
         return None
 
@@ -264,13 +308,34 @@ def _grid_corners_within(
     )
     image_points = cv2.perspectiveTransform(warp_points, inverse).reshape(4, 2)
 
+    # Push the corners slightly outward so the outer lines sit fully inside
+    # the marked quad with a cushion.
+    centroid = image_points.mean(axis=0)
+    smaller_side = float(
+        min(
+            image_points[:, 0].max() - image_points[:, 0].min(),
+            image_points[:, 1].max() - image_points[:, 1].min(),
+        )
+    )
+    cushion = float(
+        np.clip(
+            smaller_side * CORNER_CUSHION_FRAC,
+            CORNER_CUSHION_MIN_PX,
+            CORNER_CUSHION_MAX_PX,
+        )
+    )
+
     height, width = image.shape[:2]
     corners: list[Corner] = []
-    for x, y in image_points:
+    for point in image_points:
+        vector = point - centroid
+        norm = float(np.linalg.norm(vector))
+        if norm > 0:
+            point = point + vector / norm * cushion
         corners.append(
             (
-                float(np.clip(x, 0, width - 1)),
-                float(np.clip(y, 0, height - 1)),
+                float(np.clip(point[0], 0, width - 1)),
+                float(np.clip(point[1], 0, height - 1)),
             )
         )
     return corners

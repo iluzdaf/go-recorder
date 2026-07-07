@@ -92,14 +92,16 @@ def test_estimates_corners_of_real_app_capture():
 def test_estimates_corners_of_coordinate_labelled_board():
     # A partial board framed with coordinate labels in all four margins: the
     # labels must not pull the estimate inward (the grid gets cropped) or
-    # outward (row-aligned number labels read as extra grid lines).
+    # outward (label rows read as extra grid lines). The drawn grid's last
+    # row sits at y=299; below it are only line stubs and the letter labels,
+    # which an earlier version mistook for a seventh row at y=349.
     raw = (DATA / "orange-coords-board.jpeg").read_bytes()
     estimated = estimate_corners(raw)
 
     assert estimated is not None
     _assert_close(
         estimated,
-        [(48, 48), (500, 48), (500, 349), (48, 349)],
+        [(48, 48), (500, 48), (500, 299), (48, 299)],
         tolerance=12.0,
     )
 
