@@ -35,9 +35,6 @@ LINE_SUPPORT_JITTER = 3
 # the glyphs themselves supply strong evidence at the crossings.
 LINE_GAP_BOARD_DELTA = 25.0
 LINE_GAP_BOARD_MAX_FRAC = 0.5
-# Grid lines are evenly spaced; the dominant run of near-constant spacing is
-# the grid and already excludes irregular margin clutter.
-PITCH_TOLERANCE_FRAC = 0.35
 # The physical edge of the board surface has non-board (table, page) just
 # beyond it; the strip outside a true outer grid line is board margin, even
 # with sparse coordinate labels. Judged by the strip's median, so labels do
@@ -91,27 +88,6 @@ def _board_quad(image: np.ndarray) -> np.ndarray | None:
         if len(approx) == 4 and cv2.isContourConvex(approx):
             return _order_quad(approx.reshape(4, 2).astype(np.float32))
     return None
-
-
-def _regular_run(positions: list[int]) -> list[int]:
-    """The longest run of near-evenly-spaced lines (the grid), which excludes
-    irregular margin clutter."""
-
-    if len(positions) < 3:
-        return list(positions)
-    diffs = np.diff(positions)
-    pitch = float(np.median(diffs))
-    tolerance = pitch * PITCH_TOLERANCE_FRAC
-
-    best_start, best_len = 0, 1
-    start = 0
-    for index in range(1, len(positions)):
-        if abs(float(positions[index] - positions[index - 1]) - pitch) <= tolerance:
-            if index - start + 1 > best_len:
-                best_start, best_len = start, index - start + 1
-        else:
-            start = index
-    return list(positions[best_start : best_start + best_len])
 
 
 def _grid_evidence(
@@ -294,13 +270,12 @@ def _grid_corners_within(
     if len(xs_raw) < 2 or len(ys_raw) < 2:
         return None
 
-    # The dominant even run is the grid; it already drops irregular margin
-    # clutter. Its outermost lines are then confirmed by grid evidence at the
-    # perpendicular crossings, dropping a flat label smear one pitch out.
-    x_grid = _regular_run(xs_raw)
-    y_grid = _regular_run(ys_raw)
-    xs = _trim_unsupported(gray, x_grid, y_grid, "x", background)
-    ys = _trim_unsupported(gray, y_grid, x_grid, "y", background)
+    # _line_positions already reduces peaks to the dominant even chain (the
+    # grid), dropping irregular margin clutter. Its outermost lines are then
+    # confirmed by grid evidence at the perpendicular crossings, dropping a
+    # flat label smear one pitch out.
+    xs = _trim_unsupported(gray, xs_raw, ys_raw, "x", background)
+    ys = _trim_unsupported(gray, ys_raw, xs_raw, "y", background)
     if len(xs) < 2 or len(ys) < 2:
         return None
 

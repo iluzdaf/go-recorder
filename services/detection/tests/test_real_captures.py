@@ -133,6 +133,32 @@ def test_app_tilted_board_survives_picker_transcodes(scale, quality):
     assert view.columns == 8
 
 
+def test_dark_mode_full_board_from_estimated_corners():
+    # The app's own dark-mode screenshot: bright grid lines on a dark board,
+    # coordinate labels on all four sides, dense high-contrast stone
+    # clusters. Stone edges used to flood the line detector with clutter
+    # peaks (26 rows detected, hundreds of phantom whites); the periodic
+    # chain keeps only the lattice, and bright-line boards disable the
+    # dark-line occlusion and annulus shortcuts.
+    raw = (DATA / "full-19x19-board.jpeg").read_bytes()
+    corners = estimate_corners(raw)
+    assert corners is not None
+
+    result = detect_board(
+        raw, parse_corners(json.dumps([{"x": x, "y": y} for x, y in corners]))
+    )
+
+    assert result.boardSize == 19
+    assert result.positionView is None
+    blacks = sum(1 for stone in result.setupStones if stone.color == "B")
+    whites = sum(1 for stone in result.setupStones if stone.color == "W")
+    # The position holds roughly two dozen stones of each colour; the failure
+    # mode this guards against produced hundreds of whites.
+    assert 15 <= blacks <= 30
+    assert 20 <= whites <= 40
+    assert result.confidence > 0.9
+
+
 def test_top_left_diagram_anchor():
     # A top-left corner diagram (columns A-K, rows 19-15) with coordinate
     # labels on all four sides. The row-number labels sit flush against the

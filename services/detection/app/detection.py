@@ -30,6 +30,10 @@ WARP_PAD_FRAC = 0.05
 # Grid-line peaks may overflow the quad by up to half the pad (a bowed line's
 # bulge); anything farther out is page content such as captions, not the grid.
 LINE_OVERFLOW_FRAC = 0.5
+# Grid lines form an evenly spaced chain; stone edges and coordinate labels
+# add gradient peaks between them (dense high-contrast boards can produce
+# more clutter peaks than real lines). Chains may skip such interlopers.
+PITCH_TOLERANCE_FRAC = 0.35
 # A side is cut (the board continues out of frame) when most grid lines keep
 # going past the outermost perpendicular line; a real edge has only margin
 # there. Probed just outside the outer line so margin labels and captions
@@ -60,9 +64,12 @@ FILL_LIGHT_DELTA = 40.0
 # FILL_LIGHT_DELTA. They are still detectable because a stone occludes the
 # grid lines: its patch has no line-dark pixels, while an empty intersection
 # always does. The soft branch requires both the mild brightness and a clean
-# (line-free) patch.
+# (line-free) patch — and only applies when the lines are darker than the
+# board; on a dark board with bright lines the occlusion test is meaningless
+# and mildly line-brightened empty intersections would read as white.
 SOFT_LIGHT_DELTA = 18.0
 PATCH_LOW_PERCENTILE = 5.0
+DARK_LINES_DELTA = 15.0
 # The outline-ring branch (a board-coloured fill ringed by a dark outline)
 # only applies to light boards, where a white stone's fill matches the board.
 # On a mid-tone board the two crossing grid lines at an empty intersection
@@ -193,6 +200,52 @@ def _find_peaks(profile: np.ndarray) -> list[int]:
     return peaks
 
 
+def _regular_chain(positions: list[int]) -> list[int]:
+    """The longest evenly-spaced chain of candidate lines (the grid).
+
+    Candidate pitches come from the observed gaps, and chains may skip
+    interlopers: stone edges and labels add peaks between grid lines, so the
+    grid is not a run of consecutive peaks and its pitch is not the median
+    gap. The longest chain (largest span on ties) wins."""
+
+    if len(positions) < 3:
+        return list(positions)
+
+    pitches = sorted({int(b - a) for a, b in zip(positions, positions[1:])})
+    best: list[int] = []
+    for pitch in pitches:
+        if pitch < 3:
+            continue
+        tolerance = max(3.0, pitch * PITCH_TOLERANCE_FRAC)
+        for start in range(len(positions)):
+            chain = [positions[start]]
+            index = start + 1
+            while index < len(positions):
+                target = chain[-1] + pitch
+                candidate = None
+                for next_index in range(index, len(positions)):
+                    value = positions[next_index]
+                    if value > target + tolerance:
+                        break
+                    if abs(value - target) <= tolerance and (
+                        candidate is None
+                        or abs(value - target) < abs(positions[candidate] - target)
+                    ):
+                        candidate = next_index
+                if candidate is None:
+                    break
+                chain.append(positions[candidate])
+                index = candidate + 1
+            if len(chain) > len(best) or (
+                len(chain) == len(best)
+                and chain
+                and best
+                and chain[-1] - chain[0] > best[-1] - best[0]
+            ):
+                best = chain
+    return best
+
+
 def _line_positions(gray: np.ndarray, axis: str) -> list[int]:
     if axis == "vertical":
         gradient = np.abs(cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3))
@@ -207,7 +260,7 @@ def _line_positions(gray: np.ndarray, axis: str) -> list[int]:
     overflow = pad * LINE_OVERFLOW_FRAC
     low = pad - overflow
     high = WARP_SIZE - 1 - pad + overflow
-    return [peak for peak in peaks if low <= peak <= high]
+    return _regular_chain([peak for peak in peaks if low <= peak <= high])
 
 
 def _continuation_fraction(
@@ -400,6 +453,22 @@ def _annulus_median(
     return float(np.median(samples)) if samples else None
 
 
+def _lines_are_dark(
+    gray: np.ndarray, xs: list[int], ys: list[int], background: float
+) -> bool:
+    """Whether the grid lines are darker than the board (wood, paper) rather
+    than brighter (the app's dark mode)."""
+
+    samples: list[float] = []
+    for j in range(0, len(ys), max(1, len(ys) // 4)):
+        for i in range(len(xs) - 1):
+            midpoint = (xs[i] + xs[i + 1]) // 2
+            samples.append(float(gray[ys[j], midpoint]))
+    if not samples:
+        return True
+    return float(np.median(samples)) < background - DARK_LINES_DELTA
+
+
 def _classify_point(
     gray: np.ndarray,
     px: int,
@@ -407,6 +476,7 @@ def _classify_point(
     cell: float,
     background: float,
     interior_radius: int,
+    soft_whites: bool = True,
 ) -> tuple[str | None, float]:
     """Classify the patch at a point as a black stone, white stone, or empty
     (``None``), with a confidence."""
@@ -422,14 +492,19 @@ def _classify_point(
         # keeps dark printed labels on a white stone from reading as black; a
         # vetoed dark centre falls through to the branches below.
         return "B", min(1.0, -diff / (2.0 * FILL_DARK_DELTA))
-    if diff > FILL_LIGHT_DELTA or annulus_diff > FILL_LIGHT_DELTA:
+    if diff > FILL_LIGHT_DELTA or (
+        soft_whites and annulus_diff > FILL_LIGHT_DELTA
+    ):
         # A solid bright fill: a white stone on a wood or dark board. The
         # annulus recovers white stones whose centre median was dragged to
-        # board level by printed labels.
+        # board level by printed labels — but only where lines are darker
+        # than the board; bright grid lines cross the annulus at every empty
+        # intersection.
         return "W", min(1.0, max(diff, annulus_diff) / (2.0 * FILL_LIGHT_DELTA))
 
     if (
-        diff > SOFT_LIGHT_DELTA
+        soft_whites
+        and diff > SOFT_LIGHT_DELTA
         and annulus_diff > SOFT_LIGHT_DELTA
         and _patch_low(gray, px, py, interior_radius)
         > background - RING_DARK_DELTA
@@ -577,13 +652,20 @@ def _detect_stones(
         backgrounds.append(row)
 
     dx, dy = _stone_offset(gray, xs, ys, cell, backgrounds, interior_radius)
+    soft_whites = _lines_are_dark(gray, xs, ys, fallback_background)
 
     stones: list[SetupStone] = []
     confidences: list[float] = []
     for j, y in enumerate(ys):
         for i, x in enumerate(xs):
             color, confidence = _classify_point(
-                gray, x + dx, y + dy, cell, backgrounds[j][i], interior_radius
+                gray,
+                x + dx,
+                y + dy,
+                cell,
+                backgrounds[j][i],
+                interior_radius,
+                soft_whites=soft_whites,
             )
             if color is None:
                 refined = _refine_empty_point(
