@@ -25,10 +25,15 @@
     "13,2": "B",
     "15,3": "B",
     "16,4": "B",
+    "3,9": "W",
     "15,9": "B",
+    "3,15": "W",
     "15,15": "B",
-    "13,16": "B"
+    "5,16": "W",
+    "13,16": "B",
+    "5,2": "W",
+    "3,3": "W"
   },
-  "verified": false,
-  "notes": ""
+  "verified": true,
+  "notes": "Reviewed via prediction overlay; user corrections applied."
 }
