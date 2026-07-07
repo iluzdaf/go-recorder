@@ -92,24 +92,27 @@ def composite(background: np.ndarray, cls: int, cell: float, ink: float) -> np.n
         if rng.random() < 0.3:
             cv2.putText(
                 patch, str(rng.integers(1, 99)), (sx - 9, sy + 6),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, float(board + rng.uniform(10, 50)), 1,
+                cv2.FONT_HERSHEY_SIMPLEX, float(rng.uniform(0.4, 0.9)),
+                float(board + rng.uniform(10, 50)), int(rng.integers(1, 3)),
             )
-    else:  # white: board-coloured fill, faint possibly broken outline
+    else:  # white: board-coloured fill, outline from faint-broken to bold
         fill = board + rng.uniform(-6, 14)
         cv2.circle(patch, (sx, sy), int(radius), float(fill), -1)
-        outline = np.clip(ink + rng.uniform(-15, 40), 40, board - 20)
-        arcs = rng.integers(4, 9)
+        outline = np.clip(ink + rng.uniform(-15, 80), 40, board - 20)
+        arcs = rng.integers(1, 9)
+        thickness = int(rng.integers(1, 5))
         for a in range(arcs):
             a0 = 360 * a / arcs + rng.uniform(0, 8)
-            a1 = 360 * (a + 1) / arcs - rng.uniform(0, 14)
+            a1 = 360 * (a + 1) / arcs - rng.uniform(0, 14 if arcs > 1 else 1)
             cv2.ellipse(
                 patch, (sx, sy), (int(radius), int(radius)), 0, a0, a1,
-                float(outline), int(rng.integers(1, 3)),
+                float(outline), thickness,
             )
         if rng.random() < 0.5:
             cv2.putText(
                 patch, str(rng.integers(1, 99)), (sx - 9, sy + 7),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.55, float(outline - rng.uniform(0, 30)), 2,
+                cv2.FONT_HERSHEY_SIMPLEX, float(rng.uniform(0.4, 0.9)),
+                float(outline - rng.uniform(0, 30)), int(rng.integers(1, 3)),
             )
     if rng.random() < 0.5:
         patch = cv2.GaussianBlur(patch, (0, 0), rng.uniform(0.3, 0.9))
@@ -146,6 +149,82 @@ def _snap_stone_centre(small, x, y, cell, color):
         if score > best[0] + 1.5:
             best = (score, (cx, cy))
     return best[1]
+
+
+def bow(patch: np.ndarray) -> np.ndarray:
+    """Small sinusoidal warp: page curvature bends lines through a patch.
+
+    Curved grid junctions — especially board corners — otherwise read as
+    ring fragments and produce confident white false positives.
+    """
+
+    h, w = patch.shape
+    amp = rng.uniform(0.5, 3.0)
+    phase = rng.uniform(0, 2 * np.pi)
+    xs, ys = np.meshgrid(np.arange(w, dtype=np.float32), np.arange(h, dtype=np.float32))
+    if rng.random() < 0.5:
+        ys = ys - amp * np.sin(np.pi * xs / (w - 1) + phase).astype(np.float32)
+    else:
+        xs = xs - amp * np.sin(np.pi * ys / (h - 1) + phase).astype(np.float32)
+    return cv2.remap(
+        patch, xs, ys, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE
+    )
+
+
+def neighbour_arc(background: np.ndarray, cell: float, ink: float) -> np.ndarray:
+    """An empty point clipped by the edge of a stone one cell away.
+
+    Edge intersections next to dense clusters see a neighbouring stone's
+    arc inside their window; that arc must not read as a stone here.
+    """
+
+    patch = background.copy()
+    centre = patch.shape[0] // 2
+    angle = rng.uniform(0, 2 * np.pi)
+    dist = rng.uniform(0.8, 1.15) * cell
+    sx = int(centre + dist * np.cos(angle))
+    sy = int(centre + dist * np.sin(angle))
+    radius = int(rng.uniform(0.3, 0.48) * cell)
+    board = float(np.median(patch))
+    if rng.random() < 0.5:
+        shade = np.clip(ink - rng.uniform(0, 60), 10, 140)
+        cv2.circle(patch, (sx, sy), radius, float(shade), -1)
+    else:
+        cv2.circle(patch, (sx, sy), radius, float(board + rng.uniform(-6, 14)), -1)
+        outline = np.clip(ink + rng.uniform(-15, 80), 40, board - 25)
+        cv2.circle(patch, (sx, sy), radius, float(outline), int(rng.integers(1, 5)))
+    if rng.random() < 0.4:
+        patch = cv2.GaussianBlur(patch, (0, 0), rng.uniform(0.3, 0.9))
+    return patch
+
+
+def annotate_empty(background: np.ndarray, cell: float, ink: float) -> np.ndarray:
+    """Bare text on an empty intersection (move numbers, coordinate labels).
+
+    Printed diagrams mark empty points with digits and letters, and edge
+    patches pick up coordinate labels printed outside the grid; both must
+    read as empty, not as a labelled stone.
+    """
+
+    patch = background.copy()
+    centre = patch.shape[0] // 2
+    glyphs = "0123456789ABCDEFGHJKLMNOPQRSTX"
+    for _ in range(int(rng.integers(1, 3))):
+        text = "".join(
+            glyphs[rng.integers(0, len(glyphs))]
+            for _ in range(int(rng.integers(1, 3)))
+        )
+        ox = int(rng.uniform(-0.5, 0.5) * cell)
+        oy = int(rng.uniform(-0.5, 0.5) * cell)
+        cv2.putText(
+            patch, text, (centre + ox - 10, centre + oy + 7),
+            cv2.FONT_HERSHEY_SIMPLEX, float(rng.uniform(0.45, 0.8)),
+            float(np.clip(ink + rng.uniform(-20, 30), 30, 160)),
+            int(rng.integers(1, 3)),
+        )
+    if rng.random() < 0.4:
+        patch = cv2.GaussianBlur(patch, (0, 0), rng.uniform(0.3, 0.9))
+    return patch
 
 
 def suspect_white(gray, x, y, cell, background) -> bool:
@@ -215,6 +294,9 @@ def photo_patches(photo: Path):
                 # must learn to reject.
                 continue
             yield normalise(crop), 0
+            yield normalise(bow(crop)), 0
+            yield normalise(annotate_empty(crop, cell, ink)), 0
+            yield normalise(neighbour_arc(crop, cell, ink)), 0
             for _ in range(COMPOSITES_PER_BACKGROUND):
                 yield normalise(composite(crop, 1, cell, ink)), 1
                 yield normalise(composite(crop, 2, cell, ink)), 2

@@ -16,6 +16,7 @@ from typing import Sequence
 import cv2
 import numpy as np
 
+from . import stone_classifier
 from .board_size import smallest_fitting_size, snap_board_size
 from .position_view import infer_position_view
 from .schemas import DetectionResult, SetupStone
@@ -92,6 +93,14 @@ DARK_LINES_DELTA = 15.0
 # On a mid-tone board the two crossing grid lines at an empty intersection
 # supply a false ring, so the branch is gated to a light local background.
 LIGHT_BOARD_MIN = 205.0
+# The learned classifier only runs on printed pages. Measured separation:
+# printed white stones sit within +-26 of the paper brightness, while real
+# and rendered white stones measure +39..+139 over the board; dark boards
+# (median 97 on the wood capture) hallucinate whites under the model's
+# per-patch standardisation, so they are excluded by background brightness.
+LEARNED_MIN_PROB = 0.90
+LEARNED_PAGE_MIN_BACKGROUND = 150.0
+LEARNED_REAL_WHITE_DELTA = 30.0
 RING_DARK_DELTA = 30.0
 RING_COVERAGE_THRESHOLD = 0.42
 RING_SAMPLES = 36
@@ -762,7 +771,7 @@ def _detect_stones(
     dx, dy = _stone_offset(gray, xs, ys, cell, backgrounds, interior_radius)
     soft_whites = _lines_are_dark(gray, xs, ys, fallback_background)
 
-    stones: list[SetupStone] = []
+    grid: dict[tuple[int, int], tuple[str, float]] = {}
     confidences: list[float] = []
     for j, y in enumerate(ys):
         for i, x in enumerate(xs):
@@ -783,13 +792,67 @@ def _detect_stones(
                 if refined is not None:
                     color, confidence = refined
             if color is not None:
-                stones.append(
-                    SetupStone(x=start_x + i, y=start_y + j, color=color)
-                )
+                grid[(i, j)] = (color, confidence)
             confidences.append(confidence)
 
+    if stone_classifier.enabled() and _printed_page(
+        gray, xs, ys, cell, grid, fallback_background
+    ):
+        for coord, (label, prob) in stone_classifier.classify(
+            gray, xs, ys, cell
+        ).items():
+            if label is None or prob < LEARNED_MIN_PROB:
+                continue
+            # Additions only: the model supplies stones the classical
+            # branches miss (printed outlined whites, boldly labelled
+            # blacks). Classical detections are never recoloured or
+            # removed — measured on the corpus, classical colours are
+            # never wrong, while the model confidently misreads boldly
+            # labelled stones it was not trained on. Literal board
+            # corners are excluded: a bowed corner junction flanked by
+            # coordinate glyphs reads as a white ring at any threshold.
+            i, j = coord
+            if i in (0, len(xs) - 1) and j in (0, len(ys) - 1):
+                continue
+            if coord not in grid:
+                grid[coord] = (label, prob)
+                confidences.append(prob)
+
+    stones = [
+        SetupStone(x=start_x + i, y=start_y + j, color=color)
+        for (i, j), (color, _) in sorted(grid.items(), key=lambda t: (t[0][1], t[0][0]))
+    ]
     confidence = float(np.mean(confidences)) if confidences else 0.0
     return stones, confidence
+
+
+def _printed_page(
+    gray: np.ndarray,
+    xs: list[int],
+    ys: list[int],
+    cell: float,
+    grid: dict[tuple[int, int], tuple[str, float]],
+    background: float,
+) -> bool:
+    """A bright capture whose white stones are no brighter than the board."""
+
+    if background < LEARNED_PAGE_MIN_BACKGROUND:
+        return False
+    radius = max(2, int(cell * 0.3))
+    for (i, j), (color, _) in grid.items():
+        if color != "W":
+            continue
+        x0 = max(0, xs[i] - radius)
+        y0 = max(0, ys[j] - radius)
+        disc = gray[y0 : ys[j] + radius, x0 : xs[i] + radius]
+        if disc.size == 0:
+            continue
+        # A printed number can darken the stone centre, so judge the stone
+        # by its brighter quartile rather than the centre median.
+        bright = float(np.percentile(disc.astype(np.float32), 75))
+        if bright - background > LEARNED_REAL_WHITE_DELTA:
+            return False
+    return True
 
 
 def detect_board(raw: bytes, corners: Sequence[Corner]) -> DetectionResult:
