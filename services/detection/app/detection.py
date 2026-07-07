@@ -60,6 +60,12 @@ INTERIOR_RADIUS_FRAC = 0.26
 BACKGROUND_RADIUS_FRAC = 0.12
 FILL_DARK_DELTA = 50.0
 FILL_LIGHT_DELTA = 40.0
+# A near-black fill is a black stone even when the board itself is dark and
+# the relative delta falls short (the app's dark mode: stones ~50 on a ~97
+# board). The wider surroundings must still be brighter, so dark page
+# background can never read as stones.
+ABSOLUTE_BLACK_MAX = 70.0
+ABSOLUTE_BLACK_MARGIN = 25.0
 # Soft-shaded white stones on pale wood clear the board by well under
 # FILL_LIGHT_DELTA. They are still detectable because a stone occludes the
 # grid lines: its patch has no line-dark pixels, while an empty intersection
@@ -477,6 +483,7 @@ def _classify_point(
     background: float,
     interior_radius: int,
     soft_whites: bool = True,
+    global_background: float | None = None,
 ) -> tuple[str | None, float]:
     """Classify the patch at a point as a black stone, white stone, or empty
     (``None``), with a confidence."""
@@ -486,6 +493,17 @@ def _classify_point(
     annulus = _annulus_median(gray, px, py, cell)
     annulus_diff = annulus - background if annulus is not None else diff
 
+    reference = max(background, global_background or background)
+    if (
+        interior < ABSOLUTE_BLACK_MAX
+        and annulus is not None
+        and annulus < ABSOLUTE_BLACK_MAX
+        and reference - interior > ABSOLUTE_BLACK_MARGIN
+    ):
+        # Near-black fill and ring: a black stone even on a dark board where
+        # the relative delta falls short, or where neighbouring stones drag
+        # the local background estimate down.
+        return "B", min(1.0, (reference - interior) / (2.0 * ABSOLUTE_BLACK_MARGIN))
     if diff < -FILL_DARK_DELTA and annulus_diff < -FILL_DARK_DELTA:
         # A solid dark fill: a black stone (any board), or a white stone on a
         # dark board is handled by the bright branch below. The annulus check
@@ -666,6 +684,7 @@ def _detect_stones(
                 backgrounds[j][i],
                 interior_radius,
                 soft_whites=soft_whites,
+                global_background=fallback_background,
             )
             if color is None:
                 refined = _refine_empty_point(
