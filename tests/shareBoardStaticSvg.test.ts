@@ -2,9 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { FinalPosition, ShareRecord } from "../components/types";
 import {
-    STATIC_BOARD_THEME_LIGHT,
-    buildStaticBoardSvg,
-    getShareStaticBoardImages,
+    getShareStaticBoard,
     getStaticBoardModel,
 } from "../lib/shareBoardStaticSvg";
 
@@ -116,50 +114,39 @@ describe("getStaticBoardModel", () => {
     });
 });
 
-describe("buildStaticBoardSvg", () => {
-    it("emits a themed, gutter-inclusive board with stones", () => {
-        const svg = buildStaticBoardSvg(
-            {
-                columns: 9,
-                rows: 9,
-                stones: [
-                    { col: 2, row: 2, sign: 1 },
-                    { col: 6, row: 6, sign: -1, lastMove: true },
-                ],
-                hoshi: [{ col: 4, row: 4 }],
-            },
-            STATIC_BOARD_THEME_LIGHT
+describe("getShareStaticBoard", () => {
+    it("emits a gutter-inclusive grid and a theme-neutral stones image", () => {
+        const finalPosition = emptyBoard(9);
+        finalPosition[2][2] = 1; // black
+        finalPosition[6][6] = -1; // white
+
+        const board = getShareStaticBoard(
+            baseShare({
+                finalPosition,
+                gameState: {
+                    setupStones: [],
+                    moves: [
+                        { type: "play", x: 2, y: 2, color: "B" },
+                        { type: "play", x: 6, y: 6, color: "W" },
+                    ],
+                    currentPlayer: "B",
+                },
+            })
         );
 
         // 9 board + 1 gutter each side = 11 units
-        expect(svg).toContain('viewBox="0 0 11 11"');
-        expect(svg).toContain(STATIC_BOARD_THEME_LIGHT.boardBackground);
-        expect(svg).toContain(STATIC_BOARD_THEME_LIGHT.gridLine);
-        expect(svg).toContain('fill="#09090b"'); // black stone
-        expect(svg).toContain('fill="#fafafa"'); // white stone
-    });
-});
+        expect(board.width).toBe(11);
+        expect(board.height).toBe(11);
+        // Grid path draws a line for each of the 9 columns and 9 rows.
+        expect(board.gridPath.match(/M/g)).toHaveLength(18);
+        expect(board.hoshi).toContainEqual({ cx: 5.5, cy: 5.5 });
 
-describe("getShareStaticBoardImages", () => {
-    it("returns all four theme variants as SVG data URIs", () => {
-        const images = getShareStaticBoardImages(baseShare());
-
-        expect(images.columns).toBe(9);
-        expect(images.variants.map((variant) => variant.key)).toEqual([
-            "light-minimalist",
-            "light-wood",
-            "dark-minimalist",
-            "dark-wood",
-        ]);
-
-        const byKey = Object.fromEntries(
-            images.variants.map((variant) => [variant.key, variant.src])
-        );
-        for (const src of Object.values(byKey)) {
-            expect(src.startsWith("data:image/svg+xml,")).toBe(true);
-        }
-        expect(decodeURIComponent(byKey["dark-minimalist"])).toContain("#60606a");
-        expect(decodeURIComponent(byKey["light-wood"])).toContain("#d7a45f");
-        expect(decodeURIComponent(byKey["dark-wood"])).toContain("#7a4f2a");
+        // Stones live in a single theme-neutral data-URI image (no board colours).
+        expect(board.stonesSrc.startsWith("data:image/svg+xml,")).toBe(true);
+        const stonesSvg = decodeURIComponent(board.stonesSrc);
+        expect(stonesSvg).toContain('viewBox="0 0 11 11"');
+        expect(stonesSvg).toContain('fill="#09090b"'); // black stone
+        expect(stonesSvg).toContain('fill="#fafafa"'); // white stone
+        expect(stonesSvg).not.toContain("#f4f4f5"); // no board background baked in
     });
 });

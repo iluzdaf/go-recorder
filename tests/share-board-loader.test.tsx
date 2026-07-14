@@ -44,18 +44,15 @@ vi.mock("../components/AppShell", async () => {
 });
 
 describe("ShareBoardLoadingShell", () => {
-    it("renders all four board theme variants and no action bar", () => {
+    it("renders a CSS-themed background layer, a stones image, and no action bar", () => {
         const markup = renderToStaticMarkup(<ShareBoardLoadingShell share={share} />);
 
         expect(markup).toContain("Loading shared board");
-        for (const key of [
-            "light-minimalist",
-            "light-wood",
-            "dark-minimalist",
-            "dark-wood",
-        ]) {
-            expect(markup).toContain(`share-static-board-img--${key}`);
-        }
+        // Background/grid/star points are one CSS-themed inline SVG (no baked colours).
+        expect(markup).toContain("share-static-board-bg");
+        expect(markup).toContain("share-static-board-grid");
+        // Stones are a single theme-neutral image.
+        expect(markup).toContain("data:image/svg+xml,");
         // The disabled action bar was dropped; the live bar arrives with the board.
         expect(markup).not.toContain('aria-label="Share board controls loading"');
         expect(markup).not.toContain("disabled");

@@ -6,56 +6,33 @@ import { createVariationMoveNumberMarkerMap } from "./variationDraft";
 
 // A lightweight, scalable stand-in for the interactive Shudan board rendered on
 // the server so the shared board paints as real (LCP) content before the client
-// bundle loads. Colours and geometry mirror the minimalist Shudan theme
-// (app/goban-overrides.css) so swapping in the live board is seamless. Emitted
-// as an <img> data URI because inline SVG is not a reliable LCP candidate.
+// bundle loads. Split by what varies with theme:
+//   - background, grid and star points DO change per theme, so they are one
+//     inline SVG coloured by CSS (driven by the pre-paint `dark`/`board-wood`
+//     classes) — no baked variants, no flash.
+//   - stones are identical in every theme, so they are a single baked <img>
+//     data URI — a reliable, high-entropy LCP element (inline SVG is not an LCP
+//     candidate, and an <img> is opaque to CSS so it can't be themed anyway).
+// Geometry mirrors the minimalist Shudan theme (app/goban-overrides.css) so
+// swapping in the live board is seamless.
 
 // Vertex units (1 unit == one board vertex; the live board's font-size == vertex
 // size, so Shudan's em-based sizes map directly onto these units).
 const COORDINATE_GUTTER = 1; // one vertex of coordinate space per side (default on)
 const STONE_RADIUS = 0.46; // Shudan stone is the cell minus .08em
 const WHITE_STONE_STROKE = 0.03; // approximates Shudan's 1px white-stone border
-const HOSHI_RADIUS = 0.12;
-const GRID_STROKE = 0.03;
 const LAST_MOVE_RADIUS = 0.22;
 const LAST_MOVE_STROKE = 0.08;
 const LABEL_FONT_SIZE = 0.56;
+
+export const STATIC_BOARD_GRID_STROKE = 0.03;
+export const STATIC_BOARD_HOSHI_RADIUS = 0.12;
 
 const BLACK_STONE_FILL = "#09090b";
 const WHITE_STONE_FILL = "#fafafa";
 const WHITE_STONE_BORDER = "#18181b";
 const ON_BLACK = "#fafafa";
 const ON_WHITE = "#18181b";
-
-export type StaticBoardTheme = {
-    boardBackground: string;
-    gridLine: string;
-    hoshi: string;
-};
-
-export const STATIC_BOARD_THEME_LIGHT: StaticBoardTheme = {
-    boardBackground: "#f4f4f5",
-    gridLine: "#52525b",
-    hoshi: "#3f3f46",
-};
-
-export const STATIC_BOARD_THEME_DARK: StaticBoardTheme = {
-    boardBackground: "#60606a",
-    gridLine: "#a1a1aa",
-    hoshi: "#d4d4d8",
-};
-
-export const STATIC_BOARD_THEME_WOOD_LIGHT: StaticBoardTheme = {
-    boardBackground: "#d7a45f",
-    gridLine: "#6f4720",
-    hoshi: "#3b2818",
-};
-
-export const STATIC_BOARD_THEME_WOOD_DARK: StaticBoardTheme = {
-    boardBackground: "#7a4f2a",
-    gridLine: "#2f2118",
-    hoshi: "#1d1712",
-};
 
 type StaticBoardStone = {
     col: number;
@@ -165,39 +142,24 @@ function round(value: number): number {
     return Math.round(value * 1000) / 1000;
 }
 
-// Builds the SVG markup for a board model in a given theme. viewBox is in vertex
-// units and includes the coordinate gutter, so the grid sits where the live
-// board's grid sits and the swap does not shift.
-export function buildStaticBoardSvg(
-    model: StaticBoardModel,
-    theme: StaticBoardTheme
-): string {
-    const { columns, rows, stones, hoshi } = model;
-    const width = columns + COORDINATE_GUTTER * 2;
-    const height = rows + COORDINATE_GUTTER * 2;
+// The viewBox is in vertex units and includes the coordinate gutter, so the
+// grid sits where the live board's grid sits and the swap does not shift.
+function getViewBox(model: StaticBoardModel) {
+    const width = model.columns + COORDINATE_GUTTER * 2;
+    const height = model.rows + COORDINATE_GUTTER * 2;
     const first = COORDINATE_GUTTER + 0.5;
-    const lastCol = first + (columns - 1);
-    const lastRow = first + (rows - 1);
     const center = (index: number) => round(first + index);
 
-    const gridLines: string[] = [];
-    for (let i = 0; i < columns; i += 1) {
-        const x = center(i);
-        gridLines.push(`M${x} ${round(first)}V${round(lastRow)}`);
-    }
-    for (let j = 0; j < rows; j += 1) {
-        const y = center(j);
-        gridLines.push(`M${round(first)} ${y}H${round(lastCol)}`);
-    }
+    return { width, height, first: round(first), center };
+}
 
-    const hoshiCircles = hoshi
-        .map(
-            ({ col, row }) =>
-                `<circle cx="${center(col)}" cy="${center(row)}" r="${HOSHI_RADIUS}" fill="${theme.hoshi}"/>`
-        )
-        .join("");
+// Builds the theme-neutral stones layer (stones, last-move marker and variation
+// labels) as an SVG string for use as an <img> data URI. Colours here depend on
+// the stone, not the board theme, so a single image serves every theme.
+function buildStonesSvg(model: StaticBoardModel): string {
+    const { width, height, center } = getViewBox(model);
 
-    const stoneShapes = stones
+    const shapes = model.stones
         .map((stone) => {
             const cx = center(stone.col);
             const cy = center(stone.row);
@@ -226,10 +188,7 @@ export function buildStaticBoardSvg(
 
     return (
         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">` +
-        `<rect width="${width}" height="${height}" fill="${theme.boardBackground}"/>` +
-        `<path d="${gridLines.join("")}" stroke="${theme.gridLine}" stroke-width="${GRID_STROKE}" fill="none"/>` +
-        hoshiCircles +
-        stoneShapes +
+        shapes +
         `</svg>`
     );
 }
@@ -238,43 +197,42 @@ export function toSvgDataUri(svg: string): string {
     return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
-// One variant per (mode, board theme) combination. The server cannot know the
-// visitor's mode or board theme (both live in localStorage), so it emits all
-// four and the pre-paint theme script's `dark`/`board-wood` classes on <html>
-// let CSS reveal the matching one; only the visible variant is painted.
-export type StaticBoardVariantKey =
-    | "light-minimalist"
-    | "light-wood"
-    | "dark-minimalist"
-    | "dark-wood";
-
-export type StaticBoardVariant = {
-    key: StaticBoardVariantKey;
-    src: string;
-};
-
-export type StaticBoardImages = {
+export type ShareStaticBoard = {
     columns: number;
     rows: number;
-    variants: StaticBoardVariant[];
+    width: number;
+    height: number;
+    // Combined "M..V.. M..H.." path for every grid line, coloured by CSS.
+    gridPath: string;
+    hoshi: { cx: number; cy: number }[];
+    // Theme-neutral stones as an SVG data URI, used as the LCP <img>.
+    stonesSrc: string;
 };
 
-const STATIC_BOARD_VARIANTS: { key: StaticBoardVariantKey; theme: StaticBoardTheme }[] = [
-    { key: "light-minimalist", theme: STATIC_BOARD_THEME_LIGHT },
-    { key: "light-wood", theme: STATIC_BOARD_THEME_WOOD_LIGHT },
-    { key: "dark-minimalist", theme: STATIC_BOARD_THEME_DARK },
-    { key: "dark-wood", theme: STATIC_BOARD_THEME_WOOD_DARK },
-];
-
-export function getShareStaticBoardImages(share: ShareRecord): StaticBoardImages {
+export function getShareStaticBoard(share: ShareRecord): ShareStaticBoard {
     const model = getStaticBoardModel(share);
+    const { width, height, first, center } = getViewBox(model);
+    const lastCol = round(first + (model.columns - 1));
+    const lastRow = round(first + (model.rows - 1));
+
+    const gridSegments: string[] = [];
+    for (let i = 0; i < model.columns; i += 1) {
+        gridSegments.push(`M${center(i)} ${first}V${lastRow}`);
+    }
+    for (let j = 0; j < model.rows; j += 1) {
+        gridSegments.push(`M${first} ${center(j)}H${lastCol}`);
+    }
 
     return {
         columns: model.columns,
         rows: model.rows,
-        variants: STATIC_BOARD_VARIANTS.map((variant) => ({
-            key: variant.key,
-            src: toSvgDataUri(buildStaticBoardSvg(model, variant.theme)),
+        width,
+        height,
+        gridPath: gridSegments.join(""),
+        hoshi: model.hoshi.map(({ col, row }) => ({
+            cx: center(col),
+            cy: center(row),
         })),
+        stonesSrc: toSvgDataUri(buildStonesSvg(model)),
     };
 }

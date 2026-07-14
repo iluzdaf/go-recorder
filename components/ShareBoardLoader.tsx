@@ -7,7 +7,11 @@ import type { ShareRecord } from "./types";
 import { useBoardDisplaySettings } from "./AppShell";
 import { getPositionViewRange } from "../lib/positionView";
 import { getShareBoardPlaceholderSize } from "../lib/shareBoardPlaceholder";
-import { getShareStaticBoardImages } from "../lib/shareBoardStaticSvg";
+import {
+    STATIC_BOARD_GRID_STROKE,
+    STATIC_BOARD_HOSHI_RADIUS,
+    getShareStaticBoard,
+} from "../lib/shareBoardStaticSvg";
 import { getShareBoardPositionView } from "../lib/shareBoardView";
 
 type ShareBoardLoaderProps = {
@@ -20,10 +24,11 @@ const ShareBoard = dynamic(() => import("@/components/ShareGoBoard"), {
 
 // Server-rendered so the shared board paints as real (LCP) content before the
 // client bundle loads, sized to the real board so swapping in the live board
-// causes no layout shift. Uses dark:/board-wood variants (keyed off the
-// pre-paint theme classes) rather than JS state so it renders correctly during
-// SSR without a theme flash. The action bar is intentionally not rendered here:
-// the live, interactive bar arrives with the client board.
+// causes no layout shift. The background/grid/star points are one inline SVG
+// coloured by CSS via the pre-paint `dark`/`board-wood` classes (no flash, no
+// baked variants); the theme-neutral stones are a single <img> (the LCP
+// element). The action bar is intentionally not rendered here: the live,
+// interactive bar arrives with the client board.
 export function ShareBoardLoadingShell({ share }: { share: ShareRecord }) {
     const { showBoardCoordinates } = useBoardDisplaySettings();
     const positionRange = getPositionViewRange({
@@ -35,7 +40,8 @@ export function ShareBoardLoadingShell({ share }: { share: ShareRecord }) {
         rows: positionRange?.rows ?? share.boardSize,
         showCoordinates: showBoardCoordinates,
     });
-    const staticBoard = getShareStaticBoardImages(share);
+    const board = getShareStaticBoard(share);
+    const viewBox = `0 0 ${board.width} ${board.height}`;
 
     return (
         <div className="relative m-0 flex min-h-0 flex-1 touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950 dark:bg-neutral-900 dark:text-white">
@@ -50,17 +56,41 @@ export function ShareBoardLoadingShell({ share }: { share: ShareRecord }) {
                     className="relative"
                 >
                     <span className="sr-only">Loading shared board</span>
-                    {staticBoard.variants.map((variant) => (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                            key={variant.key}
-                            src={variant.src}
-                            alt=""
-                            aria-hidden="true"
-                            draggable={false}
-                            className={`share-static-board-img share-static-board-img--${variant.key} h-full w-full select-none`}
+                    <svg
+                        className="absolute inset-0 h-full w-full"
+                        viewBox={viewBox}
+                        preserveAspectRatio="xMidYMid meet"
+                        aria-hidden="true"
+                    >
+                        <rect
+                            className="share-static-board-bg"
+                            width={board.width}
+                            height={board.height}
                         />
-                    ))}
+                        <path
+                            className="share-static-board-grid"
+                            d={board.gridPath}
+                            fill="none"
+                            strokeWidth={STATIC_BOARD_GRID_STROKE}
+                        />
+                        {board.hoshi.map((point, index) => (
+                            <circle
+                                key={index}
+                                className="share-static-board-hoshi"
+                                cx={point.cx}
+                                cy={point.cy}
+                                r={STATIC_BOARD_HOSHI_RADIUS}
+                            />
+                        ))}
+                    </svg>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src={board.stonesSrc}
+                        alt=""
+                        aria-hidden="true"
+                        draggable={false}
+                        className="absolute inset-0 h-full w-full select-none"
+                    />
                 </div>
             </div>
         </div>
