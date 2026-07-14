@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
+import { FilePen } from "lucide-react";
 import type { ComponentType } from "react";
 
 import type {
@@ -20,6 +21,7 @@ import { downloadSgf } from "./sgf";
 import {
     useBoardDisplaySettings,
     getBoardSurfaceClassName,
+    useHeaderMenuIcon,
     useHeaderStatus,
     useHeaderVisibility,
     useTheme,
@@ -143,6 +145,7 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
         twoStepPlacement,
     } = useBoardDisplaySettings();
     const { setHeaderStatus } = useHeaderStatus();
+    const { setHeaderMenuIcon } = useHeaderMenuIcon();
     const { isOverlayHeader } = useHeaderVisibility();
     const [draft, setDraft] = useState<LocalDraftRecord | null>(() =>
         loadLocalBoardDraft(id)
@@ -223,6 +226,12 @@ export default function DraftGoBoard({ id }: DraftGoBoardProps) {
 
         return () => setHeaderStatus(null);
     }, [dismissShareStatus, setHeaderStatus, shareStatus]);
+
+    useEffect(() => {
+        setHeaderMenuIcon(<FilePen size={18} />);
+
+        return () => setHeaderMenuIcon(null);
+    }, [setHeaderMenuIcon]);
 
     const measureGeometry =
         useCallback((): PositionViewGridGeometry | null => {

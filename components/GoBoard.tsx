@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
+import { CircleDot } from "lucide-react";
 import type { ComponentType } from "react";
 
 import type {
@@ -27,6 +28,7 @@ import { formatMoveEditError, t } from "../lib/i18n";
 import {
     useBoardDisplaySettings,
     getBoardSurfaceClassName,
+    useHeaderMenuIcon,
     useHeaderStatus,
     useHeaderVisibility,
     useTheme,
@@ -105,6 +107,7 @@ export default function GoBoard({ id }: GoBoardProps) {
         twoStepPlacement,
     } = useBoardDisplaySettings();
     const { setHeaderStatus } = useHeaderStatus();
+    const { setHeaderMenuIcon } = useHeaderMenuIcon();
     const { isOverlayHeader } = useHeaderVisibility();
     const hasLoadedGameRef = useRef(false);
     const lastSavedSnapshotRef = useRef("");
@@ -185,6 +188,12 @@ export default function GoBoard({ id }: GoBoardProps) {
 
         return () => setHeaderStatus(null);
     }, [dismissShareStatus, setHeaderStatus, shareStatus]);
+
+    useEffect(() => {
+        setHeaderMenuIcon(<CircleDot size={18} />);
+
+        return () => setHeaderMenuIcon(null);
+    }, [setHeaderMenuIcon]);
 
     useEffect(() => {
         const loadGame = () => {

@@ -4,7 +4,6 @@ import {
     Circle,
     Eye,
     EyeOff,
-    FilePen,
     SquareArrowUpRight,
     Undo2,
     X,
@@ -108,12 +107,6 @@ export default function DraftBoardActionBar({
             overlay={overlay}
             railRef={railRef}
         >
-            <div
-                className="inline-flex h-11 w-11 items-center justify-center text-zinc-700 dark:text-zinc-200"
-                aria-hidden="true"
-            >
-                <FilePen size={18} />
-            </div>
             {mode === "variation" ? (
                 <button
                     type="button"

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Goban as ShudanGoban } from "@sabaki/shudan";
+import { Share2 } from "lucide-react";
 import type {
     ComponentType,
     PointerEvent as ReactPointerEvent,
@@ -13,6 +14,7 @@ import { downloadSgf } from "./sgf";
 import {
     getBoardSurfaceClassName,
     useBoardDisplaySettings,
+    useHeaderMenuIcon,
     useHeaderVisibility,
     useTheme,
 } from "./AppShell";
@@ -136,6 +138,7 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
     const { activeBoardThemeClassName, showBoardCoordinates } =
         useBoardDisplaySettings();
     const { isOverlayHeader } = useHeaderVisibility();
+    const { setHeaderMenuIcon } = useHeaderMenuIcon();
     const positionView = getShareBoardPositionView(share);
     const displayBoardSize = getPositionViewDisplaySize({
         boardSize: share.boardSize,
@@ -179,6 +182,12 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
         const id = window.setTimeout(() => setShareMenuStatus(null), 4000);
         return () => window.clearTimeout(id);
     }, [shareMenuStatus]);
+
+    useEffect(() => {
+        setHeaderMenuIcon(<Share2 size={18} />);
+
+        return () => setHeaderMenuIcon(null);
+    }, [setHeaderMenuIcon]);
     const [visibleMoveCount, setVisibleMoveCount] = useState(
         share.gameState.moves.length
     );
