@@ -1,3 +1,64 @@
+/* Server-rendered static share board background layer. Coloured here (not in a
+   baked image) so a single inline SVG serves every theme; the pre-paint
+   `dark`/`board-wood` classes on <html> pick the palette before first paint, so
+   there is no flash. Mirrors the minimalist/wood goban theme colours below. */
+.share-static-board-bg {
+    fill: #f4f4f5;
+}
+.share-static-board-grid {
+    stroke: #52525b;
+}
+.share-static-board-hoshi {
+    fill: #3f3f46;
+}
+.share-static-board-coord {
+    fill: #52525b;
+}
+
+html.dark .share-static-board-bg {
+    fill: #60606a;
+}
+html.dark .share-static-board-grid {
+    stroke: #a1a1aa;
+}
+html.dark .share-static-board-hoshi {
+    fill: #d4d4d8;
+}
+html.dark .share-static-board-coord {
+    fill: #a1a1aa;
+}
+
+html.board-wood .share-static-board-bg {
+    fill: #d7a45f;
+}
+html.board-wood .share-static-board-grid {
+    stroke: #6f4720;
+}
+html.board-wood .share-static-board-hoshi {
+    fill: #3b2818;
+}
+html.board-wood .share-static-board-coord {
+    fill: #5f3d1c;
+}
+
+html.dark.board-wood .share-static-board-bg {
+    fill: #7a4f2a;
+}
+html.dark.board-wood .share-static-board-grid {
+    stroke: #2f2118;
+}
+html.dark.board-wood .share-static-board-hoshi {
+    fill: #1d1712;
+}
+html.dark.board-wood .share-static-board-coord {
+    fill: #f1d6a6;
+}
+
+/* Hidden for visitors who turned coordinates off (pre-paint class). */
+html.board-coords-hidden .share-static-board-coord {
+    display: none;
+}
+
 .shudan-goban,
 .shudan-goban.shudan-goban-image,
 .shudan-content {

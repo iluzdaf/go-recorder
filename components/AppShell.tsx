@@ -585,6 +585,15 @@ export default function AppShell({
     const [headerMenuIcon, setHeaderMenuIcon] =
         useState<React.ReactNode>(null);
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
+    // The floating header trigger is not interactive without JS, so keep it out
+    // of the server-rendered pre-hydration paint (e.g. the shared board's SSR
+    // view) and show it once mounted. useSyncExternalStore returns the server
+    // snapshot (false) through hydration, then the client snapshot (true).
+    const hasMounted = useSyncExternalStore(
+        () => () => {},
+        () => true,
+        () => false
+    );
     const [isFullscreen, setIsFullscreen] = useState(() => getIsFullscreen());
     const [appNavigationState, setAppNavigationState] =
         useState<AppNavigationState>(() => ({ entries: [], index: -1 }));
@@ -1056,7 +1065,7 @@ export default function AppShell({
                             setIsHeaderExpanded,
                         }}
                     >
-                {usesOverlayHeader && !isHeaderVisible ? (
+                {hasMounted && usesOverlayHeader && !isHeaderVisible ? (
                     <button
                         type="button"
                         className="fixed left-3 top-3 z-50 inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white/95 text-zinc-700 shadow-lg backdrop-blur hover:bg-zinc-100 dark:border-neutral-700 dark:bg-neutral-950/95 dark:text-zinc-200 dark:hover:bg-neutral-800"

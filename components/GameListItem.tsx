@@ -1,8 +1,6 @@
 import { memo } from "react";
 import type { LocalDraftRecord, LocalGameRecord } from "@/lib/localGames";
-import { getFinalPositionFromGameState } from "@/lib/shareFinalPosition";
-import { getPositionViewRange } from "@/lib/positionView";
-import { createVariationMoveNumberMarkerMap } from "@/lib/variationDraft";
+import { getBoardPreviewModel } from "@/lib/boardPreview";
 import type { DraftKind, PositionView } from "@/components/types";
 import { t } from "@/lib/i18n";
 
@@ -15,22 +13,6 @@ type BoardPreviewRecord = {
 };
 
 const DEFAULT_THUMB_SIZE = 160;
-
-function getStarPoints(boardSize: number): [number, number][] {
-    if (boardSize === 19) {
-        return [3, 9, 15].flatMap((x) =>
-            [3, 9, 15].map<[number, number]>((y) => [x, y])
-        );
-    }
-    if (boardSize === 13) {
-        return [3, 6, 9].flatMap((x) =>
-            [3, 6, 9].map<[number, number]>((y) => [x, y])
-        );
-    }
-    return [2, 4, 6].flatMap((x) =>
-        [2, 4, 6].map<[number, number]>((y) => [x, y])
-    );
-}
 
 export function getDraftTitle(draft: LocalDraftRecord) {
     if (draft.draftKind === "variation") return t("variation");
@@ -67,14 +49,14 @@ export const GameBoardThumbnail = memo(function GameBoardThumbnail({
     const thumbPad = Math.max(4, Math.round(size * 0.04));
     const gridSize = size - thumbPad * 2;
 
-    const range = getPositionViewRange({
-        boardSize: n,
-        positionView: game.positionView,
-    });
-    const visibleRows = range?.rows ?? n;
-    const visibleColumns = range?.columns ?? n;
-    const startX = range?.startX ?? 0;
-    const startY = range?.startY ?? 0;
+    const { visibleColumns, visibleRows, startX, startY, stones, starPoints } =
+        getBoardPreviewModel({
+            boardSize: n,
+            gameState: game.gameState,
+            positionView: game.positionView,
+            draftKind: game.draftKind,
+            baseMoveCount: game.baseMoveCount,
+        });
 
     const step = Math.min(
         gridSize / (visibleColumns - 1),
@@ -86,24 +68,6 @@ export const GameBoardThumbnail = memo(function GameBoardThumbnail({
     const oy = thumbPad + (gridSize - renderedHeight) / 2;
     const stoneR = Math.max(2, step * 0.44);
     const fontSize = Math.max(6, stoneR * 0.95);
-
-    const result = getFinalPositionFromGameState({
-        boardSize: n,
-        gameState: game.gameState,
-    });
-    const signMap = result.ok ? result.finalPosition : null;
-
-    const markerMap =
-        game.draftKind === "variation" &&
-        typeof game.baseMoveCount === "number" &&
-        signMap
-            ? createVariationMoveNumberMarkerMap({
-                  boardSize: n,
-                  moves: game.gameState.moves,
-                  signMap,
-                  startMoveIndex: game.baseMoveCount,
-              })
-            : null;
 
     return (
         <svg
@@ -140,59 +104,49 @@ export const GameBoardThumbnail = memo(function GameBoardThumbnail({
                     strokeWidth={0.5}
                 />
             ))}
-            {getStarPoints(n).map(([x, y]) => {
-                if (x < startX || x >= startX + visibleColumns) return null;
-                if (y < startY || y >= startY + visibleRows) return null;
+            {starPoints.map(({ x, y }) => (
+                <circle
+                    key={`star-${x}-${y}`}
+                    cx={ox + (x - startX) * step}
+                    cy={oy + (y - startY) * step}
+                    r={1.5}
+                    className="fill-zinc-500 dark:fill-zinc-400"
+                />
+            ))}
+            {stones.map((stone) => {
+                const isBlack = stone.sign === 1;
+                const cx = ox + (stone.x - startX) * step;
+                const cy = oy + (stone.y - startY) * step;
                 return (
-                    <circle
-                        key={`star-${x}-${y}`}
-                        cx={ox + (x - startX) * step}
-                        cy={oy + (y - startY) * step}
-                        r={1.5}
-                        className="fill-zinc-500 dark:fill-zinc-400"
-                    />
+                    <g key={`s-${stone.x}-${stone.y}`}>
+                        <circle
+                            cx={cx}
+                            cy={cy}
+                            r={stoneR}
+                            className={
+                                isBlack
+                                    ? "fill-zinc-900 dark:fill-zinc-950"
+                                    : "fill-white stroke-zinc-800 dark:stroke-zinc-300"
+                            }
+                            strokeWidth={isBlack ? 0 : 0.7}
+                        />
+                        {stone.label && (
+                            <text
+                                x={cx}
+                                y={cy}
+                                textAnchor="middle"
+                                dominantBaseline="central"
+                                fontSize={fontSize}
+                                fontWeight={800}
+                                fill={isBlack ? "white" : "#18181b"}
+                                className="select-none"
+                            >
+                                {stone.label}
+                            </text>
+                        )}
+                    </g>
                 );
             })}
-            {signMap?.flatMap((row, y) =>
-                row.map((sign, x) => {
-                    if (sign === 0) return null;
-                    if (x < startX || x >= startX + visibleColumns) return null;
-                    if (y < startY || y >= startY + visibleRows) return null;
-                    const isBlack = sign === 1;
-                    const cx = ox + (x - startX) * step;
-                    const cy = oy + (y - startY) * step;
-                    const marker = markerMap?.[y]?.[x] ?? null;
-                    return (
-                        <g key={`s-${x}-${y}`}>
-                            <circle
-                                cx={cx}
-                                cy={cy}
-                                r={stoneR}
-                                className={
-                                    isBlack
-                                        ? "fill-zinc-900 dark:fill-zinc-950"
-                                        : "fill-white stroke-zinc-800 dark:stroke-zinc-300"
-                                }
-                                strokeWidth={isBlack ? 0 : 0.7}
-                            />
-                            {marker && (
-                                <text
-                                    x={cx}
-                                    y={cy}
-                                    textAnchor="middle"
-                                    dominantBaseline="central"
-                                    fontSize={fontSize}
-                                    fontWeight={800}
-                                    fill={isBlack ? "white" : "#18181b"}
-                                    className="select-none"
-                                >
-                                    {marker.label}
-                                </text>
-                            )}
-                        </g>
-                    );
-                })
-            )}
         </svg>
     );
 });

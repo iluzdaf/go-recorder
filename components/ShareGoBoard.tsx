@@ -132,7 +132,13 @@ export function CapturedVariationMoveCaption({
     );
 }
 
-export default function ShareGoBoard({ share }: { share: ShareRecord }) {
+export default function ShareGoBoard({
+    share,
+    onReady,
+}: {
+    share: ShareRecord;
+    onReady?: () => void;
+}) {
     const router = useRouter();
     const { isDarkMode } = useTheme();
     const { activeBoardThemeClassName, showBoardCoordinates } =
@@ -208,6 +214,14 @@ export default function ShareGoBoard({ share }: { share: ShareRecord }) {
 
         return () => window.cancelAnimationFrame(id);
     }, [share.slug]);
+
+    // Signals the loader to drop the sized placeholder once the board has been
+    // measured and rendered at its real size, so the swap causes no shift.
+    useEffect(() => {
+        if (boardReady) {
+            onReady?.();
+        }
+    }, [boardReady, onReady]);
 
     const visibleMoves = share.gameState.moves.slice(0, visibleMoveCount);
     const board = buildBoardFromGameState(

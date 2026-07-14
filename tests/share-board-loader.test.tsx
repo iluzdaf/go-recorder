@@ -2,6 +2,19 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { ShareBoardLoadingShell } from "../components/ShareBoardLoader";
+import type { ShareRecord } from "../components/types";
+
+const share: ShareRecord = {
+    slug: "test",
+    sourceKind: "game",
+    boardSize: 19,
+    gameState: { setupStones: [], moves: [], currentPlayer: "B" },
+    blackPlayerName: null,
+    whitePlayerName: null,
+    handicap: 0,
+    positionView: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+};
 
 vi.mock("../components/AppShell", async () => {
     const actual = await vi.importActual<typeof import("../components/AppShell")>(
@@ -31,15 +44,27 @@ vi.mock("../components/AppShell", async () => {
 });
 
 describe("ShareBoardLoadingShell", () => {
-    it("keeps stable share chrome and disables board controls while loading", () => {
-        const markup = renderToStaticMarkup(<ShareBoardLoadingShell />);
+    it("renders a CSS-themed background layer, a stones image, and no action bar", () => {
+        const markup = renderToStaticMarkup(<ShareBoardLoadingShell share={share} />);
 
         expect(markup).toContain("Loading shared board");
-        expect(markup).toContain('aria-label="Share board controls loading"');
-        expect(markup).toContain('aria-label="Go to start"');
-        expect(markup).toContain('aria-label="Previous move"');
-        expect(markup).toContain('aria-label="Next move"');
-        expect(markup).toContain('aria-label="Go to end"');
-        expect(markup.match(/disabled=""/g)).toHaveLength(5);
+        // Background/grid/star points are one CSS-themed inline SVG (no baked colours).
+        expect(markup).toContain("share-static-board-bg");
+        expect(markup).toContain("share-static-board-grid");
+        // Stones are a single theme-neutral image.
+        expect(markup).toContain("data:image/svg+xml,");
+        // Coordinate labels are drawn (CSS-themed, hidden when coords are off).
+        expect(markup).toContain("share-static-board-coord");
+        // The disabled action bar was dropped; the live bar arrives with the board.
+        expect(markup).not.toContain('aria-label="Share board controls loading"');
+        expect(markup).not.toContain("disabled");
+    });
+
+    it("sizes the placeholder to the board footprint so no layout shift occurs", () => {
+        const markup = renderToStaticMarkup(<ShareBoardLoadingShell share={share} />);
+
+        // 19-line board plus a 2-vertex coordinate gutter = 21 units per side.
+        expect(markup).toContain("(100vw - 4px) / 21");
+        expect(markup).toContain("(100dvh - 4px) / 21");
     });
 });

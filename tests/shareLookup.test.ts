@@ -8,6 +8,12 @@ vi.mock("../lib/supabaseAdmin", () => ({
     getSupabaseAdmin: () => mockSupabaseAdmin,
 }));
 
+// Pass through the data cache so the lookup runs against the Supabase mock on
+// every call; the caching layer is exercised at runtime, not in this unit test.
+vi.mock("next/cache", () => ({
+    unstable_cache: <T,>(fn: T) => fn,
+}));
+
 import { getShareBySlug } from "../lib/shareLookup";
 
 beforeEach(() => {
