@@ -54,9 +54,19 @@ html.dark.board-wood .share-static-board-coord {
     fill: #f1d6a6;
 }
 
-/* Hidden for visitors who turned coordinates off (pre-paint class). */
-html.board-coords-hidden .share-static-board-coord {
+/* The static board is rendered in both coordinate modes (each sized to match the
+   live board for that mode); the pre-paint `board-coords-hidden` class selects
+   which one shows, so the grid size matches the live board with no layout shift
+   and the page stays visitor-independent. Default shows the with-coordinates
+   board; coordinates-off visitors get the gutter-less one instead. */
+.share-static-board-without-coords {
     display: none;
+}
+html.board-coords-hidden .share-static-board-with-coords {
+    display: none;
+}
+html.board-coords-hidden .share-static-board-without-coords {
+    display: block;
 }
 
 .shudan-goban,

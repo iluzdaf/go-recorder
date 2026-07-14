@@ -94,12 +94,15 @@ function round(value: number): number {
     return Math.round(value * 1000) / 1000;
 }
 
-// The viewBox is in vertex units and includes the coordinate gutter, so the
-// grid sits where the live board's grid sits and the swap does not shift.
-function getViewBox(model: StaticBoardModel) {
-    const width = model.columns + COORDINATE_GUTTER * 2;
-    const height = model.rows + COORDINATE_GUTTER * 2;
-    const first = COORDINATE_GUTTER + 0.5;
+// The viewBox is in vertex units. When coordinates are shown it includes a
+// one-vertex gutter per side for the labels; when they are hidden the gutter is
+// dropped so the grid fills the tile exactly as the live coordinate-less board
+// does. Either way the grid sits where the live board's grid sits, so the swap
+// does not shift.
+function getViewBox(model: StaticBoardModel, gutter: number) {
+    const width = model.columns + gutter * 2;
+    const height = model.rows + gutter * 2;
+    const first = gutter + 0.5;
     const center = (index: number) => round(first + index);
 
     return { width, height, first: round(first), center };
@@ -108,8 +111,8 @@ function getViewBox(model: StaticBoardModel) {
 // Builds the theme-neutral stones layer (stones, last-move marker and variation
 // labels) as an SVG string for use as an <img> data URI. Colours here depend on
 // the stone, not the board theme, so a single image serves every theme.
-function buildStonesSvg(model: StaticBoardModel): string {
-    const { width, height, center } = getViewBox(model);
+function buildStonesSvg(model: StaticBoardModel, gutter: number): string {
+    const { width, height, center } = getViewBox(model, gutter);
 
     const shapes = model.stones
         .map((stone) => {
@@ -173,9 +176,16 @@ export type ShareStaticBoard = {
     stonesSrc: string;
 };
 
-export function getShareStaticBoard(share: ShareRecord): ShareStaticBoard {
+// Rendered once per coordinate mode: the shell paints both and shows the one
+// matching the visitor's pre-paint `board-coords-hidden` class, so the grid
+// matches the live board's size in both modes with no layout shift.
+export function getShareStaticBoard(
+    share: ShareRecord,
+    { showCoordinates }: { showCoordinates: boolean }
+): ShareStaticBoard {
     const model = getStaticBoardModel(share);
-    const { width, height, first, center } = getViewBox(model);
+    const gutter = showCoordinates ? COORDINATE_GUTTER : 0;
+    const { width, height, first, center } = getViewBox(model, gutter);
     const lastCol = round(first + (model.columns - 1));
     const lastRow = round(first + (model.rows - 1));
 
@@ -187,24 +197,27 @@ export function getShareStaticBoard(share: ShareRecord): ShareStaticBoard {
         gridSegments.push(`M${first} ${center(j)}H${lastCol}`);
     }
 
-    // Column letters along the top and bottom, row numbers down each side. The
-    // centre of a gutter track is half a unit from the board edge.
-    const nearGutter = round(COORDINATE_GUTTER / 2);
-    const farColumnGutter = round(height - COORDINATE_GUTTER / 2);
-    const farRowGutter = round(width - COORDINATE_GUTTER / 2);
+    // Column letters along the top and bottom, row numbers down each side, only
+    // when coordinates are shown. The centre of a gutter track is half a unit
+    // from the board edge.
     const coordinates: StaticBoardCoordinate[] = [];
-    for (let i = 0; i < model.columns; i += 1) {
-        const boardColumn = model.startX + i;
-        const text =
-            COORDINATE_ALPHA[boardColumn] ??
-            COORDINATE_ALPHA[COORDINATE_ALPHA.length - 1];
-        coordinates.push({ x: center(i), y: nearGutter, text });
-        coordinates.push({ x: center(i), y: farColumnGutter, text });
-    }
-    for (let j = 0; j < model.rows; j += 1) {
-        const text = String(model.boardSize - (model.startY + j));
-        coordinates.push({ x: nearGutter, y: center(j), text });
-        coordinates.push({ x: farRowGutter, y: center(j), text });
+    if (showCoordinates) {
+        const nearGutter = round(gutter / 2);
+        const farColumnGutter = round(height - gutter / 2);
+        const farRowGutter = round(width - gutter / 2);
+        for (let i = 0; i < model.columns; i += 1) {
+            const boardColumn = model.startX + i;
+            const text =
+                COORDINATE_ALPHA[boardColumn] ??
+                COORDINATE_ALPHA[COORDINATE_ALPHA.length - 1];
+            coordinates.push({ x: center(i), y: nearGutter, text });
+            coordinates.push({ x: center(i), y: farColumnGutter, text });
+        }
+        for (let j = 0; j < model.rows; j += 1) {
+            const text = String(model.boardSize - (model.startY + j));
+            coordinates.push({ x: nearGutter, y: center(j), text });
+            coordinates.push({ x: farRowGutter, y: center(j), text });
+        }
     }
 
     return {
@@ -218,6 +231,6 @@ export function getShareStaticBoard(share: ShareRecord): ShareStaticBoard {
             cy: center(row),
         })),
         coordinates,
-        stonesSrc: toSvgDataUri(buildStonesSvg(model)),
+        stonesSrc: toSvgDataUri(buildStonesSvg(model, gutter)),
     };
 }
