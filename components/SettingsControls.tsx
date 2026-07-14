@@ -1,7 +1,13 @@
 "use client";
 
-import type { ChangeEvent, CSSProperties, ReactNode, RefObject } from "react";
-import { useState } from "react";
+import type {
+    ChangeEvent,
+    CSSProperties,
+    PointerEvent as ReactPointerEvent,
+    ReactNode,
+    RefObject,
+} from "react";
+import { useRef, useState } from "react";
 import {
     ChevronDown,
     Download,
@@ -14,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { t, type MessageKey } from "../lib/i18n";
+import { nearestSegmentIndex } from "../lib/segmentControlDrag";
 import type { BoardTheme } from "./AppShell";
 
 type ThemePreference = "system" | "light" | "dark";
@@ -115,9 +122,51 @@ function SegmentControl<T extends string>({
     options: readonly { labelKey: MessageKey; value: T }[];
     value: T;
 }>) {
+    const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    const isDraggingRef = useRef(false);
+
+    function selectAtClientX(clientX: number) {
+        const centers = options.map((_, index) => {
+            const button = buttonRefs.current[index];
+            if (!button) return null;
+
+            const rect = button.getBoundingClientRect();
+            return (rect.left + rect.right) / 2;
+        });
+
+        const index = nearestSegmentIndex(centers, clientX);
+        if (index < 0) return;
+
+        const nextValue = options[index].value;
+        if (nextValue !== value) {
+            onChange(nextValue);
+        }
+    }
+
+    function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+
+        isDraggingRef.current = true;
+        event.currentTarget.setPointerCapture(event.pointerId);
+        selectAtClientX(event.clientX);
+    }
+
+    function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+        if (!isDraggingRef.current) return;
+
+        selectAtClientX(event.clientX);
+    }
+
+    function endDrag(event: ReactPointerEvent<HTMLDivElement>) {
+        isDraggingRef.current = false;
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+    }
+
     return (
         <div
-            className="grid w-full grid-cols-[repeat(var(--segment-count),minmax(0,1fr))] gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-950"
+            className="grid w-full touch-none grid-cols-[repeat(var(--segment-count),minmax(0,1fr))] gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-950"
             role="group"
             aria-label={ariaLabel}
             style={
@@ -125,15 +174,27 @@ function SegmentControl<T extends string>({
                     "--segment-count": options.length,
                 } as CSSProperties
             }
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            onLostPointerCapture={endDrag}
         >
-            {options.map((option) => (
+            {options.map((option, index) => (
                 <button
                     key={option.value}
+                    ref={(element) => {
+                        buttonRefs.current[index] = element;
+                    }}
                     type="button"
-                    className={`flex min-h-10 min-w-0 items-center justify-center rounded-md px-2 py-2 text-sm ${segmentedButtonClassName(value === option.value)}`}
+                    className={`flex min-h-10 min-w-0 select-none items-center justify-center rounded-md px-2 py-2 text-sm ${segmentedButtonClassName(value === option.value)}`}
                     aria-label={`${ariaLabel}: ${t(option.labelKey)}`}
                     aria-pressed={value === option.value}
-                    onClick={() => {
+                    onClick={(event) => {
+                        // Pointer selection is handled on pointerdown/move; only
+                        // respond to keyboard activation here (detail === 0).
+                        if (event.detail !== 0) return;
+
                         onChange(option.value);
                     }}
                 >
