@@ -40,11 +40,20 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f4f4f5",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f4f4f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
 };
+
+// Runs synchronously in <head> before first paint so the dark class is present
+// on <html> before the body is painted. This prevents a light-mode flash for
+// dark-mode users. The logic mirrors getResolvedThemeFromStorage in AppShell:
+// same "go-recorder:theme" key, same system/unset fallback to matchMedia.
+const themeInitScript = `(function(){try{var p=localStorage.getItem("go-recorder:theme");var d=p==="dark"||((p==="system"||p===null)&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.classList.add("dark");}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -56,6 +65,9 @@ export default function RootLayout({
       lang={defaultLocale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="h-full flex flex-col overflow-hidden">
         <AppShell appVersion={packageJson.version}>{children}</AppShell>
         <ServiceWorkerRegistration />
