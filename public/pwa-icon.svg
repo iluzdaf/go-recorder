@@ -1,8 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Go Recorder">
-  <rect width="512" height="512" rx="96" fill="#f4f4f5"/>
-  <rect x="92" y="92" width="328" height="328" rx="28" fill="#d8a657"/>
-  <path d="M146 146H366M146 201H366M146 256H366M146 311H366M146 366H366M146 146V366M201 146V366M256 146V366M311 146V366M366 146V366" stroke="#3f2a14" stroke-width="10" stroke-linecap="round"/>
-  <circle cx="201" cy="201" r="34" fill="#111827"/>
-  <circle cx="311" cy="311" r="34" fill="#f9fafb" stroke="#111827" stroke-width="8"/>
-  <circle cx="256" cy="256" r="12" fill="#3f2a14"/>
+  <!-- Classic 8-stone windmill (kazaguruma): four 2-stone arms pinwheel around
+       the centre. Dark minimalist board palette. -->
+  <rect width="512" height="512" fill="#60606a"/>
+  <g fill="none" stroke="#a1a1aa" stroke-width="9">
+    <path d="M0 0V512M102 0V512M205 0V512M307 0V512M410 0V512M512 0V512"/>
+    <path d="M0 0H512M0 102H512M0 205H512M0 307H512M0 410H512M0 512H512"/>
+  </g>
+  <g fill="#09090b">
+    <circle cx="205" cy="102" r="45"/>
+    <circle cx="205" cy="205" r="45"/>
+    <circle cx="307" cy="307" r="45"/>
+    <circle cx="307" cy="410" r="45"/>
+  </g>
+  <g fill="#fafafa" stroke="#18181b" stroke-width="10">
+    <circle cx="307" cy="205" r="45"/>
+    <circle cx="410" cy="205" r="45"/>
+    <circle cx="102" cy="307" r="45"/>
+    <circle cx="205" cy="307" r="45"/>
+  </g>
 </svg>

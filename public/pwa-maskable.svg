@@ -1,8 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Go Recorder">
-  <rect width="512" height="512" fill="#f4f4f5"/>
-  <rect x="72" y="72" width="368" height="368" rx="36" fill="#d8a657"/>
-  <path d="M132 132H380M132 194H380M132 256H380M132 318H380M132 380H380M132 132V380M194 132V380M256 132V380M318 132V380M380 132V380" stroke="#3f2a14" stroke-width="12" stroke-linecap="round"/>
-  <circle cx="194" cy="194" r="38" fill="#111827"/>
-  <circle cx="318" cy="318" r="38" fill="#f9fafb" stroke="#111827" stroke-width="9"/>
-  <circle cx="256" cy="256" r="13" fill="#3f2a14"/>
+  <!-- Classic 8-stone windmill (kazaguruma). Outer stones sit at 0.11-0.89,
+       inside the maskable safe zone, so this matches the "any" icon. -->
+  <rect width="512" height="512" fill="#60606a"/>
+  <g fill="none" stroke="#a1a1aa" stroke-width="9">
+    <path d="M0 0V512M102 0V512M205 0V512M307 0V512M410 0V512M512 0V512"/>
+    <path d="M0 0H512M0 102H512M0 205H512M0 307H512M0 410H512M0 512H512"/>
+  </g>
+  <g fill="#09090b">
+    <circle cx="205" cy="102" r="45"/>
+    <circle cx="205" cy="205" r="45"/>
+    <circle cx="307" cy="307" r="45"/>
+    <circle cx="307" cy="410" r="45"/>
+  </g>
+  <g fill="#fafafa" stroke="#18181b" stroke-width="10">
+    <circle cx="307" cy="205" r="45"/>
+    <circle cx="410" cy="205" r="45"/>
+    <circle cx="102" cy="307" r="45"/>
+    <circle cx="205" cy="307" r="45"/>
+  </g>
 </svg>
