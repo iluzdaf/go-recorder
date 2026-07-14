@@ -149,4 +149,34 @@ describe("getShareStaticBoard", () => {
         expect(stonesSvg).toContain('fill="#fafafa"'); // white stone
         expect(stonesSvg).not.toContain("#f4f4f5"); // no board background baked in
     });
+
+    it("labels coordinates with Shudan's convention (letters skip I, rows N..1)", () => {
+        const board = getShareStaticBoard(baseShare()); // full 9x9
+
+        const labels = board.coordinates.map((c) => c.text);
+        // Two labels per column and per row = 2 * (9 + 9).
+        expect(board.coordinates).toHaveLength(36);
+        expect(labels).toContain("A");
+        expect(labels).toContain("J"); // 9th column skips "I"
+        expect(labels).not.toContain("I");
+        expect(labels).toContain("9"); // top row
+        expect(labels).toContain("1"); // bottom row
+    });
+
+    it("offsets coordinate labels to true board positions under a position view", () => {
+        const board = getShareStaticBoard(
+            baseShare({
+                sourceKind: "draft",
+                draftKind: "board",
+                positionView: { anchor: "top-left", rows: 3, columns: 3 },
+            })
+        );
+
+        const labels = board.coordinates.map((c) => c.text);
+        // top-left 3x3 of a 9x9: columns A,B,C and rows 9,8,7.
+        expect(labels).toEqual(
+            expect.arrayContaining(["A", "B", "C", "9", "8", "7"])
+        );
+        expect(labels).not.toContain("D");
+    });
 });

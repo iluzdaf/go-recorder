@@ -8,6 +8,7 @@ import { useBoardDisplaySettings } from "./AppShell";
 import { getPositionViewRange } from "../lib/positionView";
 import { getShareBoardPlaceholderSize } from "../lib/shareBoardPlaceholder";
 import {
+    STATIC_BOARD_COORDINATE_FONT_SIZE,
     STATIC_BOARD_GRID_STROKE,
     STATIC_BOARD_HOSHI_RADIUS,
     getShareStaticBoard,
@@ -81,6 +82,19 @@ export function ShareBoardLoadingShell({ share }: { share: ShareRecord }) {
                                 cy={point.cy}
                                 r={STATIC_BOARD_HOSHI_RADIUS}
                             />
+                        ))}
+                        {board.coordinates.map((coordinate, index) => (
+                            <text
+                                key={index}
+                                className="share-static-board-coord"
+                                x={coordinate.x}
+                                y={coordinate.y}
+                                fontSize={STATIC_BOARD_COORDINATE_FONT_SIZE}
+                                textAnchor="middle"
+                                dominantBaseline="central"
+                            >
+                                {coordinate.text}
+                            </text>
                         ))}
                     </svg>
                     {/* eslint-disable-next-line @next/next/no-img-element */}

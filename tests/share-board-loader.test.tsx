@@ -53,6 +53,8 @@ describe("ShareBoardLoadingShell", () => {
         expect(markup).toContain("share-static-board-grid");
         // Stones are a single theme-neutral image.
         expect(markup).toContain("data:image/svg+xml,");
+        // Coordinate labels are drawn (CSS-themed, hidden when coords are off).
+        expect(markup).toContain("share-static-board-coord");
         // The disabled action bar was dropped; the live bar arrives with the board.
         expect(markup).not.toContain('aria-label="Share board controls loading"');
         expect(markup).not.toContain("disabled");

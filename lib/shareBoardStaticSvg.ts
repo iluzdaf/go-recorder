@@ -28,6 +28,11 @@ const LABEL_FONT_SIZE = 0.56;
 export const STATIC_BOARD_GRID_STROKE = 0.03;
 export const STATIC_BOARD_HOSHI_RADIUS = 0.12;
 
+// Column coordinate letters skip "I", matching Shudan's default (see
+// @sabaki/shudan helper.js).
+const COORDINATE_ALPHA = "ABCDEFGHJKLMNOPQRSTUVWXYZ";
+const COORDINATE_FONT_SIZE = 0.6; // Shudan renders coordinate labels at .6em.
+
 const BLACK_STONE_FILL = "#09090b";
 const WHITE_STONE_FILL = "#fafafa";
 const WHITE_STONE_BORDER = "#18181b";
@@ -45,6 +50,11 @@ type StaticBoardStone = {
 export type StaticBoardModel = {
     columns: number;
     rows: number;
+    // Offsets of the visible region and full board size, used to label
+    // coordinates with their true board positions under a position view.
+    startX: number;
+    startY: number;
+    boardSize: number;
     stones: StaticBoardStone[];
     hoshi: { col: number; row: number }[];
 };
@@ -135,7 +145,7 @@ export function getStaticBoardModel(share: ShareRecord): StaticBoardModel {
         )
         .map(([x, y]) => ({ col: x - startX, row: y - startY }));
 
-    return { columns, rows, stones, hoshi };
+    return { columns, rows, startX, startY, boardSize, stones, hoshi };
 }
 
 function round(value: number): number {
@@ -197,6 +207,14 @@ export function toSvgDataUri(svg: string): string {
     return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
+export type StaticBoardCoordinate = {
+    x: number;
+    y: number;
+    text: string;
+};
+
+export const STATIC_BOARD_COORDINATE_FONT_SIZE = COORDINATE_FONT_SIZE;
+
 export type ShareStaticBoard = {
     columns: number;
     rows: number;
@@ -205,6 +223,10 @@ export type ShareStaticBoard = {
     // Combined "M..V.. M..H.." path for every grid line, coloured by CSS.
     gridPath: string;
     hoshi: { cx: number; cy: number }[];
+    // Coordinate labels (letters top/bottom, numbers left/right) matching
+    // Shudan's convention, coloured by CSS and hidden when the visitor has
+    // coordinates turned off.
+    coordinates: StaticBoardCoordinate[];
     // Theme-neutral stones as an SVG data URI, used as the LCP <img>.
     stonesSrc: string;
 };
@@ -223,6 +245,26 @@ export function getShareStaticBoard(share: ShareRecord): ShareStaticBoard {
         gridSegments.push(`M${first} ${center(j)}H${lastCol}`);
     }
 
+    // Column letters along the top and bottom, row numbers down each side. The
+    // centre of a gutter track is half a unit from the board edge.
+    const nearGutter = round(COORDINATE_GUTTER / 2);
+    const farColumnGutter = round(height - COORDINATE_GUTTER / 2);
+    const farRowGutter = round(width - COORDINATE_GUTTER / 2);
+    const coordinates: StaticBoardCoordinate[] = [];
+    for (let i = 0; i < model.columns; i += 1) {
+        const boardColumn = model.startX + i;
+        const text =
+            COORDINATE_ALPHA[boardColumn] ??
+            COORDINATE_ALPHA[COORDINATE_ALPHA.length - 1];
+        coordinates.push({ x: center(i), y: nearGutter, text });
+        coordinates.push({ x: center(i), y: farColumnGutter, text });
+    }
+    for (let j = 0; j < model.rows; j += 1) {
+        const text = String(model.boardSize - (model.startY + j));
+        coordinates.push({ x: nearGutter, y: center(j), text });
+        coordinates.push({ x: farRowGutter, y: center(j), text });
+    }
+
     return {
         columns: model.columns,
         rows: model.rows,
@@ -233,6 +275,7 @@ export function getShareStaticBoard(share: ShareRecord): ShareStaticBoard {
             cx: center(col),
             cy: center(row),
         })),
+        coordinates,
         stonesSrc: toSvgDataUri(buildStonesSvg(model)),
     };
 }
