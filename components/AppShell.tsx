@@ -42,6 +42,10 @@ type HeaderStatusContextValue = {
     setHeaderStatus: (nextHeaderStatus: React.ReactNode) => void;
 };
 
+type HeaderMenuIconContextValue = {
+    setHeaderMenuIcon: (nextHeaderMenuIcon: React.ReactNode) => void;
+};
+
 type HeaderVisibilityContextValue = {
     isOverlayHeader: boolean;
     isHeaderVisible: boolean;
@@ -88,6 +92,8 @@ const HeaderActionsContext = createContext<HeaderActionsContextValue | null>(
 const HeaderStatusContext = createContext<HeaderStatusContextValue | null>(
     null
 );
+const HeaderMenuIconContext =
+    createContext<HeaderMenuIconContextValue | null>(null);
 const HeaderVisibilityContext = createContext<HeaderVisibilityContextValue | null>(
     null
 );
@@ -545,6 +551,16 @@ export function useHeaderStatus() {
     return value;
 }
 
+export function useHeaderMenuIcon() {
+    const value = useContext(HeaderMenuIconContext);
+
+    if (!value) {
+        throw new Error("useHeaderMenuIcon must be used within AppShell");
+    }
+
+    return value;
+}
+
 export function useHeaderVisibility() {
     const value = useContext(HeaderVisibilityContext);
 
@@ -566,6 +582,8 @@ export default function AppShell({
     const router = useRouter();
     const [headerActions, setHeaderActions] = useState<React.ReactNode>(null);
     const [headerStatus, setHeaderStatus] = useState<React.ReactNode>(null);
+    const [headerMenuIcon, setHeaderMenuIcon] =
+        useState<React.ReactNode>(null);
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(() => getIsFullscreen());
     const [appNavigationState, setAppNavigationState] =
@@ -1016,6 +1034,10 @@ export default function AppShell({
         () => ({ setHeaderStatus }),
         []
     );
+    const headerMenuIconContextValue = useMemo(
+        () => ({ setHeaderMenuIcon }),
+        []
+    );
 
     return (
         <ThemeContext.Provider value={contextValue}>
@@ -1024,6 +1046,9 @@ export default function AppShell({
             >
             <HeaderActionsContext.Provider value={headerActionsContextValue}>
                 <HeaderStatusContext.Provider value={headerStatusContextValue}>
+                <HeaderMenuIconContext.Provider
+                    value={headerMenuIconContextValue}
+                >
                     <HeaderVisibilityContext.Provider
                         value={{
                             isOverlayHeader: usesOverlayHeader,
@@ -1039,7 +1064,7 @@ export default function AppShell({
                         title={t("showHeader")}
                         onClick={() => setIsHeaderExpanded(true)}
                     >
-                        <Menu size={18} />
+                        {headerMenuIcon ?? <Menu size={18} />}
                     </button>
                 ) : null}
 
@@ -1053,6 +1078,17 @@ export default function AppShell({
                         }
                     >
                         <div className="flex shrink-0 items-center gap-1.5">
+                            {backPath ? (
+                                <button
+                                    type="button"
+                                    className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
+                                    aria-label={t("goBack")}
+                                    title={t("goBack")}
+                                    onClick={handleNavigateBack}
+                                >
+                                    <ChevronLeft size={18} />
+                                </button>
+                            ) : null}
                             <button
                                 type="button"
                                 className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
@@ -1067,17 +1103,6 @@ export default function AppShell({
                             >
                                 <Home size={18} />
                             </button>
-                            {backPath ? (
-                                <button
-                                    type="button"
-                                    className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
-                                    aria-label={t("goBack")}
-                                    title={t("goBack")}
-                                    onClick={handleNavigateBack}
-                                >
-                                    <ChevronLeft size={18} />
-                                </button>
-                            ) : null}
 
                         </div>
 
@@ -1222,6 +1247,7 @@ export default function AppShell({
                     {children}
                 </div>
                     </HeaderVisibilityContext.Provider>
+                </HeaderMenuIconContext.Provider>
                 </HeaderStatusContext.Provider>
             </HeaderActionsContext.Provider>
             </BoardDisplaySettingsContext.Provider>

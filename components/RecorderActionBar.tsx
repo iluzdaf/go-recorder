@@ -1,7 +1,6 @@
 "use client";
 
 import {
-    CircleDot,
     Hand,
     SquareArrowUpRight,
     Undo2,
@@ -93,12 +92,6 @@ export default function RecorderActionBar({
             overlay={overlay}
             railRef={railRef}
         >
-            <div
-                className="inline-flex h-11 w-11 items-center justify-center text-zinc-700 dark:text-zinc-200"
-                aria-hidden="true"
-            >
-                <CircleDot size={18} />
-            </div>
             <button
                 type="button"
                 className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
