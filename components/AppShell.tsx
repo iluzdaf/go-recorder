@@ -1064,7 +1064,12 @@ export default function AppShell({
                         title={t("showHeader")}
                         onClick={() => setIsHeaderExpanded(true)}
                     >
-                        {headerMenuIcon ?? <Menu size={18} />}
+                        {headerMenuIcon ??
+                            (pathname === "/" ? (
+                                <Home size={18} />
+                            ) : (
+                                <Menu size={18} />
+                            ))}
                     </button>
                 ) : null}
 
@@ -1089,20 +1094,22 @@ export default function AppShell({
                                     <ChevronLeft size={18} />
                                 </button>
                             ) : null}
-                            <button
-                                type="button"
-                                className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
-                                aria-label={t("home")}
-                                title={t("home")}
-                                onClick={() => {
-                                    navigateWithinApp({
-                                        path: "/",
-                                        push: router.push,
-                                    });
-                                }}
-                            >
-                                <Home size={18} />
-                            </button>
+                            {pathname !== "/" ? (
+                                <button
+                                    type="button"
+                                    className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
+                                    aria-label={t("home")}
+                                    title={t("home")}
+                                    onClick={() => {
+                                        navigateWithinApp({
+                                            path: "/",
+                                            push: router.push,
+                                        });
+                                    }}
+                                >
+                                    <Home size={18} />
+                                </button>
+                            ) : null}
 
                         </div>
 
