@@ -145,7 +145,7 @@ export default function ShareBoardLoader({ share }: ShareBoardLoaderProps) {
         <div className="relative flex min-h-0 flex-1 flex-col">
             <ShareBoard share={share} onReady={handleBoardReady} />
             {boardReady ? null : (
-                <div className="absolute inset-0 z-30">
+                <div className="absolute inset-0 z-30 flex flex-col">
                     <ShareBoardLoadingShell share={share} />
                 </div>
             )}
