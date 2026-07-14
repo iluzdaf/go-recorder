@@ -1,12 +1,11 @@
 import { ImageResponse } from "next/og";
 
+import { getBoardPreviewModel } from "../../../lib/boardPreview";
 import { getDisplayPlayerName } from "../../../lib/sharePresentation";
 import { getFinalPositionFromGameState } from "../../../lib/shareFinalPosition";
 import { getShareBoardPositionView } from "../../../lib/shareBoardView";
 import { mapShareRowToShareRecord } from "../../../lib/shareView";
 import { getSupabaseAdmin } from "../../../lib/supabaseAdmin";
-import { createVariationMoveNumberMarkerMap } from "../../../lib/variationDraft";
-import { getPositionViewRange } from "../../../lib/positionView";
 
 export const runtime = "nodejs";
 
@@ -82,18 +81,6 @@ export function getVariationMarkerFontSize(stoneRadius: number) {
     return Math.max(24, Math.min(34, stoneRadius * 1.05));
 }
 
-function getStarPoints(boardSize: number) {
-    if (boardSize === 19) {
-        return [3, 9, 15].flatMap((x) => [3, 9, 15].map((y) => [x, y]));
-    }
-
-    if (boardSize === 13) {
-        return [3, 6, 9].flatMap((x) => [3, 6, 9].map((y) => [x, y]));
-    }
-
-    return [2, 4, 6].flatMap((x) => [2, 4, 6].map((y) => [x, y]));
-}
-
 function renderFallbackImage(message: string) {
     return new ImageResponse(
         (
@@ -162,14 +149,15 @@ export default async function Image({ params }: ImageProps) {
     }
 
     const boardSize = share.boardSize;
-    const positionRange = getPositionViewRange({
-        boardSize,
-        positionView: getShareBoardPositionView(share),
-    });
-    const visibleRows = positionRange?.rows ?? boardSize;
-    const visibleColumns = positionRange?.columns ?? boardSize;
-    const startX = positionRange?.startX ?? 0;
-    const startY = positionRange?.startY ?? 0;
+    const { visibleRows, visibleColumns, startX, startY, stones, starPoints } =
+        getBoardPreviewModel({
+            boardSize,
+            gameState: share.gameState,
+            finalPosition: finalPositionResult.finalPosition,
+            positionView: getShareBoardPositionView(share),
+            draftKind: share.draftKind,
+            baseMoveCount: share.baseMoveCount,
+        });
     const maxVisibleDimension = Math.max(visibleRows, visibleColumns);
     const boardPadding = getBoardPreviewPadding(maxVisibleDimension);
     const blackPlayerName = getDisplayPlayerName(share.blackPlayerName);
@@ -188,16 +176,6 @@ export default async function Image({ params }: ImageProps) {
     const gridTop = boardPadding;
     const stoneRadius = Math.max(10, gridStep * 0.42);
     const variationMarkerFontSize = getVariationMarkerFontSize(stoneRadius);
-    const markerMap =
-        share.draftKind === "variation" &&
-        typeof share.baseMoveCount === "number"
-            ? createVariationMoveNumberMarkerMap({
-                  boardSize,
-                  moves: share.gameState.moves,
-                  signMap: finalPositionResult.finalPosition,
-                  startMoveIndex: share.baseMoveCount,
-              })
-            : null;
     return new ImageResponse(
         (
             <div
@@ -264,54 +242,35 @@ export default async function Image({ params }: ImageProps) {
                         );
                     })}
 
-                    {getStarPoints(boardSize).map(([x, y]) => {
-                        if (
-                            x < startX ||
-                            x >= startX + visibleColumns ||
-                            y < startY ||
-                            y >= startY + visibleRows
-                        ) {
-                            return null;
-                        }
+                    {starPoints.map(({ x, y }) => (
+                        <div
+                            key={`star-${x}-${y}`}
+                            style={{
+                                background: "#3f3f46",
+                                borderRadius: "50%",
+                                height: 8,
+                                left: gridLeft + (x - startX) * gridStep - 4,
+                                position: "absolute",
+                                top: gridTop + (y - startY) * gridStep - 4,
+                                width: 8,
+                            }}
+                        />
+                    ))}
 
-                        return (
-                            <div
-                                key={`star-${x}-${y}`}
-                                style={{
-                                    background: "#3f3f46",
-                                    borderRadius: "50%",
-                                    height: 8,
-                                    left: gridLeft + (x - startX) * gridStep - 4,
-                                    position: "absolute",
-                                    top: gridTop + (y - startY) * gridStep - 4,
-                                    width: 8,
-                                }}
-                            />
-                        );
-                    })}
-
-                    {finalPositionResult.finalPosition.flatMap((row, y) =>
-                        row.map((sign, x) => {
-                            if (sign === 0) return null;
-                            if (
-                                x < startX ||
-                                x >= startX + visibleColumns ||
-                                y < startY ||
-                                y >= startY + visibleRows
-                            ) {
-                                return null;
-                            }
-
-                            const isBlack = sign === 1;
+                    {stones.map((stone) => {
+                            const isBlack = stone.sign === 1;
                             const left =
-                                gridLeft + (x - startX) * gridStep - stoneRadius;
+                                gridLeft +
+                                (stone.x - startX) * gridStep -
+                                stoneRadius;
                             const top =
-                                gridTop + (y - startY) * gridStep - stoneRadius;
-                            const marker = markerMap?.[y]?.[x] ?? null;
+                                gridTop +
+                                (stone.y - startY) * gridStep -
+                                stoneRadius;
 
                             return (
                                 <div
-                                    key={`stone-${x}-${y}`}
+                                    key={`stone-${stone.x}-${stone.y}`}
                                     style={{
                                         alignItems: "center",
                                         background: isBlack ? "#09090b" : "#fafafa",
@@ -333,11 +292,10 @@ export default async function Image({ params }: ImageProps) {
                                         width: stoneRadius * 2,
                                     }}
                                 >
-                                    {marker?.label ?? ""}
+                                    {stone.label ?? ""}
                                 </div>
                             );
-                        })
-                    )}
+                        })}
                 </div>
 
                 {hasPlayerNames && (

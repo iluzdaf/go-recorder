@@ -1,8 +1,6 @@
-import type { FinalPosition, ShareRecord } from "../components/types";
-import { getFinalPositionFromGameState } from "./shareFinalPosition";
-import { getPositionViewRange } from "./positionView";
+import type { ShareRecord } from "../components/types";
+import { getBoardPreviewModel } from "./boardPreview";
 import { getShareBoardPositionView } from "./shareBoardView";
-import { createVariationMoveNumberMarkerMap } from "./variationDraft";
 
 // A lightweight, scalable stand-in for the interactive Shudan board rendered on
 // the server so the shared board paints as real (LCP) content before the client
@@ -59,93 +57,37 @@ export type StaticBoardModel = {
     hoshi: { col: number; row: number }[];
 };
 
-function getStarPoints(boardSize: number): [number, number][] {
-    if (boardSize === 19) {
-        return [3, 9, 15].flatMap((x) => [3, 9, 15].map((y): [number, number] => [x, y]));
-    }
-    if (boardSize === 13) {
-        return [3, 6, 9].flatMap((x) => [3, 6, 9].map((y): [number, number] => [x, y]));
-    }
-    return [2, 4, 6].flatMap((x) => [2, 4, 6].map((y): [number, number] => [x, y]));
-}
-
 // Derives the theme-independent geometry (visible stones and star points in the
-// visible region's local coordinates) for the final position of a share.
+// visible region's local coordinates) for the final position of a share, from
+// the shared board-preview model.
 export function getStaticBoardModel(share: ShareRecord): StaticBoardModel {
-    const boardSize = share.boardSize;
-    const positionRange = getPositionViewRange({
-        boardSize,
+    const preview = getBoardPreviewModel({
+        boardSize: share.boardSize,
+        gameState: share.gameState,
+        finalPosition: share.finalPosition,
         positionView: getShareBoardPositionView(share),
+        draftKind: share.draftKind,
+        baseMoveCount: share.baseMoveCount,
     });
-    const columns = positionRange?.columns ?? boardSize;
-    const rows = positionRange?.rows ?? boardSize;
-    const startX = positionRange?.startX ?? 0;
-    const startY = positionRange?.startY ?? 0;
 
-    const finalPosition: FinalPosition | null =
-        share.finalPosition ??
-        (() => {
-            const result = getFinalPositionFromGameState({
-                boardSize,
-                gameState: share.gameState,
-            });
-            return result.ok ? result.finalPosition : null;
-        })();
-
-    const labelMap =
-        share.draftKind === "variation" &&
-        typeof share.baseMoveCount === "number" &&
-        finalPosition
-            ? createVariationMoveNumberMarkerMap({
-                  boardSize,
-                  moves: share.gameState.moves,
-                  signMap: finalPosition,
-                  startMoveIndex: share.baseMoveCount,
-              })
-            : null;
-
-    const lastPlay =
-        share.draftKind !== "variation"
-            ? [...share.gameState.moves]
-                  .reverse()
-                  .find((move) => move.type === "play")
-            : undefined;
-
-    const stones: StaticBoardStone[] = [];
-    if (finalPosition) {
-        for (let y = startY; y < startY + rows; y += 1) {
-            for (let x = startX; x < startX + columns; x += 1) {
-                const sign = finalPosition[y]?.[x] ?? 0;
-                if (sign !== 1 && sign !== -1) continue;
-
-                const label = labelMap?.[y]?.[x]?.label;
-                const lastMove =
-                    lastPlay?.type === "play" &&
-                    lastPlay.x === x &&
-                    lastPlay.y === y;
-
-                stones.push({
-                    col: x - startX,
-                    row: y - startY,
-                    sign,
-                    ...(label ? { label } : {}),
-                    ...(lastMove ? { lastMove: true } : {}),
-                });
-            }
-        }
-    }
-
-    const hoshi = getStarPoints(boardSize)
-        .filter(
-            ([x, y]) =>
-                x >= startX &&
-                x < startX + columns &&
-                y >= startY &&
-                y < startY + rows
-        )
-        .map(([x, y]) => ({ col: x - startX, row: y - startY }));
-
-    return { columns, rows, startX, startY, boardSize, stones, hoshi };
+    return {
+        columns: preview.visibleColumns,
+        rows: preview.visibleRows,
+        startX: preview.startX,
+        startY: preview.startY,
+        boardSize: preview.boardSize,
+        stones: preview.stones.map((stone) => ({
+            col: stone.x - preview.startX,
+            row: stone.y - preview.startY,
+            sign: stone.sign,
+            ...(stone.label ? { label: stone.label } : {}),
+            ...(stone.lastMove ? { lastMove: true } : {}),
+        })),
+        hoshi: preview.starPoints.map((point) => ({
+            col: point.x - preview.startX,
+            row: point.y - preview.startY,
+        })),
+    };
 }
 
 function round(value: number): number {
