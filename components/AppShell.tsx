@@ -1083,7 +1083,7 @@ export default function AppShell({
                         }
                     >
                         <div className="flex shrink-0 items-center gap-1.5">
-                            {backPath ? (
+                            {backPath && backPath !== "/" ? (
                                 <button
                                     type="button"
                                     className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-neutral-800"
