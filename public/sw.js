@@ -20,6 +20,11 @@ const PRECACHE_URLS = [
 const LOCAL_NAVIGATION_PREFIXES = ["/games/", "/drafts/"];
 const LOCAL_NAVIGATION_PATHS = new Set(["/", "/games", "/drafts"]);
 
+// Serve a cached page if the network has not answered within this window, so a
+// live-but-very-slow connection falls back to cache instead of hanging.
+const NAVIGATION_NETWORK_TIMEOUT_MS = 3000;
+const NAVIGATION_NETWORK_TIMED_OUT = Symbol("navigation-network-timed-out");
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(SHELL_CACHE).then((cache) => cache.addAll(PRECACHE_URLS)),
@@ -64,7 +69,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.mode === "navigate") {
-    event.respondWith(navigationResponse(request, url));
+    event.respondWith(navigationResponse(event, request, url));
   }
 });
 
@@ -225,51 +230,71 @@ async function cacheSharePage(sharePath) {
   }
 }
 
-async function navigationResponse(request, url) {
-  try {
-    const response = await fetch(request);
+async function navigationResponse(event, request, url) {
+  const cachedNavigation = await matchCachedNavigation(request, url);
+  const networkResponse = fetchAndCacheNavigation(request, url);
 
-    if (response.ok && isLocalNavigation(url.pathname)) {
-      const cache = await caches.open(SHELL_CACHE);
-      await cache.put(request, response.clone());
-    }
+  // Without a cached fallback there is nothing to show early, so wait for the
+  // network and surface its response (or its failure) as before.
+  if (!cachedNavigation) {
+    return networkResponse;
+  }
 
-    if (response.ok && isSharePageNavigation(url.pathname)) {
-      const cache = await caches.open(SHARE_CACHE);
-      await cache.put(request, response.clone());
-    }
+  // Keep the network request alive so the cache still refreshes even if the
+  // timeout wins and we serve the cached page below.
+  event.waitUntil(networkResponse.catch(() => {}));
 
-    return response;
-  } catch (error) {
-    if (isSharePageNavigation(url.pathname)) {
-      const cache = await caches.open(SHARE_CACHE);
-      const cachedShare = await cache.match(request);
+  const timeout = new Promise((resolve) => {
+    setTimeout(() => resolve(NAVIGATION_NETWORK_TIMED_OUT), NAVIGATION_NETWORK_TIMEOUT_MS);
+  });
 
-      if (cachedShare) {
-        return cachedShare;
-      }
+  const result = await Promise.race([
+    networkResponse.catch(() => NAVIGATION_NETWORK_TIMED_OUT),
+    timeout,
+  ]);
 
-      throw error;
-    }
+  if (result !== NAVIGATION_NETWORK_TIMED_OUT && result.ok) {
+    return result;
+  }
 
-    if (!isLocalNavigation(url.pathname)) {
-      throw error;
-    }
+  return cachedNavigation;
+}
 
+async function fetchAndCacheNavigation(request, url) {
+  const response = await fetch(request);
+
+  if (response.ok && isLocalNavigation(url.pathname)) {
+    const cache = await caches.open(SHELL_CACHE);
+    await cache.put(request, response.clone());
+  }
+
+  if (response.ok && isSharePageNavigation(url.pathname)) {
+    const cache = await caches.open(SHARE_CACHE);
+    await cache.put(request, response.clone());
+  }
+
+  return response;
+}
+
+async function matchCachedNavigation(request, url) {
+  if (isSharePageNavigation(url.pathname)) {
+    const cache = await caches.open(SHARE_CACHE);
+
+    return cache.match(request);
+  }
+
+  if (isLocalNavigation(url.pathname)) {
     const cache = await caches.open(SHELL_CACHE);
     const cachedPage = await cache.match(request);
-    const cachedShell = await cache.match(getFallbackShellUrl(url.pathname));
 
     if (cachedPage) {
       return cachedPage;
     }
 
-    if (cachedShell) {
-      return cachedShell;
-    }
-
-    throw error;
+    return cache.match(getFallbackShellUrl(url.pathname));
   }
+
+  return undefined;
 }
 
 function isLocalNavigation(pathname) {
