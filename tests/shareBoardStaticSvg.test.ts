@@ -131,7 +131,8 @@ describe("getShareStaticBoard", () => {
                     ],
                     currentPlayer: "B",
                 },
-            })
+            }),
+            { showCoordinates: true }
         );
 
         // 9 board + 1 gutter each side = 11 units
@@ -151,7 +152,9 @@ describe("getShareStaticBoard", () => {
     });
 
     it("labels coordinates with Shudan's convention (letters skip I, rows N..1)", () => {
-        const board = getShareStaticBoard(baseShare()); // full 9x9
+        const board = getShareStaticBoard(baseShare(), {
+            showCoordinates: true,
+        }); // full 9x9
 
         const labels = board.coordinates.map((c) => c.text);
         // Two labels per column and per row = 2 * (9 + 9).
@@ -169,7 +172,8 @@ describe("getShareStaticBoard", () => {
                 sourceKind: "draft",
                 draftKind: "board",
                 positionView: { anchor: "top-left", rows: 3, columns: 3 },
-            })
+            }),
+            { showCoordinates: true }
         );
 
         const labels = board.coordinates.map((c) => c.text);
@@ -178,5 +182,35 @@ describe("getShareStaticBoard", () => {
             expect.arrayContaining(["A", "B", "C", "9", "8", "7"])
         );
         expect(labels).not.toContain("D");
+    });
+
+    it("drops the gutter and coordinates when coordinates are hidden", () => {
+        const finalPosition = emptyBoard(9);
+        finalPosition[2][2] = 1; // black
+
+        const board = getShareStaticBoard(
+            baseShare({
+                finalPosition,
+                gameState: {
+                    setupStones: [],
+                    moves: [{ type: "play", x: 2, y: 2, color: "B" }],
+                    currentPlayer: "B",
+                },
+            }),
+            { showCoordinates: false }
+        );
+
+        // No gutter: the viewBox is exactly the board, matching the live
+        // coordinate-less board so the swap does not resize.
+        expect(board.width).toBe(9);
+        expect(board.height).toBe(9);
+        expect(board.coordinates).toHaveLength(0);
+        // Grid still draws a line per column and row; hoshi shift in by the
+        // dropped gutter (centre of vertex 4 is now 4.5).
+        expect(board.gridPath.match(/M/g)).toHaveLength(18);
+        expect(board.hoshi).toContainEqual({ cx: 4.5, cy: 4.5 });
+        expect(decodeURIComponent(board.stonesSrc)).toContain(
+            'viewBox="0 0 9 9"'
+        );
     });
 });

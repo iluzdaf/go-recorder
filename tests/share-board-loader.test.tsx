@@ -53,18 +53,31 @@ describe("ShareBoardLoadingShell", () => {
         expect(markup).toContain("share-static-board-grid");
         // Stones are a single theme-neutral image.
         expect(markup).toContain("data:image/svg+xml,");
-        // Coordinate labels are drawn (CSS-themed, hidden when coords are off).
+        // Coordinate labels are drawn in the with-coordinates variant (CSS
+        // selects which variant shows based on the visitor's setting).
         expect(markup).toContain("share-static-board-coord");
         // The disabled action bar was dropped; the live bar arrives with the board.
         expect(markup).not.toContain('aria-label="Share board controls loading"');
         expect(markup).not.toContain("disabled");
     });
 
-    it("sizes the placeholder to the board footprint so no layout shift occurs", () => {
+    it("renders both coordinate variants so CSS can match the visitor's setting", () => {
         const markup = renderToStaticMarkup(<ShareBoardLoadingShell share={share} />);
 
-        // 19-line board plus a 2-vertex coordinate gutter = 21 units per side.
+        // Both are painted; the pre-paint `board-coords-hidden` class shows one.
+        expect(markup).toContain("share-static-board-with-coords");
+        expect(markup).toContain("share-static-board-without-coords");
+    });
+
+    it("sizes each variant to its own board footprint so no layout shift occurs", () => {
+        const markup = renderToStaticMarkup(<ShareBoardLoadingShell share={share} />);
+
+        // With coordinates: 19-line board plus a 2-vertex gutter = 21 per side.
         expect(markup).toContain("(100vw - 4px) / 21");
         expect(markup).toContain("(100dvh - 4px) / 21");
+        // Without coordinates: no gutter, so the board fills 19 units per side,
+        // matching the live coordinate-less board.
+        expect(markup).toContain("(100vw - 4px) / 19");
+        expect(markup).toContain("(100dvh - 4px) / 19");
     });
 });
