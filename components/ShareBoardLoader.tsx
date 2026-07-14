@@ -15,6 +15,7 @@ import type { ShareRecord } from "./types";
 import { useBoardDisplaySettings } from "./AppShell";
 import { getPositionViewRange } from "../lib/positionView";
 import { getShareBoardPlaceholderSize } from "../lib/shareBoardPlaceholder";
+import { getShareStaticBoardImages } from "../lib/shareBoardStaticSvg";
 import { getShareBoardPositionView } from "../lib/shareBoardView";
 import { t } from "../lib/i18n";
 
@@ -61,6 +62,7 @@ export function ShareBoardLoadingShell({ share }: { share: ShareRecord }) {
         rows: positionRange?.rows ?? share.boardSize,
         showCoordinates: showBoardCoordinates,
     });
+    const staticBoard = getShareStaticBoardImages(share);
 
     return (
         <div className="relative m-0 flex min-h-0 flex-1 touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950 dark:bg-neutral-900 dark:text-white">
@@ -72,9 +74,30 @@ export function ShareBoardLoadingShell({ share }: { share: ShareRecord }) {
                         width: placeholderSize.width,
                         height: placeholderSize.height,
                     }}
-                    className="flex items-center justify-center border border-zinc-200 bg-white/70 text-sm font-medium text-zinc-600 dark:border-neutral-700 dark:bg-neutral-900/70 dark:text-neutral-300"
+                    className="relative"
                 >
-                    Loading shared board
+                    <span className="sr-only">Loading shared board</span>
+                    {/* Server-rendered final position so the board paints as real
+                        (LCP) content before hydration. The correct theme is chosen
+                        by the .dark class set pre-paint, so only one image paints.
+                        Inline data-URI SVGs on purpose: next/image cannot optimise
+                        a data URI and its loader would delay the paint we want. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src={staticBoard.lightSrc}
+                        alt=""
+                        aria-hidden="true"
+                        draggable={false}
+                        className="block h-full w-full select-none dark:hidden"
+                    />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src={staticBoard.darkSrc}
+                        alt=""
+                        aria-hidden="true"
+                        draggable={false}
+                        className="hidden h-full w-full select-none dark:block"
+                    />
                 </div>
                 <div
                     className="pointer-events-none absolute inset-x-3 z-40 h-14 select-none"

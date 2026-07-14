@@ -21,6 +21,14 @@ type PageProps = {
 // forever.
 export const revalidate = 3600;
 
+// An empty static-params list opts the dynamic [slug] route into on-demand ISR:
+// unknown slugs are rendered on first request and then cached in the full-route
+// (CDN) cache, so repeat visitors are served from the edge instead of
+// re-rendering. Paths not listed here are still allowed (dynamicParams default).
+export async function generateStaticParams() {
+    return [];
+}
+
 function getSiteUrl() {
     const vercelUrl = process.env.VERCEL_URL;
     const configuredUrl =
