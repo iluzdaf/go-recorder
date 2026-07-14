@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChangeEvent, CSSProperties, ReactNode, RefObject } from "react";
+import type { ChangeEvent, ReactNode, RefObject } from "react";
 import { useState } from "react";
 import {
     ChevronDown,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { t, type MessageKey } from "../lib/i18n";
+import SegmentedControl from "./SegmentedControl";
 import type { BoardTheme } from "./AppShell";
 
 type ThemePreference = "system" | "light" | "dark";
@@ -66,14 +67,6 @@ function buttonRowClassName() {
     return `${rowClassName()} w-full hover:bg-zinc-50 dark:hover:bg-neutral-900`;
 }
 
-function segmentedButtonClassName(isSelected: boolean) {
-    if (isSelected) {
-        return "bg-white font-medium text-zinc-950 shadow-sm dark:bg-neutral-700 dark:text-white";
-    }
-
-    return "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200";
-}
-
 function SettingsSection({
     children,
     isOpen,
@@ -116,31 +109,17 @@ function SegmentControl<T extends string>({
     value: T;
 }>) {
     return (
-        <div
-            className="grid w-full grid-cols-[repeat(var(--segment-count),minmax(0,1fr))] gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-950"
+        <SegmentedControl
             role="group"
-            aria-label={ariaLabel}
-            style={
-                {
-                    "--segment-count": options.length,
-                } as CSSProperties
-            }
-        >
-            {options.map((option) => (
-                <button
-                    key={option.value}
-                    type="button"
-                    className={`flex min-h-10 min-w-0 items-center justify-center rounded-md px-2 py-2 text-sm ${segmentedButtonClassName(value === option.value)}`}
-                    aria-label={`${ariaLabel}: ${t(option.labelKey)}`}
-                    aria-pressed={value === option.value}
-                    onClick={() => {
-                        onChange(option.value);
-                    }}
-                >
-                    {t(option.labelKey)}
-                </button>
-            ))}
-        </div>
+            ariaLabel={ariaLabel}
+            value={value}
+            onChange={onChange}
+            options={options.map((option) => ({
+                value: option.value,
+                content: t(option.labelKey),
+                ariaLabel: `${ariaLabel}: ${t(option.labelKey)}`,
+            }))}
+        />
     );
 }
 

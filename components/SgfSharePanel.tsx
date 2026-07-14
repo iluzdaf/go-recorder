@@ -14,6 +14,7 @@ import { useState, type RefObject } from "react";
 
 import { navigateWithinApp } from "../lib/fullscreenNavigation";
 import { t } from "../lib/i18n";
+import SegmentedControl from "./SegmentedControl";
 import type { ShareMenuMode } from "./ShareMenu";
 import type { BoardSize, PositionView } from "./types";
 import PositionViewSettingsDialog from "./PositionViewSettingsDialog";
@@ -329,24 +330,15 @@ export default function SgfSharePanel({
                                     <legend className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
                                         {t("komi")}
                                     </legend>
-                                    <div className="grid grid-cols-5 gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-950">
-                                        {KOMI_OPTIONS.map((value) => (
-                                            <button
-                                                key={value}
-                                                type="button"
-                                                aria-label={`${t("komi")} ${value}`}
-                                                aria-pressed={localKomi === value}
-                                                onClick={() => handleKomiChange(value)}
-                                                className={`flex min-h-10 items-center justify-center rounded-md px-2 py-2 text-sm ${
-                                                    localKomi === value
-                                                        ? "bg-white font-medium text-zinc-950 shadow-sm dark:bg-neutral-700 dark:text-white"
-                                                        : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
-                                                }`}
-                                            >
-                                                {value}
-                                            </button>
-                                        ))}
-                                    </div>
+                                    <SegmentedControl<number>
+                                        value={localKomi}
+                                        onChange={handleKomiChange}
+                                        options={KOMI_OPTIONS.map((value) => ({
+                                            value,
+                                            content: value,
+                                            ariaLabel: `${t("komi")} ${value}`,
+                                        }))}
+                                    />
                                 </fieldset>
                             </div>
                         )}

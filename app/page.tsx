@@ -19,6 +19,7 @@ import {
     getGameTitle,
 } from "@/components/GameListItem";
 import ImageDraftCreator from "@/components/ImageDraftCreator";
+import SegmentedControl from "@/components/SegmentedControl";
 import SwipeDeleteRow from "@/components/SwipeDeleteRow";
 import { navigateWithinApp } from "@/lib/fullscreenNavigation";
 import { t } from "@/lib/i18n";
@@ -142,51 +143,31 @@ export default function Home() {
           className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
         >
           <div className="flex flex-col gap-1">
-            <div className="flex gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-900">
-              {([9, 13, 19] as BoardSize[]).map((size) => {
-                const label = `${size} × ${size}`;
-                return (
-                  <button
-                    key={size}
-                    type="button"
-                    aria-label={label}
-                    aria-pressed={boardSize === size}
-                    disabled={isCreatingGame || isCreatingDraft}
-                    onClick={() => setBoardSize(size)}
-                    className={`flex flex-1 items-center justify-center rounded-md px-3 py-2 text-sm disabled:opacity-50 ${
-                      boardSize === size
-                        ? "bg-white font-medium text-zinc-950 shadow-sm dark:bg-neutral-700 dark:text-white"
-                        : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
+            <SegmentedControl<BoardSize>
+              value={boardSize}
+              disabled={isCreatingGame || isCreatingDraft}
+              onChange={setBoardSize}
+              options={([9, 13, 19] as BoardSize[]).map((size) => ({
+                value: size,
+                content: `${size} × ${size}`,
+                ariaLabel: `${size} × ${size}`,
+              }))}
+            />
           </div>
 
           <fieldset className="flex flex-col gap-1">
             <legend className="text-sm font-medium">{t("handicap")}</legend>
-            <div className="grid grid-cols-5 gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-900">
-              {HANDICAP_OPTIONS.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-label={`${t("handicap")} ${value}`}
-                  aria-pressed={handicap === value}
-                  disabled={isCreatingGame || isCreatingDraft}
-                  onClick={() => setHandicap(value)}
-                  className={`flex min-h-10 items-center justify-center rounded-md px-3 py-2 text-sm disabled:opacity-50 ${
-                    handicap === value
-                      ? "bg-white font-medium text-zinc-950 shadow-sm dark:bg-neutral-700 dark:text-white"
-                      : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
-                  }`}
-                >
-                  {value}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl<number>
+              columns={5}
+              value={handicap}
+              disabled={isCreatingGame || isCreatingDraft}
+              onChange={setHandicap}
+              options={HANDICAP_OPTIONS.map((value) => ({
+                value,
+                content: value,
+                ariaLabel: `${t("handicap")} ${value}`,
+              }))}
+            />
           </fieldset>
 
           <button
@@ -224,36 +205,28 @@ export default function Home() {
           data-testid="create-draft-card"
           className="flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
         >
-          <div className="flex gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-neutral-900">
-            {(["blank", "image"] as const).map((source) => {
+          <SegmentedControl<"blank" | "image">
+            value={draftSource}
+            disabled={isCreatingGame || isCreatingDraft}
+            onChange={setDraftSource}
+            options={(["blank", "image"] as const).map((source) => {
               const label =
                 source === "blank"
                   ? t("draftSourceBlank")
                   : t("draftSourceImage");
-              return (
-                <button
-                  key={source}
-                  type="button"
-                  aria-label={label}
-                  title={label}
-                  aria-pressed={draftSource === source}
-                  disabled={isCreatingGame || isCreatingDraft}
-                  onClick={() => setDraftSource(source)}
-                  className={`flex flex-1 items-center justify-center rounded-md px-3 py-2 disabled:opacity-50 ${
-                    draftSource === source
-                      ? "bg-white text-zinc-950 shadow-sm dark:bg-neutral-700 dark:text-white"
-                      : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
-                  }`}
-                >
-                  {source === "blank" ? (
+              return {
+                value: source,
+                ariaLabel: label,
+                title: label,
+                content:
+                  source === "blank" ? (
                     <Grid3x3 size={18} />
                   ) : (
                     <ImageIcon size={18} />
-                  )}
-                </button>
-              );
+                  ),
+              };
             })}
-          </div>
+          />
 
           <button
             type="button"
