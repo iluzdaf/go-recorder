@@ -7,6 +7,7 @@ import {
     getShareTitle,
 } from "../../../lib/sharePresentation";
 import { getShareBySlug } from "../../../lib/shareLookup";
+import { getSiteUrl } from "../../../lib/siteUrl";
 
 type PageProps = {
     params: Promise<{
@@ -27,24 +28,6 @@ export const revalidate = 3600;
 // re-rendering. Paths not listed here are still allowed (dynamicParams default).
 export async function generateStaticParams() {
     return [];
-}
-
-function getSiteUrl() {
-    const vercelUrl = process.env.VERCEL_URL;
-    const configuredUrl =
-        process.env.VERCEL_ENV === "preview"
-            ? vercelUrl ?? process.env.NEXT_PUBLIC_SITE_URL
-            : process.env.NEXT_PUBLIC_SITE_URL ??
-              process.env.VERCEL_PROJECT_PRODUCTION_URL ??
-              vercelUrl;
-
-    if (!configuredUrl) {
-        return "http://localhost:3000";
-    }
-
-    return configuredUrl.startsWith("http")
-        ? configuredUrl
-        : `https://${configuredUrl}`;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

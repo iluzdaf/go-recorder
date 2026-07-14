@@ -8,6 +8,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import AppShell from "@/components/AppShell";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import { defaultLocale, t } from "@/lib/i18n";
+import { getSiteUrl } from "@/lib/siteUrl";
 import packageJson from "../package.json";
 
 const geistSans = Geist({
@@ -21,6 +22,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl()),
   title: t("appTitle"),
   description: t("appDescription"),
   applicationName: t("appTitle"),
