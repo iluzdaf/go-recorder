@@ -19,6 +19,12 @@ vi.mock("next/navigation", () => ({
     notFound: mockNotFound,
 }));
 
+// Pass through the data cache so each case renders against its own Supabase
+// mock instead of a value cached from a previous case.
+vi.mock("next/cache", () => ({
+    unstable_cache: <T,>(fn: T) => fn,
+}));
+
 import SharePage, { generateMetadata } from "../app/shares/[slug]/page";
 
 beforeEach(() => {

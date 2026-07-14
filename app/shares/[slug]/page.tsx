@@ -14,7 +14,12 @@ type PageProps = {
     }>;
 };
 
-export const dynamic = "force-dynamic";
+// Shares are immutable, so the rendered page can be cached and served from the
+// CDN instead of re-rendering and re-querying Supabase on every request. This
+// keeps TTFB near edge latency for repeat visitors. The finite window lets a
+// slug that 404s before it exists heal itself rather than caching the miss
+// forever.
+export const revalidate = 3600;
 
 function getSiteUrl() {
     const vercelUrl = process.env.VERCEL_URL;

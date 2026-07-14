@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import {
     ChevronLeft,
@@ -12,11 +12,10 @@ import {
 } from "lucide-react";
 
 import type { ShareRecord } from "./types";
-import {
-    getBoardSurfaceClassName,
-    useBoardDisplaySettings,
-    useTheme,
-} from "./AppShell";
+import { useBoardDisplaySettings } from "./AppShell";
+import { getPositionViewRange } from "../lib/positionView";
+import { getShareBoardPlaceholderSize } from "../lib/shareBoardPlaceholder";
+import { getShareBoardPositionView } from "../lib/shareBoardView";
 import { t } from "../lib/i18n";
 
 type ShareBoardLoaderProps = {
@@ -24,7 +23,6 @@ type ShareBoardLoaderProps = {
 };
 
 const ShareBoard = dynamic(() => import("@/components/ShareGoBoard"), {
-    loading: LoadingShareBoard,
     ssr: false,
 });
 
@@ -48,22 +46,33 @@ function DisabledRoundButton({
     );
 }
 
-export function ShareBoardLoadingShell() {
-    const { isDarkMode } = useTheme();
-    const { activeBoardThemeClassName } = useBoardDisplaySettings();
+// Server-rendered so first paint shows the board footprint immediately, and
+// sized to the real board so swapping in the measured board causes no layout
+// shift. Uses dark: variants (keyed off the pre-paint theme class) rather than
+// JS theme state so it renders correctly during SSR without a light-mode flash.
+export function ShareBoardLoadingShell({ share }: { share: ShareRecord }) {
+    const { showBoardCoordinates } = useBoardDisplaySettings();
+    const positionRange = getPositionViewRange({
+        boardSize: share.boardSize,
+        positionView: getShareBoardPositionView(share),
+    });
+    const placeholderSize = getShareBoardPlaceholderSize({
+        columns: positionRange?.columns ?? share.boardSize,
+        rows: positionRange?.rows ?? share.boardSize,
+        showCoordinates: showBoardCoordinates,
+    });
 
     return (
-        <div
-            className={getBoardSurfaceClassName({
-                activeBoardThemeClassName,
-                isDarkMode,
-            })}
-        >
+        <div className="relative m-0 flex min-h-0 flex-1 touch-none flex-col overflow-hidden overscroll-none bg-zinc-100 p-0 text-zinc-950 dark:bg-neutral-900 dark:text-white">
             <div className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden overscroll-none p-0">
                 <div
                     role="status"
                     aria-live="polite"
-                    className="flex aspect-square w-[min(82vmin,calc(100vw-2rem))] max-w-[42rem] items-center justify-center border border-zinc-200 bg-white/70 text-sm font-medium text-zinc-600 dark:border-neutral-700 dark:bg-neutral-900/70 dark:text-neutral-300"
+                    style={{
+                        width: placeholderSize.width,
+                        height: placeholderSize.height,
+                    }}
+                    className="flex items-center justify-center border border-zinc-200 bg-white/70 text-sm font-medium text-zinc-600 dark:border-neutral-700 dark:bg-neutral-900/70 dark:text-neutral-300"
                 >
                     Loading shared board
                 </div>
@@ -101,16 +110,22 @@ export function ShareBoardLoadingShell() {
     );
 }
 
-function LoadingShareBoard() {
-    return <ShareBoardLoadingShell />;
-}
+export default function ShareBoardLoader({ share }: ShareBoardLoaderProps) {
+    const [boardReady, setBoardReady] = useState(false);
+    const handleBoardReady = useCallback(() => setBoardReady(true), []);
 
-export default function ShareBoardLoader({
-    share,
-}: ShareBoardLoaderProps) {
     useEffect(() => {
         performance.mark("share-board-loader-mounted");
     }, []);
 
-    return <ShareBoard share={share} />;
+    return (
+        <div className="relative flex min-h-0 flex-1 flex-col">
+            <ShareBoard share={share} onReady={handleBoardReady} />
+            {boardReady ? null : (
+                <div className="absolute inset-0 z-30">
+                    <ShareBoardLoadingShell share={share} />
+                </div>
+            )}
+        </div>
+    );
 }
