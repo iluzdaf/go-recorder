@@ -1,3 +1,17 @@
+/* Server-rendered static share board: all four (mode x board theme) variants
+   are emitted; the pre-paint `dark`/`board-wood` classes on <html> reveal the
+   one matching the visitor's settings, so only the correct variant paints. */
+.share-static-board-img {
+    display: none;
+}
+
+html:not(.dark):not(.board-wood) .share-static-board-img--light-minimalist,
+html:not(.dark).board-wood .share-static-board-img--light-wood,
+html.dark:not(.board-wood) .share-static-board-img--dark-minimalist,
+html.dark.board-wood .share-static-board-img--dark-wood {
+    display: block;
+}
+
 .shudan-goban,
 .shudan-goban.shudan-goban-image,
 .shudan-content {

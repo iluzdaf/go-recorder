@@ -45,6 +45,18 @@ export const STATIC_BOARD_THEME_DARK: StaticBoardTheme = {
     hoshi: "#d4d4d8",
 };
 
+export const STATIC_BOARD_THEME_WOOD_LIGHT: StaticBoardTheme = {
+    boardBackground: "#d7a45f",
+    gridLine: "#6f4720",
+    hoshi: "#3b2818",
+};
+
+export const STATIC_BOARD_THEME_WOOD_DARK: StaticBoardTheme = {
+    boardBackground: "#7a4f2a",
+    gridLine: "#2f2118",
+    hoshi: "#1d1712",
+};
+
 type StaticBoardStone = {
     col: number;
     row: number;
@@ -226,12 +238,33 @@ export function toSvgDataUri(svg: string): string {
     return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
+// One variant per (mode, board theme) combination. The server cannot know the
+// visitor's mode or board theme (both live in localStorage), so it emits all
+// four and the pre-paint theme script's `dark`/`board-wood` classes on <html>
+// let CSS reveal the matching one; only the visible variant is painted.
+export type StaticBoardVariantKey =
+    | "light-minimalist"
+    | "light-wood"
+    | "dark-minimalist"
+    | "dark-wood";
+
+export type StaticBoardVariant = {
+    key: StaticBoardVariantKey;
+    src: string;
+};
+
 export type StaticBoardImages = {
     columns: number;
     rows: number;
-    lightSrc: string;
-    darkSrc: string;
+    variants: StaticBoardVariant[];
 };
+
+const STATIC_BOARD_VARIANTS: { key: StaticBoardVariantKey; theme: StaticBoardTheme }[] = [
+    { key: "light-minimalist", theme: STATIC_BOARD_THEME_LIGHT },
+    { key: "light-wood", theme: STATIC_BOARD_THEME_WOOD_LIGHT },
+    { key: "dark-minimalist", theme: STATIC_BOARD_THEME_DARK },
+    { key: "dark-wood", theme: STATIC_BOARD_THEME_WOOD_DARK },
+];
 
 export function getShareStaticBoardImages(share: ShareRecord): StaticBoardImages {
     const model = getStaticBoardModel(share);
@@ -239,7 +272,9 @@ export function getShareStaticBoardImages(share: ShareRecord): StaticBoardImages
     return {
         columns: model.columns,
         rows: model.rows,
-        lightSrc: toSvgDataUri(buildStaticBoardSvg(model, STATIC_BOARD_THEME_LIGHT)),
-        darkSrc: toSvgDataUri(buildStaticBoardSvg(model, STATIC_BOARD_THEME_DARK)),
+        variants: STATIC_BOARD_VARIANTS.map((variant) => ({
+            key: variant.key,
+            src: toSvgDataUri(buildStaticBoardSvg(model, variant.theme)),
+        })),
     };
 }

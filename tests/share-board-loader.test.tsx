@@ -44,16 +44,21 @@ vi.mock("../components/AppShell", async () => {
 });
 
 describe("ShareBoardLoadingShell", () => {
-    it("keeps stable share chrome and disables board controls while loading", () => {
+    it("renders all four board theme variants and no action bar", () => {
         const markup = renderToStaticMarkup(<ShareBoardLoadingShell share={share} />);
 
         expect(markup).toContain("Loading shared board");
-        expect(markup).toContain('aria-label="Share board controls loading"');
-        expect(markup).toContain('aria-label="Go to start"');
-        expect(markup).toContain('aria-label="Previous move"');
-        expect(markup).toContain('aria-label="Next move"');
-        expect(markup).toContain('aria-label="Go to end"');
-        expect(markup.match(/disabled=""/g)).toHaveLength(5);
+        for (const key of [
+            "light-minimalist",
+            "light-wood",
+            "dark-minimalist",
+            "dark-wood",
+        ]) {
+            expect(markup).toContain(`share-static-board-img--${key}`);
+        }
+        // The disabled action bar was dropped; the live bar arrives with the board.
+        expect(markup).not.toContain('aria-label="Share board controls loading"');
+        expect(markup).not.toContain("disabled");
     });
 
     it("sizes the placeholder to the board footprint so no layout shift occurs", () => {

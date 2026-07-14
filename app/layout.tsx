@@ -49,11 +49,14 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-// Runs synchronously in <head> before first paint so the dark class is present
-// on <html> before the body is painted. This prevents a light-mode flash for
-// dark-mode users. The logic mirrors getResolvedThemeFromStorage in AppShell:
-// same "go-recorder:theme" key, same system/unset fallback to matchMedia.
-const themeInitScript = `(function(){try{var p=localStorage.getItem("go-recorder:theme");var d=p==="dark"||((p==="system"||p===null)&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.classList.add("dark");}catch(e){}})();`;
+// Runs synchronously in <head> before first paint so the theme classes are
+// present on <html> before the body is painted. This prevents a light-mode
+// flash for dark-mode users and lets the server-rendered share board reveal the
+// correct (mode x board theme) variant via CSS. The logic mirrors AppShell:
+// same "go-recorder:theme" key with system/unset fallback to matchMedia, and
+// the active board theme comes from the light/dark board-theme key for the
+// resolved mode ("wood" -> board-wood, else minimalist).
+const themeInitScript = `(function(){try{var e=document.documentElement;var p=localStorage.getItem("go-recorder:theme");var d=p==="dark"||((p==="system"||p===null)&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d)e.classList.add("dark");var b=localStorage.getItem(d?"go-recorder:dark-board-theme":"go-recorder:light-board-theme");if(b==="wood")e.classList.add("board-wood");}catch(e){}})();`;
 
 export default function RootLayout({
   children,

@@ -141,14 +141,25 @@ describe("buildStaticBoardSvg", () => {
 });
 
 describe("getShareStaticBoardImages", () => {
-    it("returns light and dark SVG data URIs", () => {
+    it("returns all four theme variants as SVG data URIs", () => {
         const images = getShareStaticBoardImages(baseShare());
 
         expect(images.columns).toBe(9);
-        expect(images.lightSrc.startsWith("data:image/svg+xml,")).toBe(true);
-        expect(images.darkSrc.startsWith("data:image/svg+xml,")).toBe(true);
-        expect(decodeURIComponent(images.darkSrc)).toContain(
-            "#60606a"
-        ); // dark board background
+        expect(images.variants.map((variant) => variant.key)).toEqual([
+            "light-minimalist",
+            "light-wood",
+            "dark-minimalist",
+            "dark-wood",
+        ]);
+
+        const byKey = Object.fromEntries(
+            images.variants.map((variant) => [variant.key, variant.src])
+        );
+        for (const src of Object.values(byKey)) {
+            expect(src.startsWith("data:image/svg+xml,")).toBe(true);
+        }
+        expect(decodeURIComponent(byKey["dark-minimalist"])).toContain("#60606a");
+        expect(decodeURIComponent(byKey["light-wood"])).toContain("#d7a45f");
+        expect(decodeURIComponent(byKey["dark-wood"])).toContain("#7a4f2a");
     });
 });
